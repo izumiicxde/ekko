@@ -1,0 +1,51 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Base.Theme.Ekko" parent="Theme.Material3.Dark.NoActionBar">
+
+        <!-- Primary: bright indigo -->
+        <item name="colorPrimary">#818CF8</item>
+        <item name="colorOnPrimary">#1E1B4B</item>
+        <item name="colorPrimaryContainer">#3730A3</item>
+        <item name="colorOnPrimaryContainer">#E0E7FF</item>
+
+        <!-- Secondary -->
+        <item name="colorSecondary">#A5B4FC</item>
+        <item name="colorOnSecondary">#312E81</item>
+        <item name="colorSecondaryContainer">#3730A3</item>
+        <item name="colorOnSecondaryContainer">#EEF2FF</item>
+
+        <!-- Tertiary -->
+        <item name="colorTertiary">#C4B5FD</item>
+        <item name="colorOnTertiary">#2E1065</item>
+        <item name="colorTertiaryContainer">#4C1D95</item>
+        <item name="colorOnTertiaryContainer">#EDE9FE</item>
+
+        <!-- Surface: dark gray, not pure black -->
+        <item name="colorSurface">#1F2937</item>
+        <item name="colorOnSurface">#F9FAFB</item>
+        <item name="colorSurfaceVariant">#374151</item>
+        <item name="colorOnSurfaceVariant">#9CA3AF</item>
+
+        <!-- Background -->
+        <item name="android:colorBackground">#111827</item>
+        <item name="colorOnBackground">#F9FAFB</item>
+
+        <!-- Outline -->
+        <item name="colorOutline">#4B5563</item>
+        <item name="colorOutlineVariant">#374151</item>
+
+        <!-- Error -->
+        <item name="colorError">#FCA5A5</item>
+        <item name="colorOnError">#7F1D1D</item>
+        <item name="colorErrorContainer">#991B1B</item>
+        <item name="colorOnErrorContainer">#FEE2E2</item>
+
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+
+    </style>
+
+    <style name="Theme.Ekko" parent="Base.Theme.Ekko" />
+
+</resources>
