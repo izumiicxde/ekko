@@ -1,15 +1,12 @@
 package com.semantic.ekko.data.repository;
 
 import android.content.Context;
-
 import androidx.lifecycle.LiveData;
-
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.DocumentDao;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.model.SearchResult;
 import com.semantic.ekko.ml.EmbeddingEngine;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -84,14 +81,20 @@ public class DocumentRepository {
         });
     }
 
-    public void getByCategory(String category, QueryCallback<List<DocumentEntity>> callback) {
+    public void getByCategory(
+        String category,
+        QueryCallback<List<DocumentEntity>> callback
+    ) {
         executor.execute(() -> {
             List<DocumentEntity> result = documentDao.getByCategory(category);
             if (callback != null) callback.onResult(result);
         });
     }
 
-    public void getByFileType(String fileType, QueryCallback<List<DocumentEntity>> callback) {
+    public void getByFileType(
+        String fileType,
+        QueryCallback<List<DocumentEntity>> callback
+    ) {
         executor.execute(() -> {
             List<DocumentEntity> result = documentDao.getByFileType(fileType);
             if (callback != null) callback.onResult(result);
@@ -103,35 +106,99 @@ public class DocumentRepository {
     // =========================
 
     /**
-     * Performs semantic search by comparing the query embedding against
-     * all stored document embeddings using cosine similarity.
-     * Results are sorted descending by score and filtered by a minimum
-     * threshold to remove irrelevant matches.
+     * Hybrid search combining embedding cosine similarity with keyword and
+     * filename text matching. This compensates for the limited 128-token
+     * embedding window by boosting documents whose name or keywords
+     * contain the query terms directly.
+     *
+     * Final score = 0.4 * embedding_score + 0.6 * text_score
      */
-    public void search(float[] queryEmbedding,
-                       float minScore,
-                       QueryCallback<List<SearchResult>> callback) {
+    public void search(
+        float[] queryEmbedding,
+        String rawQuery,
+        float minScore,
+        QueryCallback<List<SearchResult>> callback
+    ) {
         executor.execute(() -> {
-            List<DocumentDao.DocumentEmbeddingRow> rows = documentDao.getAllEmbeddings();
+            List<DocumentDao.DocumentEmbeddingRow> rows =
+                documentDao.getAllEmbeddings();
             List<SearchResult> results = new ArrayList<>();
 
-            for (DocumentDao.DocumentEmbeddingRow row : rows) {
-                if (row.embedding == null) continue;
-                float[] docEmbedding = EmbeddingEngine.fromBytes(row.embedding);
-                float score = EmbeddingEngine.cosineSimilarity(queryEmbedding, docEmbedding);
+            String queryLower =
+                rawQuery != null ? rawQuery.toLowerCase().trim() : "";
+            String[] queryTerms = queryLower.split("\\s+");
 
-                if (score >= minScore) {
+            for (DocumentDao.DocumentEmbeddingRow row : rows) {
+                // Embedding similarity score
+                float embeddingScore = 0f;
+                if (row.embedding != null) {
+                    float[] docEmbedding = EmbeddingEngine.fromBytes(
+                        row.embedding
+                    );
+                    embeddingScore = EmbeddingEngine.cosineSimilarity(
+                        queryEmbedding,
+                        docEmbedding
+                    );
+                }
+
+                // Text match score from filename and keywords
+                float textScore = computeTextScore(row, queryTerms);
+
+                // Hybrid score weighted toward text matching
+                float finalScore = 0.4f * embeddingScore + 0.6f * textScore;
+
+                if (finalScore >= minScore || textScore > 0) {
                     DocumentEntity doc = documentDao.getById(row.id);
                     if (doc != null) {
-                        results.add(new SearchResult(doc, score));
+                        results.add(new SearchResult(doc, finalScore));
                     }
                 }
             }
 
-            Collections.sort(results, (a, b) -> Float.compare(b.getScore(), a.getScore()));
+            Collections.sort(results, (a, b) ->
+                Float.compare(b.getScore(), a.getScore())
+            );
 
             if (callback != null) callback.onResult(results);
         });
+    }
+
+    /**
+     * Computes a text match score based on how many query terms appear
+     * in the document filename, keywords, category, and summary.
+     * Returns a value between 0.0 and 1.0.
+     */
+    private float computeTextScore(
+        DocumentDao.DocumentEmbeddingRow row,
+        String[] queryTerms
+    ) {
+        if (queryTerms.length == 0) return 0f;
+
+        // Build searchable text from available fields
+        StringBuilder searchable = new StringBuilder();
+        if (row.name != null) searchable
+            .append(row.name.toLowerCase())
+            .append(" ");
+        if (row.category != null) searchable
+            .append(row.category.toLowerCase())
+            .append(" ");
+
+        String searchText = searchable.toString();
+        int matches = 0;
+
+        for (String term : queryTerms) {
+            if (term.length() < 2) continue;
+            if (searchText.contains(term)) {
+                // Filename match is weighted heavily
+                if (row.name != null && row.name.toLowerCase().contains(term)) {
+                    matches += 3;
+                } else {
+                    matches += 1;
+                }
+            }
+        }
+
+        return Math.min(1.0f, (float) matches / (queryTerms.length * 3));
     }
 
     // =========================
@@ -168,6 +235,7 @@ public class DocumentRepository {
     // =========================
 
     public static class Statistics {
+
         public int totalDocuments;
         public int totalWordCount;
         public List<DocumentDao.CategoryCount> categoryDistribution;
