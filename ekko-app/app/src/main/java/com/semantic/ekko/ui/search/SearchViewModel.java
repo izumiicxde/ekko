@@ -15,7 +15,7 @@ public class SearchViewModel extends AndroidViewModel {
 
     // Minimum hybrid score required for a result to appear.
     // 0.20 filters out documents with no meaningful semantic or text match.
-    private static final float MIN_SCORE = 0.15f;
+    private static final float MIN_SCORE = 0.20f;
 
     private final MutableLiveData<List<SearchResult>> results =
         new MutableLiveData<>();
