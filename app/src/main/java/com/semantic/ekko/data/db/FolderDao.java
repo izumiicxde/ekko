@@ -6,14 +6,11 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
-
 import com.semantic.ekko.data.model.FolderEntity;
-
 import java.util.List;
 
 @Dao
 public interface FolderDao {
-
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     long insert(FolderEntity folder);
 
@@ -28,6 +25,9 @@ public interface FolderDao {
 
     @Query("SELECT * FROM folders WHERE id = :id LIMIT 1")
     FolderEntity getById(long id);
+
+    @Query("SELECT * FROM folders WHERE uri = :uri LIMIT 1")
+    FolderEntity getByUri(String uri);
 
     @Query("SELECT COUNT(*) FROM folders")
     int getCount();

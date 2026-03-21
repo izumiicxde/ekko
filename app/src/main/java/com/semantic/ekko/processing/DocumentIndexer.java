@@ -2,6 +2,7 @@ package com.semantic.ekko.processing;
 
 import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.ml.DocumentClassifier;
@@ -12,6 +13,7 @@ import com.semantic.ekko.processing.extractor.DocxTextExtractor;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.processing.extractor.PptxTextExtractor;
 import com.semantic.ekko.processing.extractor.TxtTextExtractor;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -20,19 +22,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class DocumentIndexer {
 
-    // =========================
-    // PROGRESS CALLBACK
-    // =========================
+    private static final String TAG = "DocumentIndexer";
 
     public interface ProgressListener {
         void onStageChanged(String stage);
         void onDocumentProcessed(int current, int total, String docName);
-        void onComplete(int indexed, int failed);
+        void onComplete(int indexed, int failed, List<String> failedNames);
     }
-
-    // =========================
-    // INIT
-    // =========================
 
     private final Context context;
     private final EmbeddingEngine embeddingEngine;
@@ -70,6 +66,7 @@ public class DocumentIndexer {
             int total = documents.size();
             AtomicInteger indexed = new AtomicInteger(0);
             AtomicInteger failed = new AtomicInteger(0);
+            List<String> failedNames = new ArrayList<>();
 
             if (listener != null) listener.onStageChanged(
                 "Scanning documents..."
@@ -77,7 +74,6 @@ public class DocumentIndexer {
 
             for (int i = 0; i < total; i++) {
                 DocumentEntity doc = documents.get(i);
-
                 if (listener != null) listener.onDocumentProcessed(
                     i + 1,
                     total,
@@ -91,10 +87,25 @@ public class DocumentIndexer {
                     );
                     String rawText = extractText(doc);
 
-                    if (rawText == null || rawText.trim().isEmpty()) {
-                        failed.incrementAndGet();
-                        continue;
+                    if (rawText == null || rawText.trim().length() < 20) {
+                        Log.w(
+                            TAG,
+                            doc.name +
+                                ": text extraction poor, using filename only"
+                        );
+                        rawText = doc.name
+                            .replaceAll("\\.[^.]+$", "")
+                            .replaceAll("[_\\-]", " ");
+                        failedNames.add(doc.name + " (no readable text)");
                     }
+
+                    Log.d(
+                        TAG,
+                        "Extracted " +
+                            rawText.length() +
+                            " chars from " +
+                            doc.name
+                    );
 
                     // Step 2: Clean text
                     String cleanedText = TextPreprocessor.clean(rawText);
@@ -108,8 +119,9 @@ public class DocumentIndexer {
                         "Classifying..."
                     );
                     doc.category = classifier.classify(mlText);
+                    Log.d(TAG, doc.name + " -> category: " + doc.category);
 
-                    // Step 4: Embed using smart excerpt with filename
+                    // Step 4: Embed
                     if (listener != null) listener.onStageChanged(
                         "Embedding..."
                     );
@@ -120,50 +132,99 @@ public class DocumentIndexer {
                     float[] embedding = embeddingEngine.embed(embeddingInput);
                     if (embedding != null) {
                         doc.embedding = EmbeddingEngine.toBytes(embedding);
+                    } else {
+                        Log.w(TAG, doc.name + ": embedding returned null");
                     }
 
                     // Step 5: Summarize
                     if (listener != null) listener.onStageChanged(
                         "Summarizing..."
                     );
-                    doc.summary = summarizer.summarize(cleanedText);
+                    try {
+                        doc.summary = summarizer.summarize(cleanedText);
+                    } catch (Exception e) {
+                        Log.w(
+                            TAG,
+                            doc.name +
+                                ": summarization failed: " +
+                                e.getMessage()
+                        );
+                        doc.summary = "";
+                    }
 
                     // Step 6: Extract keywords
                     if (listener != null) listener.onStageChanged(
                         "Extracting keywords..."
                     );
-                    List<String> keywords = TextPreprocessor.extractKeywords(
-                        mlText,
-                        5
-                    );
-                    doc.keywords = String.join(",", keywords);
+                    try {
+                        List<String> keywords =
+                            TextPreprocessor.extractKeywords(mlText, 5);
+                        doc.keywords = String.join(",", keywords);
+                    } catch (Exception e) {
+                        Log.w(
+                            TAG,
+                            doc.name +
+                                ": keyword extraction failed: " +
+                                e.getMessage()
+                        );
+                        doc.keywords = "";
+                    }
 
-                    // Step 7: Extract entities (async, blocking with latch)
+                    // Step 7: Extract entities
                     if (listener != null) listener.onStageChanged(
                         "Extracting entities..."
                     );
-                    CountDownLatch latch = new CountDownLatch(1);
-                    entityExtractor.extractEntities(cleanedText, entities -> {
-                        doc.entities = EntityExtractorHelper.entitiesToString(
-                            entities
+                    try {
+                        CountDownLatch latch = new CountDownLatch(1);
+                        entityExtractor.extractEntities(
+                            cleanedText,
+                            entities -> {
+                                doc.entities =
+                                    EntityExtractorHelper.entitiesToString(
+                                        entities
+                                    );
+                                latch.countDown();
+                            }
                         );
-                        latch.countDown();
-                    });
-                    latch.await();
+                        latch.await();
+                    } catch (Exception e) {
+                        Log.w(
+                            TAG,
+                            doc.name +
+                                ": entity extraction failed: " +
+                                e.getMessage()
+                        );
+                        doc.entities = "";
+                    }
 
                     // Step 8: Save to DB
                     if (listener != null) listener.onStageChanged("Saving...");
                     repository.insert(doc, null);
 
                     indexed.incrementAndGet();
+                    Log.d(TAG, "Indexed: " + doc.name);
                 } catch (Exception e) {
+                    Log.e(
+                        TAG,
+                        "Failed to index " + doc.name + ": " + e.getMessage(),
+                        e
+                    );
                     failed.incrementAndGet();
+                    failedNames.add(doc.name + " (error)");
                 }
             }
 
+            Log.d(
+                TAG,
+                "Indexing complete. Indexed: " +
+                    indexed.get() +
+                    " Failed: " +
+                    failed.get()
+            );
             if (listener != null) listener.onComplete(
                 indexed.get(),
-                failed.get()
+                failed.get(),
+                failedNames
             );
         });
     }
@@ -172,14 +233,7 @@ public class DocumentIndexer {
     // EMBEDDING INPUT
     // =========================
 
-    /**
-     * Builds a smarter embedding input by combining the document filename
-     * as a strong signal with a spread of content from start, middle, and end.
-     * This ensures the embedding captures the document topic even when
-     * the first 128 tokens are just a title page or introduction.
-     */
     private String buildEmbeddingInput(String name, String text) {
-        // Use filename as the primary topic signal
         String title = name
             .replaceAll("\\.[^.]+$", "")
             .replaceAll("[_\\-]", " ")
@@ -190,11 +244,9 @@ public class DocumentIndexer {
 
         StringBuilder sb = new StringBuilder(title).append(" ");
 
-        // First 60 words
         int chunk = Math.min(60, total);
         for (int i = 0; i < chunk; i++) sb.append(words[i]).append(" ");
 
-        // Middle 30 words
         if (total > 120) {
             int mid = total / 2;
             int end = Math.min(mid + 30, total);
@@ -210,17 +262,26 @@ public class DocumentIndexer {
 
     private String extractText(DocumentEntity doc) {
         Uri uri = Uri.parse(doc.uri);
-        switch (doc.fileType) {
-            case "pdf":
-                return PdfTextExtractor.extract(context, uri);
-            case "docx":
-                return DocxTextExtractor.extract(context, uri);
-            case "pptx":
-                return PptxTextExtractor.extract(context, uri);
-            case "txt":
-                return TxtTextExtractor.extract(context, uri);
-            default:
-                return "";
+        try {
+            switch (doc.fileType) {
+                case "pdf":
+                    return PdfTextExtractor.extract(context, uri);
+                case "docx":
+                    return DocxTextExtractor.extract(context, uri);
+                case "pptx":
+                    return PptxTextExtractor.extract(context, uri);
+                case "txt":
+                    return TxtTextExtractor.extract(context, uri);
+                default:
+                    Log.w(TAG, "Unsupported file type: " + doc.fileType);
+                    return "";
+            }
+        } catch (Exception e) {
+            Log.e(
+                TAG,
+                "Text extraction failed for " + doc.name + ": " + e.getMessage()
+            );
+            return "";
         }
     }
 

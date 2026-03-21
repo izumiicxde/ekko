@@ -18,6 +18,7 @@ import com.semantic.ekko.util.FileUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.List;
 
 public class HomeViewModel extends AndroidViewModel {
 
@@ -127,53 +128,91 @@ public class HomeViewModel extends AndroidViewModel {
             folderName
         );
 
-        folderRepository.insert(folder, folderId -> {
-            folder.id = folderId;
-
-            List<Uri> uris = Collections.singletonList(folderUri);
-            List<Long> ids = Collections.singletonList(folderId);
-            DocumentScanner.ScanResult scanResult = DocumentScanner.scanFolders(
-                getApplication(),
-                uris,
-                ids
-            );
-
-            if (scanResult.documents.isEmpty()) {
-                isIndexing.postValue(false);
-                errorMessage.postValue(
-                    "No supported documents found in this folder."
-                );
-                return;
-            }
-
-            indexer.indexDocuments(
-                scanResult.documents,
-                new DocumentIndexer.ProgressListener() {
-                    @Override
-                    public void onStageChanged(String stage) {
-                        indexingStage.postValue(stage);
-                    }
-
-                    @Override
-                    public void onDocumentProcessed(
-                        int current,
-                        int total,
-                        String docName
-                    ) {
-                        indexingProgress.postValue(
-                            new IndexingProgress(current, total, docName)
-                        );
-                    }
-
-                    @Override
-                    public void onComplete(int indexed, int failed) {
-                        isIndexing.postValue(false);
-                        indexingStage.postValue("");
-                        loadDocuments();
-                    }
+        folderRepository.insertIfNotExists(
+            folder,
+            (folderId, alreadyExists) -> {
+                if (alreadyExists) {
+                    isIndexing.postValue(false);
+                    errorMessage.postValue(
+                        "This folder has already been added."
+                    );
+                    return;
                 }
-            );
-        });
+
+                folder.id = folderId;
+
+                List<Uri> uris = Collections.singletonList(folderUri);
+                List<Long> ids = Collections.singletonList(folderId);
+                DocumentScanner.ScanResult scanResult =
+                    DocumentScanner.scanFolders(getApplication(), uris, ids);
+
+                if (scanResult.documents.isEmpty()) {
+                    isIndexing.postValue(false);
+                    errorMessage.postValue(
+                        "No supported documents found in this folder."
+                    );
+                    return;
+                }
+
+                indexer.indexDocuments(
+                    scanResult.documents,
+                    new DocumentIndexer.ProgressListener() {
+                        @Override
+                        public void onStageChanged(String stage) {
+                            indexingStage.postValue(stage);
+                        }
+
+                        @Override
+                        public void onDocumentProcessed(
+                            int current,
+                            int total,
+                            String docName
+                        ) {
+                            indexingProgress.postValue(
+                                new IndexingProgress(current, total, docName)
+                            );
+                        }
+
+                        @Override
+                        public void onComplete(
+                            int indexed,
+                            int failed,
+                            List<String> failedNames
+                        ) {
+                            isIndexing.postValue(false);
+                            indexingStage.postValue("");
+                            loadDocuments();
+                            if (!failedNames.isEmpty()) {
+                                StringBuilder msg = new StringBuilder();
+                                msg
+                                    .append(failedNames.size())
+                                    .append(
+                                        failedNames.size() == 1
+                                            ? " file"
+                                            : " files"
+                                    )
+                                    .append(" could not be fully indexed: ");
+                                for (
+                                    int i = 0;
+                                    i < Math.min(failedNames.size(), 3);
+                                    i++
+                                ) {
+                                    if (i > 0) msg.append(", ");
+                                    msg.append(failedNames.get(i));
+                                }
+                                if (failedNames.size() > 3) {
+                                    msg
+                                        .append(" and ")
+                                        .append(failedNames.size() - 3)
+                                        .append(" more");
+                                }
+                                errorMessage.postValue(msg.toString());
+                            }
+                        }
+                    }
+                );
+            }
+        );
     }
 
     // =========================
@@ -272,6 +311,14 @@ public class HomeViewModel extends AndroidViewModel {
 
     public LiveData<String> getErrorMessage() {
         return errorMessage;
+    }
+
+    public String getCurrentSortOrder() {
+        return activeSortOrder;
+    }
+
+    public String getCurrentFileTypeFilter() {
+        return activeFileTypeFilter;
     }
 
     // =========================

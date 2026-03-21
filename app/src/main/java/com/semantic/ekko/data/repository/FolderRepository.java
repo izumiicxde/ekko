@@ -1,13 +1,10 @@
 package com.semantic.ekko.data.repository;
 
 import android.content.Context;
-
 import androidx.lifecycle.LiveData;
-
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.FolderDao;
 import com.semantic.ekko.data.model.FolderEntity;
-
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,20 +27,29 @@ public class FolderRepository {
     }
 
     // =========================
-    // INSERT / DELETE
+    // INSERT
     // =========================
 
-    public void insert(FolderEntity folder, InsertCallback callback) {
+    /**
+     * Inserts folder only if its URI does not already exist.
+     * Calls back with the existing or new folder ID.
+     * Calls back with -1 if the folder already exists (duplicate).
+     */
+    public void insertIfNotExists(
+        FolderEntity folder,
+        InsertCallback callback
+    ) {
         executor.execute(() -> {
+            FolderEntity existing = folderDao.getByUri(folder.uri);
+            if (existing != null) {
+                if (callback != null) callback.onInserted(-1, true);
+                return;
+            }
             long id = folderDao.insert(folder);
-            if (callback != null) callback.onInserted(id);
+            if (callback != null) callback.onInserted(id, false);
         });
     }
 
-    /**
-     * Deletes the folder and all its associated documents via CASCADE.
-     * Also clears documents from the repository to keep data consistent.
-     */
     public void delete(FolderEntity folder) {
         executor.execute(() -> {
             documentRepository.deleteByFolderId(folder.id);
@@ -85,7 +91,7 @@ public class FolderRepository {
     // =========================
 
     public interface InsertCallback {
-        void onInserted(long id);
+        void onInserted(long id, boolean alreadyExists);
     }
 
     public interface QueryCallback<T> {
