@@ -106,12 +106,20 @@ public class DocumentRepository {
     // =========================
 
     /**
-     * Hybrid search combining embedding cosine similarity with keyword and
-     * filename text matching. This compensates for the limited 128-token
-     * embedding window by boosting documents whose name or keywords
-     * contain the query terms directly.
+     * Hybrid search combining embedding cosine similarity with keyword,
+     * summary, and filename text matching.
      *
-     * Final score = 0.4 * embedding_score + 0.6 * text_score
+     * Scoring breakdown:
+     *   embeddingScore  - cosine similarity between query and document vectors
+     *   keywordScore    - proportion of query terms found in extracted keywords
+     *   summaryScore    - proportion of query terms found in document summary
+     *   filenameScore   - whether query terms appear in the filename (minor bonus)
+     *
+     * Final score = 0.55 * embeddingScore + 0.30 * keywordScore
+     *             + 0.10 * summaryScore   + 0.05 * filenameScore
+     *
+     * A result is included only if its final score meets the minScore threshold.
+     * There is no fallback inclusion based on partial text matches alone.
      */
     public void search(
         float[] queryEmbedding,
@@ -129,7 +137,6 @@ public class DocumentRepository {
             String[] queryTerms = queryLower.split("\\s+");
 
             for (DocumentDao.DocumentEmbeddingRow row : rows) {
-                // Embedding similarity score
                 float embeddingScore = 0f;
                 if (row.embedding != null) {
                     float[] docEmbedding = EmbeddingEngine.fromBytes(
@@ -141,13 +148,22 @@ public class DocumentRepository {
                     );
                 }
 
-                // Text match score from filename and keywords
-                float textScore = computeTextScore(row, queryTerms);
+                float keywordScore = computeFieldScore(
+                    row.keywords,
+                    queryTerms
+                );
+                float summaryScore = computeFieldScore(row.summary, queryTerms);
+                float filenameScore = computeFieldScore(row.name, queryTerms);
 
-                // Hybrid score weighted toward text matching
-                float finalScore = 0.4f * embeddingScore + 0.6f * textScore;
+                float finalScore =
+                    0.55f * embeddingScore +
+                    0.30f * keywordScore +
+                    0.10f * summaryScore +
+                    0.05f * filenameScore;
 
-                if (finalScore >= minScore || textScore > 0) {
+                // Only include results that meet the minimum score threshold.
+                // No fallback inclusion for loose text matches.
+                if (finalScore >= minScore) {
                     DocumentEntity doc = documentDao.getById(row.id);
                     if (doc != null) {
                         results.add(new SearchResult(doc, finalScore));
@@ -164,41 +180,25 @@ public class DocumentRepository {
     }
 
     /**
-     * Computes a text match score based on how many query terms appear
-     * in the document filename, keywords, category, and summary.
-     * Returns a value between 0.0 and 1.0.
+     * Returns the proportion of query terms found in the given field text.
+     * A term must be at least 2 characters. Returns a value in [0.0, 1.0].
      */
-    private float computeTextScore(
-        DocumentDao.DocumentEmbeddingRow row,
-        String[] queryTerms
-    ) {
-        if (queryTerms.length == 0) return 0f;
-
-        // Build searchable text from available fields
-        StringBuilder searchable = new StringBuilder();
-        if (row.name != null) searchable
-            .append(row.name.toLowerCase())
-            .append(" ");
-        if (row.category != null) searchable
-            .append(row.category.toLowerCase())
-            .append(" ");
-
-        String searchText = searchable.toString();
+    private float computeFieldScore(String fieldText, String[] queryTerms) {
+        if (
+            fieldText == null || fieldText.isEmpty() || queryTerms.length == 0
+        ) {
+            return 0f;
+        }
+        String lowerField = fieldText.toLowerCase();
         int matches = 0;
-
+        int validTerms = 0;
         for (String term : queryTerms) {
             if (term.length() < 2) continue;
-            if (searchText.contains(term)) {
-                // Filename match is weighted heavily
-                if (row.name != null && row.name.toLowerCase().contains(term)) {
-                    matches += 3;
-                } else {
-                    matches += 1;
-                }
-            }
+            validTerms++;
+            if (lowerField.contains(term)) matches++;
         }
-
-        return Math.min(1.0f, (float) matches / (queryTerms.length * 3));
+        if (validTerms == 0) return 0f;
+        return (float) matches / validTerms;
     }
 
     // =========================

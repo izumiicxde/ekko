@@ -7,7 +7,7 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginBottom="12dp"
+    android:layout_marginBottom="10dp"
     app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
     app:strokeWidth="1dp"
@@ -25,86 +25,31 @@
         android:paddingBottom="12dp"
     >
 
-        <!-- Top row: name + relevance badge -->
-        <LinearLayout
+        <!-- Doc name -->
+        <TextView
+            android:id="@+id/txtDocName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-        >
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            tools:text="Introduction to Machine Learning.pdf"
+        />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="8dp"
-            >
-
-                <TextView
-                    android:id="@+id/txtDocName"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    tools:text="Introduction to Machine Learning.pdf"
-                />
-
-                <TextView
-                    android:id="@+id/txtCategory"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="11sp"
-                    android:textColor="?attr/colorPrimary"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:layout_marginTop="2dp"
-                    tools:text="Technical"
-                />
-
-            </LinearLayout>
-
-            <!-- Relevance score badge -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/bg_relevance_badge"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-            >
-
-                <TextView
-                    android:id="@+id/txtRelevanceScore"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:textStyle="bold"
-                    tools:text="87%"
-                />
-
-                <TextView
-                    android:id="@+id/txtRelevanceTier"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="9sp"
-                    android:textColor="?attr/colorOnPrimaryContainer"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:layout_marginTop="1dp"
-                    tools:text="High"
-                />
-
-            </LinearLayout>
-
-        </LinearLayout>
+        <!-- Category -->
+        <TextView
+            android:id="@+id/txtCategory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="?attr/colorPrimary"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:layout_marginTop="2dp"
+            tools:text="Technical"
+        />
 
         <!-- Summary snippet -->
         <TextView
@@ -121,15 +66,16 @@
             tools:text="This document introduces supervised learning, gradient descent, and neural networks."
         />
 
-        <!-- Bottom: file type + word count -->
+        <!-- Bottom row: file type chip + spacer + word count + relevance chip -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:gravity="center_vertical"
         >
 
+            <!-- File type pill -->
             <TextView
                 android:id="@+id/txtFileType"
                 android:layout_width="wrap_content"
@@ -146,12 +92,14 @@
                 tools:text="PDF"
             />
 
+            <!-- Spacer -->
             <View
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1"
             />
 
+            <!-- Word count -->
             <TextView
                 android:id="@+id/txtWordCount"
                 android:layout_width="wrap_content"
@@ -159,7 +107,24 @@
                 android:textSize="11sp"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/bricolage_grotesque"
+                android:layout_marginEnd="8dp"
                 tools:text="22.4k words"
+            />
+
+            <!-- Relevance chip: score + tier in one line -->
+            <TextView
+                android:id="@+id/txtRelevanceChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:textSize="10sp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:textStyle="bold"
+                android:background="@drawable/bg_relevance_chip"
+                tools:text="87% · High"
             />
 
         </LinearLayout>

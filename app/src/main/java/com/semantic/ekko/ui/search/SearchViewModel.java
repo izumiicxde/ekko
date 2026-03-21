@@ -13,7 +13,9 @@ import java.util.List;
 
 public class SearchViewModel extends AndroidViewModel {
 
-    private static final float MIN_SCORE = 0.05f;
+    // Minimum hybrid score required for a result to appear.
+    // 0.20 filters out documents with no meaningful semantic or text match.
+    private static final float MIN_SCORE = 0.15f;
 
     private final MutableLiveData<List<SearchResult>> results =
         new MutableLiveData<>();
@@ -42,24 +44,29 @@ public class SearchViewModel extends AndroidViewModel {
         isSearching.postValue(true);
 
         new Thread(() -> {
-            EmbeddingEngine engine = app.getEmbeddingEngine();
-            float[] queryEmbedding = engine.embedQuery(query.trim());
+            try {
+                EmbeddingEngine engine = app.getEmbeddingEngine();
+                float[] queryEmbedding = engine.embedQuery(query.trim());
 
-            if (queryEmbedding == null) {
-                isSearching.postValue(false);
-                errorMessage.postValue("Could not process query.");
-                return;
-            }
-
-            repository.search(
-                queryEmbedding,
-                query.trim(),
-                MIN_SCORE,
-                searchResults -> {
-                    results.postValue(searchResults);
+                if (queryEmbedding == null) {
                     isSearching.postValue(false);
+                    errorMessage.postValue("Could not process query.");
+                    return;
                 }
-            );
+
+                repository.search(
+                    queryEmbedding,
+                    query.trim(),
+                    MIN_SCORE,
+                    searchResults -> {
+                        results.postValue(searchResults);
+                        isSearching.postValue(false);
+                    }
+                );
+            } catch (Exception e) {
+                isSearching.postValue(false);
+                errorMessage.postValue("Search failed. Try a shorter query.");
+            }
         })
             .start();
     }

@@ -1,11 +1,15 @@
 package com.semantic.ekko.ui.search;
 
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
@@ -69,21 +73,19 @@ public class SearchResultAdapter
 
         private final TextView txtDocName;
         private final TextView txtCategory;
-        private final TextView txtRelevanceScore;
-        private final TextView txtRelevanceTier;
         private final TextView txtSummary;
         private final TextView txtFileType;
         private final TextView txtWordCount;
+        private final TextView txtRelevanceChip;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             txtDocName = itemView.findViewById(R.id.txtDocName);
             txtCategory = itemView.findViewById(R.id.txtCategory);
-            txtRelevanceScore = itemView.findViewById(R.id.txtRelevanceScore);
-            txtRelevanceTier = itemView.findViewById(R.id.txtRelevanceTier);
             txtSummary = itemView.findViewById(R.id.txtSummary);
             txtFileType = itemView.findViewById(R.id.txtFileType);
             txtWordCount = itemView.findViewById(R.id.txtWordCount);
+            txtRelevanceChip = itemView.findViewById(R.id.txtRelevanceChip);
         }
 
         void bind(SearchResult result, OnResultClickListener listener) {
@@ -93,8 +95,6 @@ public class SearchResultAdapter
                     ? result.getDocument().category
                     : "General"
             );
-            txtRelevanceScore.setText(result.getScoreLabel());
-            txtRelevanceTier.setText(result.getRelevanceTier());
 
             if (
                 result.getDocument().summary != null &&
@@ -119,9 +119,50 @@ public class SearchResultAdapter
                     : wordCount + " words"
             );
 
+            // Relevance chip: "87% · High"
+            String chipLabel =
+                result.getScoreLabel() + " · " + result.getRelevanceTier();
+            txtRelevanceChip.setText(chipLabel);
+            applyChipColor(txtRelevanceChip, result.getRelevanceTier());
+
             itemView.setOnClickListener(v -> {
                 if (listener != null) listener.onClick(result);
             });
+        }
+
+        /**
+         * Sets chip background color and text color based on relevance tier.
+         * Uses a GradientDrawable so the corner radius is preserved.
+         * Colors are semi-transparent to stay readable on both light and dark surfaces.
+         */
+        private void applyChipColor(TextView chip, String tier) {
+            int bgColor;
+            int textColor;
+
+            switch (tier) {
+                case "High":
+                    bgColor = Color.parseColor("#2256A96A"); // green, 13% alpha
+                    textColor = Color.parseColor("#56A96A");
+                    break;
+                case "Medium":
+                    bgColor = Color.parseColor("#22E09A3E"); // amber, 13% alpha
+                    textColor = Color.parseColor("#E09A3E");
+                    break;
+                default: // Low
+                    bgColor = Color.parseColor("#22888888"); // grey, 13% alpha
+                    textColor = Color.parseColor("#AAAAAA");
+                    break;
+            }
+
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(
+                chip.getResources().getDisplayMetrics().density * 20
+            );
+            bg.setColor(bgColor);
+
+            chip.setBackground(bg);
+            chip.setTextColor(textColor);
         }
     }
 }
