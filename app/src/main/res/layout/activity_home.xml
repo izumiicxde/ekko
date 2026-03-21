@@ -1,18 +1,20 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/android:colorBackground">
+    android:background="?attr/android:colorBackground"
+>
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/android:colorBackground"
-        app:elevation="0dp">
+        app:elevation="0dp"
+    >
 
         <!-- Title row -->
         <LinearLayout
@@ -21,7 +23,8 @@
             android:orientation="horizontal"
             android:paddingStart="20dp"
             android:paddingEnd="4dp"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+        >
 
             <TextView
                 android:id="@+id/txtAppTitle"
@@ -32,7 +35,8 @@
                 android:textSize="24sp"
                 android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/bricolage_grotesque"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+            />
 
             <ImageButton
                 android:id="@+id/btnStatistics"
@@ -42,7 +46,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_bar_chart"
                 android:contentDescription="Statistics"
-                app:tint="?attr/colorOnSurfaceVariant" />
+                app:tint="?attr/colorOnSurfaceVariant"
+            />
 
             <ImageButton
                 android:id="@+id/btnSettings"
@@ -52,7 +57,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_settings"
                 android:contentDescription="Settings"
-                app:tint="?attr/colorOnSurfaceVariant" />
+                app:tint="?attr/colorOnSurfaceVariant"
+            />
 
         </LinearLayout>
 
@@ -64,7 +70,8 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:paddingBottom="10dp"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+        >
 
             <LinearLayout
                 android:id="@+id/searchBar"
@@ -76,14 +83,16 @@
                 android:paddingEnd="16dp"
                 android:background="@drawable/bg_search_bar"
                 android:clickable="true"
-                android:focusable="true">
+                android:focusable="true"
+            >
 
                 <ImageView
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:src="@drawable/ic_search"
                     app:tint="?attr/colorOnSurfaceVariant"
-                    android:contentDescription="Search" />
+                    android:contentDescription="Search"
+                />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -92,7 +101,8 @@
                     android:text="Search documents..."
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="@font/bricolage_grotesque" />
+                    android:fontFamily="@font/bricolage_grotesque"
+                />
 
             </LinearLayout>
 
@@ -104,12 +114,14 @@
         android:id="@+id/nestedScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    >
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+        >
 
             <!-- Indexing Progress -->
             <LinearLayout
@@ -121,14 +133,16 @@
                 android:paddingEnd="20dp"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"
-                android:visibility="gone">
+                android:visibility="gone"
+            >
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="6dp">
+                    android:layout_marginBottom="6dp"
+                >
 
                     <TextView
                         android:id="@+id/txtIndexingStage"
@@ -139,7 +153,8 @@
                         android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/bricolage_grotesque"
                         android:textStyle="bold"
-                        tools:text="Embedding..." />
+                        tools:text="Embedding..."
+                    />
 
                     <TextView
                         android:id="@+id/txtIndexingDoc"
@@ -148,7 +163,8 @@
                         android:textSize="12sp"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:fontFamily="@font/bricolage_grotesque"
-                        tools:text="2 / 10" />
+                        tools:text="2 / 10"
+                    />
 
                 </LinearLayout>
 
@@ -157,7 +173,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:indeterminate="false"
-                    app:trackCornerRadius="4dp" />
+                    app:trackCornerRadius="4dp"
+                />
 
             </LinearLayout>
 
@@ -170,14 +187,16 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:paddingTop="4dp"
-                android:paddingBottom="4dp">
+                android:paddingBottom="4dp"
+            >
 
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/chipGroupFilters"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:singleSelection="true"
-                    app:selectionRequired="false" />
+                    app:selectionRequired="false"
+                />
 
             </HorizontalScrollView>
 
@@ -190,7 +209,8 @@
                 android:paddingEnd="8dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+            >
 
                 <TextView
                     android:id="@+id/txtDocCount"
@@ -200,7 +220,8 @@
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:fontFamily="@font/bricolage_grotesque"
-                    tools:text="7 documents" />
+                    tools:text="7 documents"
+                />
 
                 <ImageButton
                     android:id="@+id/btnSortFilter"
@@ -210,7 +231,8 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_sort"
                     android:contentDescription="Sort and filter"
-                    app:tint="?attr/colorOnSurfaceVariant" />
+                    app:tint="?attr/colorOnSurfaceVariant"
+                />
 
             </LinearLayout>
 
@@ -222,7 +244,8 @@
                 android:paddingBottom="100dp"
                 android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_document" />
+                tools:listitem="@layout/item_document"
+            />
 
             <!-- Empty state -->
             <LinearLayout
@@ -235,7 +258,8 @@
                 android:paddingBottom="40dp"
                 android:paddingStart="32dp"
                 android:paddingEnd="32dp"
-                android:visibility="gone">
+                android:visibility="gone"
+            >
 
                 <ImageView
                     android:layout_width="64dp"
@@ -243,7 +267,8 @@
                     android:src="@drawable/ic_folder_open"
                     app:tint="?attr/colorOnSurfaceVariant"
                     android:alpha="0.3"
-                    android:contentDescription="No documents" />
+                    android:contentDescription="No documents"
+                />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -253,7 +278,8 @@
                     android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/bricolage_grotesque"
                     android:textStyle="bold"
-                    android:layout_marginTop="20dp" />
+                    android:layout_marginTop="20dp"
+                />
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -264,7 +290,8 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:lineSpacingMultiplier="1.5" />
+                    android:lineSpacingMultiplier="1.5"
+                />
 
             </LinearLayout>
 
@@ -281,6 +308,7 @@
         android:text="Add Folder"
         app:icon="@drawable/ic_add"
         android:fontFamily="@font/bricolage_grotesque"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+    />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

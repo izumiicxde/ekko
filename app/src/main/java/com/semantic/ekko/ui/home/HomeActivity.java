@@ -1,6 +1,5 @@
 package com.semantic.ekko.ui.home;
 
-import com.semantic.ekko.R;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,19 +12,19 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
-import com.google.android.material.search.SearchBar;
 import com.google.android.material.snackbar.Snackbar;
+import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.search.SearchActivity;
 import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
-
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,24 +43,24 @@ public class HomeActivity extends AppCompatActivity {
     private TextView txtDocCount;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
-
     private View searchBar;
 
     // =========================
     // FOLDER PICKER
     // =========================
 
-    private final ActivityResultLauncher<Uri> folderPicker = registerForActivityResult(
+    private final ActivityResultLauncher<Uri> folderPicker =
+        registerForActivityResult(
             new ActivityResultContracts.OpenDocumentTree(),
             uri -> {
                 if (uri == null) return;
                 getContentResolver().takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
                 );
                 viewModel.addFolderAndIndex(uri);
             }
-    );
+        );
 
     // =========================
     // LIFECYCLE
@@ -92,15 +91,15 @@ public class HomeActivity extends AppCompatActivity {
     // =========================
 
     private void bindViews() {
-        recyclerDocuments     = findViewById(R.id.recyclerDocuments);
+        recyclerDocuments = findViewById(R.id.recyclerDocuments);
         layoutIndexingProgress = findViewById(R.id.layoutIndexingProgress);
-        layoutEmptyState      = findViewById(R.id.layoutEmptyState);
-        txtIndexingStage      = findViewById(R.id.txtIndexingStage);
-        txtIndexingDoc        = findViewById(R.id.txtIndexingDoc);
-        txtDocCount           = findViewById(R.id.txtDocCount);
-        progressIndexing      = findViewById(R.id.progressIndexing);
-        chipGroupFilters      = findViewById(R.id.chipGroupFilters);
-        searchBar             = findViewById(R.id.searchBar);
+        layoutEmptyState = findViewById(R.id.layoutEmptyState);
+        txtIndexingStage = findViewById(R.id.txtIndexingStage);
+        txtIndexingDoc = findViewById(R.id.txtIndexingDoc);
+        txtDocCount = findViewById(R.id.txtDocCount);
+        progressIndexing = findViewById(R.id.progressIndexing);
+        chipGroupFilters = findViewById(R.id.chipGroupFilters);
+        searchBar = findViewById(R.id.searchBar);
     }
 
     // =========================
@@ -126,37 +125,57 @@ public class HomeActivity extends AppCompatActivity {
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
-        viewModel.getDocuments().observe(this, docs -> {
-            adapter.submitList(docs);
-            updateEmptyState(docs);
-            updateDocCount(docs.size());
-            buildFilterChips(docs);
-        });
+        viewModel
+            .getDocuments()
+            .observe(this, docs -> {
+                adapter.submitList(docs);
+                updateEmptyState(docs);
+                updateDocCount(docs.size());
+                buildFilterChips(docs);
+            });
 
-        viewModel.getIsIndexing().observe(this, indexing -> {
-            layoutIndexingProgress.setVisibility(
-                    indexing ? View.VISIBLE : View.GONE);
-            findViewById(R.id.fabAddFolder).setEnabled(!indexing);
-        });
+        viewModel
+            .getIsIndexing()
+            .observe(this, indexing -> {
+                layoutIndexingProgress.setVisibility(
+                    indexing ? View.VISIBLE : View.GONE
+                );
+                findViewById(R.id.fabAddFolder).setEnabled(!indexing);
+            });
 
-        viewModel.getIndexingStage().observe(this, stage -> {
-            if (stage != null) txtIndexingStage.setText(stage);
-        });
+        viewModel
+            .getIndexingStage()
+            .observe(this, stage -> {
+                if (stage != null) txtIndexingStage.setText(stage);
+            });
 
-        viewModel.getIndexingProgress().observe(this, progress -> {
-            if (progress == null) return;
-            progressIndexing.setMax(progress.total);
-            progressIndexing.setProgress(progress.current);
-            txtIndexingDoc.setText(
-                    progress.docName + " (" + progress.current + "/" + progress.total + ")"
-            );
-        });
+        viewModel
+            .getIndexingProgress()
+            .observe(this, progress -> {
+                if (progress == null) return;
+                progressIndexing.setMax(progress.total);
+                progressIndexing.setProgress(progress.current);
+                txtIndexingDoc.setText(
+                    progress.docName +
+                        " (" +
+                        progress.current +
+                        "/" +
+                        progress.total +
+                        ")"
+                );
+            });
 
-        viewModel.getErrorMessage().observe(this, msg -> {
-            if (msg != null && !msg.isEmpty()) {
-                Snackbar.make(recyclerDocuments, msg, Snackbar.LENGTH_LONG).show();
-            }
-        });
+        viewModel
+            .getErrorMessage()
+            .observe(this, msg -> {
+                if (msg != null && !msg.isEmpty()) {
+                    Snackbar.make(
+                        recyclerDocuments,
+                        msg,
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                }
+            });
     }
 
     // =========================
@@ -176,24 +195,31 @@ public class HomeActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
         findViewById(R.id.fabAddFolder).setOnClickListener(v ->
-                folderPicker.launch(null));
+            folderPicker.launch(null)
+        );
 
         findViewById(R.id.btnStatistics).setOnClickListener(v ->
-                startActivity(new Intent(this, StatisticsActivity.class)));
+            startActivity(new Intent(this, StatisticsActivity.class))
+        );
 
         findViewById(R.id.btnSettings).setOnClickListener(v ->
-                startActivity(new Intent(this, SettingsActivity.class)));
+            startActivity(new Intent(this, SettingsActivity.class))
+        );
 
         findViewById(R.id.btnSortFilter).setOnClickListener(v ->
-                showSortFilterSheet());
+            showSortFilterSheet()
+        );
     }
 
     // =========================
     // FILTER CHIPS
     // =========================
 
+    private String activeChipKeyword = null;
+    private boolean chipsBuilt = false;
+
     private void buildFilterChips(List<DocumentEntity> docs) {
-        chipGroupFilters.removeAllViews();
+        if (chipsBuilt) return;
 
         Set<String> keywords = new LinkedHashSet<>();
         for (DocumentEntity doc : docs) {
@@ -204,19 +230,81 @@ public class HomeActivity extends AppCompatActivity {
             }
         }
 
-        // Cap at 14 chips
+        if (keywords.isEmpty()) return;
+
+        chipGroupFilters.removeAllViews();
+        chipsBuilt = true;
+
+        Chip chipAll = makeFilterChip("All", true);
+        chipAll.setOnClickListener(v -> {
+            activeChipKeyword = null;
+            viewModel.clearKeywordFilter();
+            refreshChipColors();
+        });
+        chipGroupFilters.addView(chipAll);
+
         int count = 0;
         for (String keyword : keywords) {
-            if (count >= 14) break;
-            Chip chip = new Chip(this);
-            chip.setText(keyword);
-            chip.setCheckable(true);
-            chip.setOnCheckedChangeListener((v, checked) -> {
-                if (checked) viewModel.setKeywordFilter(keyword);
-                else viewModel.clearKeywordFilter();
+            if (count >= 4) break;
+            Chip chip = makeFilterChip(keyword, false);
+            chip.setOnClickListener(v -> {
+                activeChipKeyword = keyword;
+                viewModel.setKeywordFilter(keyword);
+                refreshChipColors();
             });
             chipGroupFilters.addView(chip);
             count++;
+        }
+    }
+
+    private Chip makeFilterChip(String text, boolean active) {
+        Chip chip = new Chip(this);
+        chip.setText(text);
+        chip.setCheckable(false);
+        chip.setCheckedIconVisible(false);
+        applyChipColor(chip, active);
+        return chip;
+    }
+
+    private void applyChipColor(Chip chip, boolean active) {
+        int bg = active
+            ? com.google.android.material.color.MaterialColors.getColor(
+                  this,
+                  com.google.android.material.R.attr.colorPrimaryContainer,
+                  0
+              )
+            : com.google.android.material.color.MaterialColors.getColor(
+                  this,
+                  com.google.android.material.R.attr.colorSurfaceVariant,
+                  0
+              );
+        int fg = active
+            ? com.google.android.material.color.MaterialColors.getColor(
+                  this,
+                  com.google.android.material.R.attr.colorOnPrimaryContainer,
+                  0
+              )
+            : com.google.android.material.color.MaterialColors.getColor(
+                  this,
+                  com.google.android.material.R.attr.colorOnSurfaceVariant,
+                  0
+              );
+        chip.setChipBackgroundColor(
+            android.content.res.ColorStateList.valueOf(bg)
+        );
+        chip.setTextColor(fg);
+    }
+
+    private void refreshChipColors() {
+        for (int i = 0; i < chipGroupFilters.getChildCount(); i++) {
+            View child = chipGroupFilters.getChildAt(i);
+            if (!(child instanceof Chip)) continue;
+            Chip chip = (Chip) child;
+            String text = chip.getText().toString();
+            boolean active =
+                (activeChipKeyword == null && text.equals("All")) ||
+                text.equals(activeChipKeyword);
+            applyChipColor(chip, active);
         }
     }
 
@@ -225,7 +313,15 @@ public class HomeActivity extends AppCompatActivity {
     // =========================
 
     private void showSortFilterSheet() {
-
+        SortFilterBottomSheet sheet = new SortFilterBottomSheet(
+            viewModel.getCurrentSortOrder(),
+            viewModel.getCurrentFileTypeFilter(),
+            (sortOrder, fileType) -> {
+                viewModel.setSortOrder(sortOrder);
+                viewModel.setFileTypeFilter(fileType);
+            }
+        );
+        sheet.show(getSupportFragmentManager(), "sort_filter");
     }
 
     // =========================
