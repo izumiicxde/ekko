@@ -5,12 +5,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
-
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.ViewModelProvider;
-
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -18,8 +15,6 @@ import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
-import com.semantic.ekko.util.FileUtils;
-
 import java.util.List;
 
 public class DetailActivity extends AppCompatActivity {
@@ -48,7 +43,6 @@ public class DetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_detail);
 
         bindViews();
-        setupToolbar();
         setupViewModel();
 
         long docId = getIntent().getLongExtra(EXTRA_DOCUMENT_ID, -1);
@@ -65,31 +59,20 @@ public class DetailActivity extends AppCompatActivity {
     // =========================
 
     private void bindViews() {
-        txtDocName          = findViewById(R.id.txtDocName);
-        txtFileType         = findViewById(R.id.txtFileType);
-        txtSummary          = findViewById(R.id.txtSummary);
-        txtWordCount        = findViewById(R.id.txtWordCount);
-        txtReadTime         = findViewById(R.id.txtReadTime);
-        txtEntityCount      = findViewById(R.id.txtEntityCount);
-        chipCategory        = findViewById(R.id.chipCategory);
-        chipGroupKeywords   = findViewById(R.id.chipGroupKeywords);
-        chipGroupEntities   = findViewById(R.id.chipGroupEntities);
+        txtDocName = findViewById(R.id.txtDocName);
+        txtFileType = findViewById(R.id.txtFileType);
+        txtSummary = findViewById(R.id.txtSummary);
+        txtWordCount = findViewById(R.id.txtWordCount);
+        txtReadTime = findViewById(R.id.txtReadTime);
+        txtEntityCount = findViewById(R.id.txtEntityCount);
+        chipCategory = findViewById(R.id.chipCategory);
+        chipGroupKeywords = findViewById(R.id.chipGroupKeywords);
+        chipGroupEntities = findViewById(R.id.chipGroupEntities);
         chipGroupCorrection = findViewById(R.id.chipGroupCorrection);
-        btnOpenFile         = findViewById(R.id.btnOpenFile);
-        labelEntities       = findViewById(R.id.labelEntities);
-    }
+        btnOpenFile = findViewById(R.id.btnOpenFile);
+        labelEntities = findViewById(R.id.labelEntities);
 
-    // =========================
-    // TOOLBAR
-    // =========================
-
-    private void setupToolbar() {
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayShowTitleEnabled(false);
-        }
-        toolbar.setNavigationOnClickListener(v -> finish());
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
 
     // =========================
@@ -99,18 +82,26 @@ public class DetailActivity extends AppCompatActivity {
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(DetailViewModel.class);
 
-        viewModel.getDocument().observe(this, doc -> {
-            if (doc != null) {
-                currentDoc = doc;
-                bindDocument(doc);
-            }
-        });
+        viewModel
+            .getDocument()
+            .observe(this, doc -> {
+                if (doc != null) {
+                    currentDoc = doc;
+                    bindDocument(doc);
+                }
+            });
 
-        viewModel.getErrorMessage().observe(this, msg -> {
-            if (msg != null) {
-                Snackbar.make(btnOpenFile, msg, Snackbar.LENGTH_LONG).show();
-            }
-        });
+        viewModel
+            .getErrorMessage()
+            .observe(this, msg -> {
+                if (msg != null) {
+                    Snackbar.make(
+                        btnOpenFile,
+                        msg,
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                }
+            });
     }
 
     // =========================
@@ -120,12 +111,14 @@ public class DetailActivity extends AppCompatActivity {
     private void bindDocument(DocumentEntity doc) {
         txtDocName.setText(doc.name);
 
-        String fileType = doc.fileType != null ? doc.fileType.toUpperCase() : "FILE";
+        String fileType =
+            doc.fileType != null ? doc.fileType.toUpperCase() : "FILE";
         txtFileType.setText(fileType);
 
         chipCategory.setText(doc.category != null ? doc.category : "General");
 
-        String wordCountLabel = doc.wordCount >= 1000
+        String wordCountLabel =
+            doc.wordCount >= 1000
                 ? String.format("%.1fk", doc.wordCount / 1000f)
                 : String.valueOf(doc.wordCount);
         txtWordCount.setText(wordCountLabel);
@@ -147,13 +140,17 @@ public class DetailActivity extends AppCompatActivity {
                 chip.setText(trimmed);
                 chip.setClickable(false);
                 chip.setFocusable(false);
-                chip.setTypeface(ResourcesCompat.getFont(this, R.font.bricolage_grotesque));
+                chip.setTypeface(
+                    ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
+                );
                 chipGroupKeywords.addView(chip);
             }
         }
 
         chipGroupEntities.removeAllViews();
-        List<String> entities = EntityExtractorHelper.entitiesFromString(doc.entities);
+        List<String> entities = EntityExtractorHelper.entitiesFromString(
+            doc.entities
+        );
         txtEntityCount.setText(String.valueOf(entities.size()));
 
         if (!entities.isEmpty()) {
@@ -164,7 +161,9 @@ public class DetailActivity extends AppCompatActivity {
                 chip.setText(entity);
                 chip.setClickable(false);
                 chip.setFocusable(false);
-                chip.setTypeface(ResourcesCompat.getFont(this, R.font.bricolage_grotesque));
+                chip.setTypeface(
+                    ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
+                );
                 chipGroupEntities.addView(chip);
             }
         } else {
@@ -174,16 +173,24 @@ public class DetailActivity extends AppCompatActivity {
 
         preselectCorrection(doc.category);
 
-        chipGroupCorrection.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (checkedIds.isEmpty() || currentDoc == null) return;
-            int id = checkedIds.get(0);
-            String selected = chipIdToCategory(id);
-            if (selected == null || selected.equals(currentDoc.category)) return;
-            viewModel.correctCategory(currentDoc, selected);
-            currentDoc.category = selected;
-            chipCategory.setText(selected);
-            Snackbar.make(btnOpenFile, "Category updated to " + selected, Snackbar.LENGTH_SHORT).show();
-        });
+        chipGroupCorrection.setOnCheckedStateChangeListener(
+            (group, checkedIds) -> {
+                if (checkedIds.isEmpty() || currentDoc == null) return;
+                int id = checkedIds.get(0);
+                String selected = chipIdToCategory(id);
+                if (
+                    selected == null || selected.equals(currentDoc.category)
+                ) return;
+                viewModel.correctCategory(currentDoc, selected);
+                currentDoc.category = selected;
+                chipCategory.setText(selected);
+                Snackbar.make(
+                    btnOpenFile,
+                    "Category updated to " + selected,
+                    Snackbar.LENGTH_SHORT
+                ).show();
+            }
+        );
 
         btnOpenFile.setOnClickListener(v -> openFile(doc));
     }
@@ -200,7 +207,11 @@ public class DetailActivity extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(intent, "Open with"));
         } catch (Exception e) {
-            Snackbar.make(btnOpenFile, "Could not open file.", Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(
+                btnOpenFile,
+                "Could not open file.",
+                Snackbar.LENGTH_SHORT
+            ).show();
         }
     }
 
@@ -210,13 +221,24 @@ public class DetailActivity extends AppCompatActivity {
 
     private void preselectCorrection(String category) {
         int chipId;
-        if (category == null) { chipId = R.id.chipCorGeneral; }
-        else switch (category) {
-            case "Technical": chipId = R.id.chipCorTechnical; break;
-            case "Research":  chipId = R.id.chipCorResearch;  break;
-            case "Legal":     chipId = R.id.chipCorLegal;     break;
-            case "Medical":   chipId = R.id.chipCorMedical;   break;
-            default:          chipId = R.id.chipCorGeneral;   break;
+        if (category == null) {
+            chipId = R.id.chipCorGeneral;
+        } else switch (category) {
+            case "Technical":
+                chipId = R.id.chipCorTechnical;
+                break;
+            case "Research":
+                chipId = R.id.chipCorResearch;
+                break;
+            case "Legal":
+                chipId = R.id.chipCorLegal;
+                break;
+            case "Medical":
+                chipId = R.id.chipCorMedical;
+                break;
+            default:
+                chipId = R.id.chipCorGeneral;
+                break;
         }
         Chip chip = chipGroupCorrection.findViewById(chipId);
         if (chip != null) chip.setChecked(true);
@@ -224,10 +246,10 @@ public class DetailActivity extends AppCompatActivity {
 
     private String chipIdToCategory(int id) {
         if (id == R.id.chipCorTechnical) return "Technical";
-        if (id == R.id.chipCorResearch)  return "Research";
-        if (id == R.id.chipCorLegal)     return "Legal";
-        if (id == R.id.chipCorMedical)   return "Medical";
-        if (id == R.id.chipCorGeneral)   return "General";
+        if (id == R.id.chipCorResearch) return "Research";
+        if (id == R.id.chipCorLegal) return "Legal";
+        if (id == R.id.chipCorMedical) return "Medical";
+        if (id == R.id.chipCorGeneral) return "General";
         return null;
     }
 }
