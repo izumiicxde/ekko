@@ -2,47 +2,41 @@ package com.semantic.ekko.ui.home;
 
 import android.app.Application;
 import android.net.Uri;
-
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
+import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.data.repository.FolderRepository;
-import com.semantic.ekko.ml.DocumentClassifier;
-import com.semantic.ekko.ml.EmbeddingEngine;
 import com.semantic.ekko.ml.EntityExtractorHelper;
-import com.semantic.ekko.ml.TextSummarizer;
 import com.semantic.ekko.processing.DocumentIndexer;
 import com.semantic.ekko.processing.DocumentScanner;
 import com.semantic.ekko.util.FileUtils;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class HomeViewModel extends AndroidViewModel {
 
-    // =========================
-    // STATE
-    // =========================
-
-    private final MutableLiveData<List<DocumentEntity>> documents = new MutableLiveData<>(new ArrayList<>());
-    private final MutableLiveData<String> indexingStage = new MutableLiveData<>("");
-    private final MutableLiveData<IndexingProgress> indexingProgress = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> isIndexing = new MutableLiveData<>(false);
-    private final MutableLiveData<String> errorMessage = new MutableLiveData<>();
+    private final MutableLiveData<List<DocumentEntity>> documents =
+        new MutableLiveData<>(new ArrayList<>());
+    private final MutableLiveData<String> indexingStage = new MutableLiveData<>(
+        ""
+    );
+    private final MutableLiveData<IndexingProgress> indexingProgress =
+        new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isIndexing = new MutableLiveData<>(
+        false
+    );
+    private final MutableLiveData<String> errorMessage =
+        new MutableLiveData<>();
 
     private final DocumentRepository documentRepository;
     private final FolderRepository folderRepository;
 
-    private EmbeddingEngine embeddingEngine;
-    private DocumentClassifier classifier;
-    private TextSummarizer summarizer;
     private EntityExtractorHelper entityExtractor;
     private DocumentIndexer indexer;
 
@@ -60,33 +54,32 @@ public class HomeViewModel extends AndroidViewModel {
         folderRepository = new FolderRepository(application);
     }
 
-    /**
-     * Initializes ML components. Must be called once from HomeActivity.
-     * Runs on the calling thread - call from a background thread.
-     */
     public void initMl() {
-        try {
-            embeddingEngine = new EmbeddingEngine(getApplication());
-            classifier = new DocumentClassifier(embeddingEngine);
-            summarizer = new TextSummarizer(embeddingEngine);
-            entityExtractor = new EntityExtractorHelper();
-            indexer = new DocumentIndexer(
-                    getApplication(),
-                    embeddingEngine,
-                    classifier,
-                    summarizer,
-                    entityExtractor
+        EkkoApp app = EkkoApp.getInstance();
+
+        if (!app.isMlReady()) {
+            errorMessage.postValue(
+                "ML models are still loading. Please wait a moment."
             );
-
-            entityExtractor.prepareModel(success -> {
-                if (!success) {
-                    errorMessage.postValue("Entity extraction unavailable. Check internet connection.");
-                }
-            });
-
-        } catch (IOException e) {
-            errorMessage.postValue("Failed to load ML model. Check that the TFLite file is in assets.");
+            return;
         }
+
+        entityExtractor = new EntityExtractorHelper();
+        indexer = new DocumentIndexer(
+            getApplication(),
+            app.getEmbeddingEngine(),
+            app.getDocumentClassifier(),
+            app.getTextSummarizer(),
+            entityExtractor
+        );
+
+        entityExtractor.prepareModel(success -> {
+            if (!success) {
+                errorMessage.postValue(
+                    "Entity extraction unavailable. Check internet connection."
+                );
+            }
+        });
     }
 
     // =========================
@@ -108,51 +101,78 @@ public class HomeViewModel extends AndroidViewModel {
     // ADD FOLDER AND INDEX
     // =========================
 
-    /**
-     * Adds a new folder, scans it for documents, and indexes all found documents
-     * through the full ML pipeline.
-     */
     public void addFolderAndIndex(Uri folderUri) {
         if (isIndexing.getValue() == Boolean.TRUE) return;
+
+        if (!EkkoApp.getInstance().isMlReady()) {
+            errorMessage.postValue(
+                "ML models are still initializing. Please try again in a moment."
+            );
+            return;
+        }
+
+        if (indexer == null) {
+            initMl();
+            if (indexer == null) {
+                errorMessage.postValue("Failed to initialize indexer.");
+                return;
+            }
+        }
+
         isIndexing.postValue(true);
 
         String folderName = FileUtils.getFolderName(folderUri);
-        FolderEntity folder = new FolderEntity(folderUri.toString(), folderName);
+        FolderEntity folder = new FolderEntity(
+            folderUri.toString(),
+            folderName
+        );
 
         folderRepository.insert(folder, folderId -> {
             folder.id = folderId;
 
-            // Scan folder for documents
             List<Uri> uris = Collections.singletonList(folderUri);
             List<Long> ids = Collections.singletonList(folderId);
             DocumentScanner.ScanResult scanResult = DocumentScanner.scanFolders(
-                    getApplication(), uris, ids);
+                getApplication(),
+                uris,
+                ids
+            );
 
             if (scanResult.documents.isEmpty()) {
                 isIndexing.postValue(false);
-                errorMessage.postValue("No supported documents found in this folder.");
+                errorMessage.postValue(
+                    "No supported documents found in this folder."
+                );
                 return;
             }
 
-            // Index documents through ML pipeline
-            indexer.indexDocuments(scanResult.documents, new DocumentIndexer.ProgressListener() {
-                @Override
-                public void onStageChanged(String stage) {
-                    indexingStage.postValue(stage);
-                }
+            indexer.indexDocuments(
+                scanResult.documents,
+                new DocumentIndexer.ProgressListener() {
+                    @Override
+                    public void onStageChanged(String stage) {
+                        indexingStage.postValue(stage);
+                    }
 
-                @Override
-                public void onDocumentProcessed(int current, int total, String docName) {
-                    indexingProgress.postValue(new IndexingProgress(current, total, docName));
-                }
+                    @Override
+                    public void onDocumentProcessed(
+                        int current,
+                        int total,
+                        String docName
+                    ) {
+                        indexingProgress.postValue(
+                            new IndexingProgress(current, total, docName)
+                        );
+                    }
 
-                @Override
-                public void onComplete(int indexed, int failed) {
-                    isIndexing.postValue(false);
-                    indexingStage.postValue("");
-                    loadDocuments();
+                    @Override
+                    public void onComplete(int indexed, int failed) {
+                        isIndexing.postValue(false);
+                        indexingStage.postValue("");
+                        loadDocuments();
+                    }
                 }
-            });
+            );
         });
     }
 
@@ -183,7 +203,6 @@ public class HomeViewModel extends AndroidViewModel {
     private List<DocumentEntity> applyFilterAndSort(List<DocumentEntity> docs) {
         List<DocumentEntity> result = new ArrayList<>(docs);
 
-        // Filter by file type
         if (!"all".equals(activeFileTypeFilter)) {
             List<DocumentEntity> typed = new ArrayList<>();
             for (DocumentEntity d : result) {
@@ -192,28 +211,30 @@ public class HomeViewModel extends AndroidViewModel {
             result = typed;
         }
 
-        // Filter by keyword
         if (activeKeywordFilter != null && !activeKeywordFilter.isEmpty()) {
             List<DocumentEntity> keywordFiltered = new ArrayList<>();
             for (DocumentEntity d : result) {
-                if (d.keywords != null && d.keywords.toLowerCase()
-                        .contains(activeKeywordFilter.toLowerCase())) {
+                if (
+                    d.keywords != null &&
+                    d.keywords
+                        .toLowerCase()
+                        .contains(activeKeywordFilter.toLowerCase())
+                ) {
                     keywordFiltered.add(d);
                 }
             }
             result = keywordFiltered;
         }
 
-        // Sort
         switch (activeSortOrder) {
             case "name":
                 result.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
                 break;
             case "word_count":
-                result.sort((a, b) -> Integer.compare(b.wordCount, a.wordCount));
-                break;
             case "read_time":
-                result.sort((a, b) -> Integer.compare(b.wordCount, a.wordCount));
+                result.sort((a, b) ->
+                    Integer.compare(b.wordCount, a.wordCount)
+                );
                 break;
             case "recent":
             default:
@@ -237,10 +258,21 @@ public class HomeViewModel extends AndroidViewModel {
     // OBSERVABLES
     // =========================
 
-    public LiveData<String> getIndexingStage() { return indexingStage; }
-    public LiveData<IndexingProgress> getIndexingProgress() { return indexingProgress; }
-    public LiveData<Boolean> getIsIndexing() { return isIndexing; }
-    public LiveData<String> getErrorMessage() { return errorMessage; }
+    public LiveData<String> getIndexingStage() {
+        return indexingStage;
+    }
+
+    public LiveData<IndexingProgress> getIndexingProgress() {
+        return indexingProgress;
+    }
+
+    public LiveData<Boolean> getIsIndexing() {
+        return isIndexing;
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return errorMessage;
+    }
 
     // =========================
     // CLEANUP
@@ -249,16 +281,16 @@ public class HomeViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         super.onCleared();
-        if (embeddingEngine != null) embeddingEngine.close();
         if (entityExtractor != null) entityExtractor.close();
         if (indexer != null) indexer.shutdown();
     }
 
     // =========================
-    // INNER CLASSES
+    // INNER CLASS
     // =========================
 
     public static class IndexingProgress {
+
         public final int current;
         public final int total;
         public final String docName;
