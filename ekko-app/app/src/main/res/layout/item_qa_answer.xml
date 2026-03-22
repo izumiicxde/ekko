@@ -1,36 +1,46 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:layout_marginTop="4dp"
-    android:layout_marginBottom="8dp">
+    android:paddingTop="8dp"
+    android:paddingBottom="12dp"
+>
 
+    <!-- Small "Ekko" label above the answer -->
     <TextView
-        android:id="@+id/txtAnswer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="300dp"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
+        android:text="Ekko"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorPrimary"
+        android:fontFamily="@font/bricolage_grotesque"
+        android:layout_marginBottom="4dp"
+    />
+
+    <!-- Answer text: full width, no background bubble -->
+    <TextView
+        android:id="@+id/txtAnswer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:textSize="14sp"
         android:textColor="?attr/colorOnSurface"
         android:fontFamily="@font/bricolage_grotesque"
         android:lineSpacingMultiplier="1.6"
-        android:background="@drawable/bg_bubble_answer" />
+    />
 
+    <!-- Source label -->
     <TextView
         android:id="@+id/txtSource"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
         android:textSize="10sp"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/bricolage_grotesque"
-        android:visibility="gone" />
+        android:visibility="gone"
+    />
 
 </LinearLayout>

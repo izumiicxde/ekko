@@ -57,9 +57,6 @@ public class QAViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(
         false
     );
-    private final MutableLiveData<Boolean> isStopped = new MutableLiveData<>(
-        false
-    );
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private RagRepository ragRepository;
@@ -69,9 +66,12 @@ public class QAViewModel extends AndroidViewModel {
     private boolean flushScheduled = false;
     private volatile boolean cancelled = false;
 
+    // Tracks whether the answer bubble has been added yet for the current question
+    private boolean answerBubbleAdded = false;
+
     private final Runnable flushRunnable = () -> {
         flushScheduled = false;
-        if (pendingTokens.length() > 0) {
+        if (pendingTokens.length() > 0 && !cancelled) {
             String batch = pendingTokens.toString();
             pendingTokens.setLength(0);
             uiEvent.setValue(UiEvent.updateToken(batch));
@@ -108,15 +108,17 @@ public class QAViewModel extends AndroidViewModel {
         }
 
         cancelled = false;
+        answerBubbleAdded = false;
         pendingTokens.setLength(0);
         flushScheduled = false;
 
+        // Add user message immediately
         post(
             UiEvent.add(
                 new QAMessage(QAMessage.TYPE_USER, question.trim(), null)
             )
         );
-        post(UiEvent.add(new QAMessage(QAMessage.TYPE_ANSWER, "", null)));
+        // No answer bubble yet - it will be added on first token
 
         isLoading.postValue(true);
 
@@ -130,7 +132,21 @@ public class QAViewModel extends AndroidViewModel {
                         pendingTokens.append(token);
                     }
                     mainHandler.post(() -> {
-                        if (!flushScheduled && !cancelled) {
+                        if (cancelled) return;
+                        // Add answer bubble on first token only
+                        if (!answerBubbleAdded) {
+                            answerBubbleAdded = true;
+                            uiEvent.setValue(
+                                UiEvent.add(
+                                    new QAMessage(
+                                        QAMessage.TYPE_ANSWER,
+                                        "",
+                                        null
+                                    )
+                                )
+                            );
+                        }
+                        if (!flushScheduled) {
                             flushScheduled = true;
                             mainHandler.postDelayed(
                                 flushRunnable,
@@ -171,15 +187,28 @@ public class QAViewModel extends AndroidViewModel {
                         flushScheduled = false;
                         pendingTokens.setLength(0);
                         if (!cancelled) {
-                            uiEvent.setValue(
-                                UiEvent.replace(
-                                    new QAMessage(
-                                        QAMessage.TYPE_ERROR,
-                                        message,
-                                        null
+                            if (answerBubbleAdded) {
+                                uiEvent.setValue(
+                                    UiEvent.replace(
+                                        new QAMessage(
+                                            QAMessage.TYPE_ERROR,
+                                            message,
+                                            null
+                                        )
                                     )
-                                )
-                            );
+                                );
+                            } else {
+                                // No bubble added yet, just add the error directly
+                                uiEvent.setValue(
+                                    UiEvent.add(
+                                        new QAMessage(
+                                            QAMessage.TYPE_ERROR,
+                                            message,
+                                            null
+                                        )
+                                    )
+                                );
+                            }
                         }
                         isLoading.setValue(false);
                     });

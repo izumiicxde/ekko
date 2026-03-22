@@ -1,26 +1,32 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="start"
-    android:layout_marginTop="4dp"
-    android:layout_marginBottom="8dp">
+    android:orientation="vertical"
+    android:paddingTop="8dp"
+    android:paddingBottom="12dp"
+>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ekko"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorPrimary"
+        android:fontFamily="@font/bricolage_grotesque"
+        android:layout_marginBottom="4dp"
+    />
 
     <TextView
         android:id="@+id/txtError"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxWidth="300dp"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
         android:textSize="13sp"
         android:textColor="@color/design_default_color_error"
         android:fontFamily="@font/bricolage_grotesque"
         android:lineSpacingMultiplier="1.5"
-        android:background="@drawable/bg_bubble_answer" />
+    />
 
 </LinearLayout>

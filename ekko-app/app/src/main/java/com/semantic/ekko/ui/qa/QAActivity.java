@@ -49,7 +49,8 @@ public class QAActivity extends AppCompatActivity {
     }
 
     private void setupRecycler() {
-        adapter = new QAAdapter();
+        // Pass context so QAAdapter can initialise Markwon
+        adapter = new QAAdapter(this);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setStackFromEnd(true);
         recyclerMessages.setLayoutManager(layoutManager);
@@ -82,6 +83,7 @@ public class QAActivity extends AppCompatActivity {
                                 streamingBuffer.toString()
                             );
                         } else if (event.source != null) {
+                            // Streaming complete - apply markdown and set source
                             adapter.finalizeStreamingMessage(
                                 streamingBuffer.toString(),
                                 event.source
@@ -103,8 +105,6 @@ public class QAActivity extends AppCompatActivity {
                     loading ? View.VISIBLE : View.GONE
                 );
                 editQuestion.setEnabled(!loading);
-
-                // Toggle send/stop buttons based on loading state
                 if (loading) {
                     btnSend.setVisibility(View.GONE);
                     btnStop.setVisibility(View.VISIBLE);

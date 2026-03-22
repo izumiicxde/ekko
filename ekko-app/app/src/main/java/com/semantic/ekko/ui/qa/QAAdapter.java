@@ -1,5 +1,6 @@
 package com.semantic.ekko.ui.qa;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,17 +9,21 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import com.semantic.ekko.R;
+import io.noties.markwon.Markwon;
 import java.util.ArrayList;
 import java.util.List;
 
 public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private final List<QAMessage> messages = new ArrayList<>();
+    private final Markwon markwon;
 
-    // Hold reference to the entire active AnswerViewHolder so we can
-    // update both txtAnswer and txtSource directly without any notify call
     @Nullable
     private AnswerViewHolder activeHolder = null;
+
+    public QAAdapter(Context context) {
+        this.markwon = Markwon.create(context);
+    }
 
     // =========================
     // VIEW HOLDERS
@@ -99,12 +104,17 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             ((UserViewHolder) holder).txtQuestion.setText(message.text);
         } else if (holder instanceof AnswerViewHolder) {
             AnswerViewHolder h = (AnswerViewHolder) holder;
-            h.txtAnswer.setText(message.text);
 
-            // Always reset source label first to prevent stale content
+            // During streaming use plain setText for performance.
+            // After completion (sourceDocumentName set) render markdown.
+            if (message.sourceDocumentName != null) {
+                markwon.setMarkdown(h.txtAnswer, message.text);
+            } else {
+                h.txtAnswer.setText(message.text);
+            }
+
             h.txtSource.setVisibility(View.GONE);
             h.txtSource.setText("");
-
             if (
                 message.sourceDocumentName != null &&
                 !message.sourceDocumentName.isEmpty()
@@ -113,13 +123,10 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 h.txtSource.setText("From: " + message.sourceDocumentName);
             }
 
-            // Register as active streaming holder if this is the last item
-            // and streaming is not yet complete (no source set)
             boolean isLast = position == messages.size() - 1;
             if (isLast && message.sourceDocumentName == null) {
                 activeHolder = h;
             } else {
-                // Not the streaming item, clear active holder if it was this view
                 if (activeHolder == h) activeHolder = null;
             }
         } else if (holder instanceof ErrorViewHolder) {
@@ -145,8 +152,6 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     // =========================
 
     public void addMessage(QAMessage message) {
-        // Clear active holder when adding a new message so the previous
-        // answer's holder is no longer considered active
         if (message.type == QAMessage.TYPE_USER) {
             activeHolder = null;
         }
@@ -155,8 +160,8 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     /**
-     * Updates answer text directly on the active ViewHolder without any
-     * RecyclerView rebind. Also updates backing data for recycle safety.
+     * Updates answer text directly on the active ViewHolder during streaming.
+     * Plain setText is used for performance - markdown is applied on finalize.
      */
     public void appendStreamingToken(String fullText) {
         if (messages.isEmpty()) return;
@@ -172,10 +177,8 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     /**
-     * Called when streaming is complete. Updates the source label directly
-     * on the active ViewHolder and updates backing data. No notify call needed
-     * since we are updating views directly - this eliminates the stale source
-     * label bug caused by notifyItemChanged not triggering a full rebind.
+     * Called when streaming is complete. Renders markdown on the final text
+     * and sets the source label directly without a full rebind.
      */
     public void finalizeStreamingMessage(
         String fullText,
@@ -189,7 +192,8 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         );
 
         if (activeHolder != null) {
-            activeHolder.txtAnswer.setText(fullText);
+            // Apply markdown now that streaming is complete
+            markwon.setMarkdown(activeHolder.txtAnswer, fullText);
             if (sourceDocumentName != null && !sourceDocumentName.isEmpty()) {
                 activeHolder.txtSource.setText("From: " + sourceDocumentName);
                 activeHolder.txtSource.setVisibility(View.VISIBLE);
@@ -198,7 +202,6 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             }
             activeHolder = null;
         } else {
-            // Fallback: ViewHolder was recycled, use notifyItemChanged
             notifyItemChanged(lastIndex);
         }
     }
