@@ -16,7 +16,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -32,11 +34,8 @@ public class RagRepository {
     private static final String TAG = "RagRepository";
     private static final int TOP_DOCS = 2;
     private static final int CHUNKS_PER_DOC = 6;
-
-    // Bonus added to a document's score when its filename contains
-    // a query term. Large enough to override embedding score differences
-    // but not so large that it completely ignores semantic relevance.
-    private static final float FILENAME_MATCH_BONUS = 0.5f;
+    private static final int MIN_CHUNKS = 3;
+    private static final int SCORE_TOP_N = 3;
 
     private final EmbeddingEngine embeddingEngine;
     private final ChunkDao chunkDao;
@@ -78,17 +77,6 @@ public class RagRepository {
     // SELECTION
     // =========================
 
-    private static class ScoredDoc {
-
-        final DocumentEntity doc;
-        final float score;
-
-        ScoredDoc(DocumentEntity doc, float score) {
-            this.doc = doc;
-            this.score = score;
-        }
-    }
-
     private static class ScoredChunk {
 
         final ChunkEntity chunk;
@@ -97,6 +85,26 @@ public class RagRepository {
         ScoredChunk(ChunkEntity chunk, float score) {
             this.chunk = chunk;
             this.score = score;
+        }
+    }
+
+    private static class ScoredDoc {
+
+        final long docId;
+        final String docName;
+        final float score;
+        final List<ScoredChunk> scoredChunks;
+
+        ScoredDoc(
+            long docId,
+            String docName,
+            float score,
+            List<ScoredChunk> scoredChunks
+        ) {
+            this.docId = docId;
+            this.docName = docName;
+            this.score = score;
+            this.scoredChunks = scoredChunks;
         }
     }
 
@@ -112,111 +120,64 @@ public class RagRepository {
     }
 
     /**
-     * Returns a filename match bonus for a document based on query terms.
-     *
-     * Strips the file extension and splits the filename on common separators
-     * (spaces, hyphens, underscores, dots) then checks if any query term of
-     * length >= 3 appears in the filename tokens.
-     *
-     * Example: query "what is in the maths file"
-     *   doc name "basic_maths.pdf" -> tokens ["basic", "maths"] -> "maths" matches -> bonus
-     *   doc name "Java-Programming-Language-Handbook.pdf" -> no match -> no bonus
-     */
-    private float filenameBonus(String docName, String[] queryTerms) {
-        if (docName == null || queryTerms.length == 0) return 0f;
-
-        // Strip extension and normalize
-        String baseName = docName.replaceAll("\\.[^.]+$", "").toLowerCase();
-        String[] fileTokens = baseName.split("[\\s\\-_\\.]+");
-
-        for (String term : queryTerms) {
-            if (term.length() < 3) continue;
-            // Check if query term appears in filename or vice versa
-            for (String token : fileTokens) {
-                if (token.length() < 3) continue;
-                if (token.contains(term) || term.contains(token)) {
-                    return FILENAME_MATCH_BONUS;
-                }
-            }
-        }
-        return 0f;
-    }
-
-    /**
-     * Two-stage retrieval with filename-aware document ranking:
+     * Two-stage retrieval using chunk-based document scoring:
      *
      * Stage 1 - Document ranking:
-     *   Score = cosine_similarity(query_embedding, doc_embedding) + filename_bonus
-     *   The filename bonus ensures that queries mentioning a document name
-     *   (e.g. "what is in the maths file") correctly retrieve that document
-     *   even if its embedding similarity is lower than another document.
+     *   Score each document by the average cosine similarity of its top
+     *   SCORE_TOP_N chunks against the query. Skip documents with fewer
+     *   than MIN_CHUNKS chunks.
      *
-     * Stage 2 - Chunk retrieval per document:
-     *   Always include the first 2 chunks (intro/definition sections) plus
-     *   top scored chunks up to CHUNKS_PER_DOC.
+     * Stage 2 - Chunk retrieval:
+     *   From top documents, always include opening chunks (index 0, 1)
+     *   plus top scored chunks up to CHUNKS_PER_DOC.
+     *
+     * Source label shows all contributing document names since context
+     * from multiple documents is sent to the backend.
      */
-    private SelectionResult selectChunks(
-        float[] queryEmbedding,
-        String rawQuery
-    ) {
+    private SelectionResult selectChunks(float[] queryEmbedding) {
+        List<ChunkEntity> allChunks = chunkDao.getAll();
+        if (allChunks.isEmpty()) return null;
+
+        // Group chunks by document
+        Map<Long, List<ChunkEntity>> chunksByDoc = new HashMap<>();
+        for (ChunkEntity chunk : allChunks) {
+            if (!chunksByDoc.containsKey(chunk.documentId)) {
+                chunksByDoc.put(chunk.documentId, new ArrayList<>());
+            }
+            chunksByDoc.get(chunk.documentId).add(chunk);
+        }
+
+        // Load document names
         List<DocumentEntity> allDocs = documentDao.getAll();
-        if (allDocs.isEmpty()) return null;
-
-        String[] queryTerms =
-            rawQuery != null
-                ? rawQuery.toLowerCase().trim().split("\\s+")
-                : new String[0];
-
-        List<ScoredDoc> scoredDocs = new ArrayList<>();
+        Map<Long, String> docNames = new HashMap<>();
         for (DocumentEntity doc : allDocs) {
-            if (doc.embedding == null) continue;
-            float[] docEmb = EmbeddingEngine.fromBytes(doc.embedding);
-            float embScore = EmbeddingEngine.cosineSimilarity(
-                queryEmbedding,
-                docEmb
-            );
-            float bonus = filenameBonus(doc.name, queryTerms);
-            float total = embScore + bonus;
-            scoredDocs.add(new ScoredDoc(doc, total));
+            docNames.put(doc.id, doc.name);
         }
 
-        if (scoredDocs.isEmpty()) return null;
+        // Score each document by average of top SCORE_TOP_N chunk scores
+        List<ScoredDoc> scoredDocs = new ArrayList<>();
 
-        Collections.sort(scoredDocs, (a, b) -> Float.compare(b.score, a.score));
+        for (Map.Entry<
+            Long,
+            List<ChunkEntity>
+        > entry : chunksByDoc.entrySet()) {
+            long docId = entry.getKey();
+            List<ChunkEntity> docChunks = entry.getValue();
+            String docName = docNames.getOrDefault(docId, "Unknown");
 
-        int docLimit = Math.min(TOP_DOCS, scoredDocs.size());
-        String primaryDocName = scoredDocs.get(0).doc.name;
-
-        StringBuilder docLog = new StringBuilder("Top docs: ");
-        for (int i = 0; i < docLimit; i++) {
-            docLog
-                .append(scoredDocs.get(i).doc.name)
-                .append(" (")
-                .append(String.format("%.3f", scoredDocs.get(i).score))
-                .append(")");
-            if (i < docLimit - 1) docLog.append(", ");
-        }
-        Log.d(TAG, docLog.toString());
-
-        List<String> selectedChunks = new ArrayList<>();
-
-        for (int d = 0; d < docLimit; d++) {
-            long docId = scoredDocs.get(d).doc.id;
-            List<ChunkEntity> docChunks = chunkDao.getByDocumentId(docId);
-
-            if (docChunks.isEmpty()) {
-                Log.w(
+            if (docChunks.size() < MIN_CHUNKS) {
+                Log.d(
                     TAG,
-                    scoredDocs.get(d).doc.name +
-                        " has no chunks - needs re-indexing"
+                    "Skipping " +
+                        docName +
+                        " (only " +
+                        docChunks.size() +
+                        " chunks)"
                 );
                 continue;
             }
 
             List<ScoredChunk> scoredChunks = new ArrayList<>();
-            ScoredChunk firstChunk = null;
-            ScoredChunk secondChunk = null;
-
             for (ChunkEntity chunk : docChunks) {
                 if (
                     chunk.chunkEmbedding == null || chunk.chunkText == null
@@ -228,15 +189,65 @@ public class RagRepository {
                     queryEmbedding,
                     chunkEmb
                 );
-                ScoredChunk sc = new ScoredChunk(chunk, score);
-                scoredChunks.add(sc);
-                if (chunk.chunkIndex == 0) firstChunk = sc;
-                if (chunk.chunkIndex == 1) secondChunk = sc;
+                scoredChunks.add(new ScoredChunk(chunk, score));
             }
+
+            if (scoredChunks.isEmpty()) continue;
 
             Collections.sort(scoredChunks, (a, b) ->
                 Float.compare(b.score, a.score)
             );
+
+            int n = Math.min(SCORE_TOP_N, scoredChunks.size());
+            float scoreSum = 0f;
+            for (int i = 0; i < n; i++) scoreSum += scoredChunks.get(i).score;
+            float docScore = scoreSum / n;
+
+            scoredDocs.add(
+                new ScoredDoc(docId, docName, docScore, scoredChunks)
+            );
+        }
+
+        if (scoredDocs.isEmpty()) return null;
+
+        Collections.sort(scoredDocs, (a, b) -> Float.compare(b.score, a.score));
+
+        int docLimit = Math.min(TOP_DOCS, scoredDocs.size());
+
+        // Build combined source label from all contributing documents
+        StringBuilder sourceNames = new StringBuilder();
+        StringBuilder docLog = new StringBuilder("Top docs: ");
+        for (int i = 0; i < docLimit; i++) {
+            ScoredDoc sd = scoredDocs.get(i);
+            if (i > 0) {
+                sourceNames.append(", ");
+                docLog.append(", ");
+            }
+            sourceNames.append(sd.docName);
+            docLog
+                .append(sd.docName)
+                .append(" (score=")
+                .append(String.format("%.3f", sd.score))
+                .append(", chunks=")
+                .append(sd.scoredChunks.size())
+                .append(")");
+        }
+        Log.d(TAG, docLog.toString());
+
+        // Stage 2: pick chunks from each top document
+        List<String> selectedChunks = new ArrayList<>();
+
+        for (int d = 0; d < docLimit; d++) {
+            ScoredDoc topDoc = scoredDocs.get(d);
+            List<ScoredChunk> scoredChunks = topDoc.scoredChunks; // already sorted
+
+            ScoredChunk firstChunk = null;
+            ScoredChunk secondChunk = null;
+            for (ScoredChunk sc : scoredChunks) {
+                if (sc.chunk.chunkIndex == 0) firstChunk = sc;
+                if (sc.chunk.chunkIndex == 1) secondChunk = sc;
+                if (firstChunk != null && secondChunk != null) break;
+            }
 
             List<ScoredChunk> selected = new ArrayList<>();
             if (firstChunk != null) selected.add(firstChunk);
@@ -259,17 +270,14 @@ public class RagRepository {
 
             Log.d(
                 TAG,
-                scoredDocs.get(d).doc.name +
-                    ": picked " +
-                    selected.size() +
-                    " chunks"
+                topDoc.docName + ": picked " + selected.size() + " chunks"
             );
         }
 
         if (selectedChunks.isEmpty()) return null;
 
         Log.d(TAG, "Total chunks sent to backend: " + selectedChunks.size());
-        return new SelectionResult(selectedChunks, primaryDocName);
+        return new SelectionResult(selectedChunks, sourceNames.toString());
     }
 
     // =========================
@@ -290,10 +298,7 @@ public class RagRepository {
                     return;
                 }
 
-                SelectionResult selection = selectChunks(
-                    queryEmbedding,
-                    question
-                );
+                SelectionResult selection = selectChunks(queryEmbedding);
                 if (selection == null) {
                     callback.onError(
                         "No indexed content found. Add documents and index them first."
@@ -383,10 +388,7 @@ public class RagRepository {
                     return;
                 }
 
-                SelectionResult selection = selectChunks(
-                    queryEmbedding,
-                    question
-                );
+                SelectionResult selection = selectChunks(queryEmbedding);
                 if (selection == null) {
                     callback.onError(
                         "No indexed content found. Index some documents first."
