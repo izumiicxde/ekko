@@ -105,13 +105,11 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         } else if (holder instanceof AnswerViewHolder) {
             AnswerViewHolder h = (AnswerViewHolder) holder;
 
-            // During streaming use plain setText for performance.
-            // After completion (sourceDocumentName set) render markdown.
-            if (message.sourceDocumentName != null) {
-                markwon.setMarkdown(h.txtAnswer, message.text);
-            } else {
-                h.txtAnswer.setText(message.text);
-            }
+            // Always render markdown on bind
+            markwon.setMarkdown(
+                h.txtAnswer,
+                message.text != null ? message.text : ""
+            );
 
             h.txtSource.setVisibility(View.GONE);
             h.txtSource.setText("");
@@ -152,16 +150,16 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     // =========================
 
     public void addMessage(QAMessage message) {
-        if (message.type == QAMessage.TYPE_USER) {
-            activeHolder = null;
-        }
+        if (message.type == QAMessage.TYPE_USER) activeHolder = null;
         messages.add(message);
         notifyItemInserted(messages.size() - 1);
     }
 
     /**
-     * Updates answer text directly on the active ViewHolder during streaming.
-     * Plain setText is used for performance - markdown is applied on finalize.
+     * Called on every flush (every 80ms) during streaming.
+     * Applies Markwon to the accumulated text so markdown renders
+     * progressively as the answer streams in, not just at the end.
+     * Direct view update - no notify call to avoid layout thrash.
      */
     public void appendStreamingToken(String fullText) {
         if (messages.isEmpty()) return;
@@ -172,13 +170,12 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             new QAMessage(existing.type, fullText, existing.sourceDocumentName)
         );
         if (activeHolder != null) {
-            activeHolder.txtAnswer.setText(fullText);
+            markwon.setMarkdown(activeHolder.txtAnswer, fullText);
         }
     }
 
     /**
-     * Called when streaming is complete. Renders markdown on the final text
-     * and sets the source label directly without a full rebind.
+     * Called when streaming is complete. Final markdown render and source label.
      */
     public void finalizeStreamingMessage(
         String fullText,
@@ -192,7 +189,6 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         );
 
         if (activeHolder != null) {
-            // Apply markdown now that streaming is complete
             markwon.setMarkdown(activeHolder.txtAnswer, fullText);
             if (sourceDocumentName != null && !sourceDocumentName.isEmpty()) {
                 activeHolder.txtSource.setText("From: " + sourceDocumentName);

@@ -8,7 +8,6 @@
     android:paddingBottom="12dp"
 >
 
-    <!-- Small "Ekko" label above the answer -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -17,26 +16,29 @@
         android:textStyle="bold"
         android:textColor="?attr/colorPrimary"
         android:fontFamily="@font/bricolage_grotesque"
-        android:layout_marginBottom="4dp"
+        android:layout_marginBottom="6dp"
     />
 
-    <!-- Answer text: full width, no background bubble -->
+    <!--
+        Do NOT set fontFamily here. Markwon applies its own typeface spans
+        for bold, italic, code etc. A custom fontFamily overrides those spans
+        and breaks markdown rendering entirely.
+    -->
     <TextView
         android:id="@+id/txtAnswer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="14sp"
         android:textColor="?attr/colorOnSurface"
-        android:fontFamily="@font/bricolage_grotesque"
-        android:lineSpacingMultiplier="1.6"
+        android:lineSpacingMultiplier="1.4"
+        android:lineSpacingExtra="2dp"
     />
 
-    <!-- Source label -->
     <TextView
         android:id="@+id/txtSource"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="8dp"
         android:textSize="10sp"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/bricolage_grotesque"
