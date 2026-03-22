@@ -137,6 +137,7 @@ public class DocumentRepository {
             String[] queryTerms = queryLower.split("\\s+");
 
             for (DocumentDao.DocumentEmbeddingRow row : rows) {
+                if (row.word_count < 20) continue;
                 float embeddingScore = 0f;
                 if (row.embedding != null) {
                     float[] docEmbedding = EmbeddingEngine.fromBytes(

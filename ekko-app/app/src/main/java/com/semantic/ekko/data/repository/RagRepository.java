@@ -33,9 +33,14 @@ public class RagRepository {
 
     private static final String TAG = "RagRepository";
     private static final int TOP_DOCS = 2;
-    private static final int CHUNKS_PER_DOC = 6;
+    private static final int CHUNKS_PER_DOC = 5;
     private static final int MIN_CHUNKS = 3;
-    private static final int SCORE_TOP_N = 3;
+    private static final int SCORE_TOP_N = 3; // was 3
+
+    // Minimum average chunk score required to proceed with a query.
+    // Below this threshold the query is considered irrelevant to the
+    // indexed content and the model is not called at all.
+    private static final float MIN_RELEVANCE = 0.55f;
 
     private final EmbeddingEngine embeddingEngine;
     private final ChunkDao chunkDao;
@@ -44,12 +49,7 @@ public class RagRepository {
     private final OkHttpClient streamingClient;
     private final String baseUrl;
 
-    // Holds the active streaming call so it can be cancelled
     private volatile Call activeCall = null;
-
-    // =========================
-    // CALLBACKS
-    // =========================
 
     public interface RagCallback {
         void onAnswer(String answer, String sourceDocumentName);
@@ -62,10 +62,6 @@ public class RagRepository {
         void onError(String message);
     }
 
-    // =========================
-    // INIT
-    // =========================
-
     public RagRepository(Context context, EmbeddingEngine embeddingEngine) {
         this.embeddingEngine = embeddingEngine;
         AppDatabase db = AppDatabase.getInstance(context);
@@ -76,21 +72,17 @@ public class RagRepository {
         this.baseUrl = RagClient.getBaseUrl();
     }
 
-    // =========================
-    // CANCEL
-    // =========================
-
     public void cancelStream() {
         Call call = activeCall;
         if (call != null && !call.isCanceled()) {
             call.cancel();
-            Log.d(TAG, "Stream cancelled by user.");
+            Log.d(TAG, "Stream cancelled.");
         }
         activeCall = null;
     }
 
     // =========================
-    // SELECTION
+    // INTERNAL MODELS
     // =========================
 
     private static class ScoredChunk {
@@ -128,12 +120,35 @@ public class RagRepository {
 
         final List<String> chunks;
         final String sourceDocName;
+        final float bestScore;
 
-        SelectionResult(List<String> chunks, String sourceDocName) {
+        SelectionResult(
+            List<String> chunks,
+            String sourceDocName,
+            float bestScore
+        ) {
             this.chunks = chunks;
             this.sourceDocName = sourceDocName;
+            this.bestScore = bestScore;
         }
     }
+
+    // =========================
+    // CHUNK PICKING
+    // =========================
+
+    private List<String> pickTopChunks(List<ScoredChunk> scoredChunks) {
+        List<String> result = new ArrayList<>();
+        int limit = Math.min(CHUNKS_PER_DOC, scoredChunks.size());
+        for (int i = 0; i < limit; i++) {
+            result.add(scoredChunks.get(i).chunk.chunkText);
+        }
+        return result;
+    }
+
+    // =========================
+    // APP-WIDE SELECTION
+    // =========================
 
     private SelectionResult selectChunks(float[] queryEmbedding) {
         List<ChunkEntity> allChunks = chunkDao.getAll();
@@ -141,20 +156,18 @@ public class RagRepository {
 
         Map<Long, List<ChunkEntity>> chunksByDoc = new HashMap<>();
         for (ChunkEntity chunk : allChunks) {
-            if (!chunksByDoc.containsKey(chunk.documentId)) {
-                chunksByDoc.put(chunk.documentId, new ArrayList<>());
-            }
+            if (!chunksByDoc.containsKey(chunk.documentId)) chunksByDoc.put(
+                chunk.documentId,
+                new ArrayList<>()
+            );
             chunksByDoc.get(chunk.documentId).add(chunk);
         }
 
         List<DocumentEntity> allDocs = documentDao.getAll();
         Map<Long, String> docNames = new HashMap<>();
-        for (DocumentEntity doc : allDocs) {
-            docNames.put(doc.id, doc.name);
-        }
+        for (DocumentEntity doc : allDocs) docNames.put(doc.id, doc.name);
 
         List<ScoredDoc> scoredDocs = new ArrayList<>();
-
         for (Map.Entry<
             Long,
             List<ChunkEntity>
@@ -166,50 +179,36 @@ public class RagRepository {
             if (docChunks.size() < MIN_CHUNKS) {
                 Log.d(
                     TAG,
-                    "Skipping " +
-                        docName +
-                        " (only " +
-                        docChunks.size() +
-                        " chunks)"
+                    "Skipping " + docName + " (" + docChunks.size() + " chunks)"
                 );
                 continue;
             }
 
-            List<ScoredChunk> scoredChunks = new ArrayList<>();
+            List<ScoredChunk> scored = new ArrayList<>();
             for (ChunkEntity chunk : docChunks) {
                 if (
                     chunk.chunkEmbedding == null || chunk.chunkText == null
                 ) continue;
-                float[] chunkEmb = EmbeddingEngine.fromBytes(
-                    chunk.chunkEmbedding
-                );
                 float score = EmbeddingEngine.cosineSimilarity(
                     queryEmbedding,
-                    chunkEmb
+                    EmbeddingEngine.fromBytes(chunk.chunkEmbedding)
                 );
-                scoredChunks.add(new ScoredChunk(chunk, score));
+                scored.add(new ScoredChunk(chunk, score));
             }
+            if (scored.isEmpty()) continue;
 
-            if (scoredChunks.isEmpty()) continue;
+            Collections.sort(scored, (a, b) -> Float.compare(b.score, a.score));
 
-            Collections.sort(scoredChunks, (a, b) ->
-                Float.compare(b.score, a.score)
-            );
-
-            int n = Math.min(SCORE_TOP_N, scoredChunks.size());
-            float scoreSum = 0f;
-            for (int i = 0; i < n; i++) scoreSum += scoredChunks.get(i).score;
-            float docScore = scoreSum / n;
-
-            scoredDocs.add(
-                new ScoredDoc(docId, docName, docScore, scoredChunks)
-            );
+            int n = Math.min(SCORE_TOP_N, scored.size());
+            float sum = 0f;
+            for (int i = 0; i < n; i++) sum += scored.get(i).score;
+            scoredDocs.add(new ScoredDoc(docId, docName, sum / n, scored));
         }
 
         if (scoredDocs.isEmpty()) return null;
-
         Collections.sort(scoredDocs, (a, b) -> Float.compare(b.score, a.score));
 
+        float bestScore = scoredDocs.get(0).score;
         int docLimit = Math.min(TOP_DOCS, scoredDocs.size());
 
         StringBuilder sourceNames = new StringBuilder();
@@ -223,7 +222,7 @@ public class RagRepository {
             sourceNames.append(sd.docName);
             docLog
                 .append(sd.docName)
-                .append(" (score=")
+                .append("(score=")
                 .append(String.format("%.3f", sd.score))
                 .append(", chunks=")
                 .append(sd.scoredChunks.size())
@@ -232,55 +231,105 @@ public class RagRepository {
         Log.d(TAG, docLog.toString());
 
         List<String> selectedChunks = new ArrayList<>();
-
         for (int d = 0; d < docLimit; d++) {
-            ScoredDoc topDoc = scoredDocs.get(d);
-            List<ScoredChunk> scoredChunks = topDoc.scoredChunks;
-
-            ScoredChunk firstChunk = null;
-            ScoredChunk secondChunk = null;
-            for (ScoredChunk sc : scoredChunks) {
-                if (sc.chunk.chunkIndex == 0) firstChunk = sc;
-                if (sc.chunk.chunkIndex == 1) secondChunk = sc;
-                if (firstChunk != null && secondChunk != null) break;
-            }
-
-            List<ScoredChunk> selected = new ArrayList<>();
-            if (firstChunk != null) selected.add(firstChunk);
-            if (secondChunk != null) selected.add(secondChunk);
-
-            int added = selected.size();
-            for (ScoredChunk sc : scoredChunks) {
-                if (added >= CHUNKS_PER_DOC) break;
-                boolean alreadyAdded =
-                    sc.chunk.chunkIndex == 0 || sc.chunk.chunkIndex == 1;
-                if (!alreadyAdded) {
-                    selected.add(sc);
-                    added++;
-                }
-            }
-
-            for (ScoredChunk sc : selected) {
-                selectedChunks.add(sc.chunk.chunkText);
-            }
-
+            List<String> picked = pickTopChunks(scoredDocs.get(d).scoredChunks);
+            selectedChunks.addAll(picked);
             Log.d(
                 TAG,
-                topDoc.docName + ": picked " + selected.size() + " chunks"
+                scoredDocs.get(d).docName +
+                    ": picked " +
+                    picked.size() +
+                    " chunks"
             );
         }
 
         if (selectedChunks.isEmpty()) return null;
-
-        Log.d(TAG, "Total chunks sent to backend: " + selectedChunks.size());
-        return new SelectionResult(selectedChunks, sourceNames.toString());
+        Log.d(
+            TAG,
+            "Total chunks: " +
+                selectedChunks.size() +
+                " | best score: " +
+                bestScore
+        );
+        return new SelectionResult(
+            selectedChunks,
+            sourceNames.toString(),
+            bestScore
+        );
     }
 
     // =========================
-    // STREAMING QUERY
+    // SINGLE DOCUMENT SELECTION
+    // =========================
+
+    private SelectionResult selectChunksForDocument(
+        float[] queryEmbedding,
+        long documentId
+    ) {
+        List<ChunkEntity> docChunks = chunkDao.getByDocumentId(documentId);
+        if (docChunks.isEmpty()) return null;
+
+        DocumentEntity doc = documentDao.getById(documentId);
+        String docName = doc != null ? doc.name : "Unknown";
+
+        List<ScoredChunk> scored = new ArrayList<>();
+        for (ChunkEntity chunk : docChunks) {
+            if (
+                chunk.chunkEmbedding == null || chunk.chunkText == null
+            ) continue;
+            float score = EmbeddingEngine.cosineSimilarity(
+                queryEmbedding,
+                EmbeddingEngine.fromBytes(chunk.chunkEmbedding)
+            );
+            scored.add(new ScoredChunk(chunk, score));
+        }
+        if (scored.isEmpty()) return null;
+
+        Collections.sort(scored, (a, b) -> Float.compare(b.score, a.score));
+        float bestScore = scored.get(0).score;
+
+        List<String> selected = pickTopChunks(scored);
+        Log.d(
+            TAG,
+            "Doc mode: " +
+                docName +
+                " picked " +
+                selected.size() +
+                "/" +
+                docChunks.size() +
+                " | best score: " +
+                bestScore
+        );
+        // In document mode we do not apply a relevance threshold since the user
+        // explicitly chose this document to chat with.
+        return new SelectionResult(selected, docName, bestScore);
+    }
+
+    // =========================
+    // PUBLIC STREAM METHODS
     // =========================
 
     public void queryStream(String question, RagStreamCallback callback) {
+        executeStream(question, -1, callback);
+    }
+
+    public void queryStreamForDocument(
+        String question,
+        long documentId,
+        RagStreamCallback callback
+    ) {
+        executeStream(question, documentId, callback);
+    }
+
+    // =========================
+    // STREAM EXECUTION
+    // =========================
+
+    private void executeStream(
+        String question,
+        long documentId,
+        RagStreamCallback callback
+    ) {
         if (question == null || question.trim().isEmpty()) {
             callback.onError("Question cannot be empty.");
             return;
@@ -294,10 +343,33 @@ public class RagRepository {
                     return;
                 }
 
-                SelectionResult selection = selectChunks(queryEmbedding);
+                SelectionResult selection =
+                    documentId > 0
+                        ? selectChunksForDocument(queryEmbedding, documentId)
+                        : selectChunks(queryEmbedding);
+
                 if (selection == null) {
                     callback.onError(
-                        "No indexed content found. Add documents and index them first."
+                        documentId > 0
+                            ? "This document has no indexed content. Please re-index it."
+                            : "No indexed content found. Add documents and index them first."
+                    );
+                    return;
+                }
+
+                // For global queries, reject if no document is relevant enough.
+                // Document mode skips this check since the user chose the file.
+                if (documentId <= 0 && selection.bestScore < MIN_RELEVANCE) {
+                    Log.d(
+                        TAG,
+                        "Rejected query - best score " +
+                            selection.bestScore +
+                            " below threshold " +
+                            MIN_RELEVANCE
+                    );
+                    callback.onError(
+                        "I could not find relevant content for this question in your documents. " +
+                            "Try rephrasing or ask about a topic covered in your files."
                     );
                     return;
                 }
@@ -305,9 +377,9 @@ public class RagRepository {
                 JSONObject body = new JSONObject();
                 body.put("question", question.trim());
                 body.put("document_name", selection.sourceDocName);
-                JSONArray chunksArray = new JSONArray();
-                for (String chunk : selection.chunks) chunksArray.put(chunk);
-                body.put("chunks", chunksArray);
+                JSONArray arr = new JSONArray();
+                for (String chunk : selection.chunks) arr.put(chunk);
+                body.put("chunks", arr);
 
                 RequestBody requestBody = RequestBody.create(
                     MediaType.parse("application/json; charset=utf-8"),
@@ -319,7 +391,6 @@ public class RagRepository {
                     .post(requestBody)
                     .build();
 
-                // Store the call so it can be cancelled
                 Call call = streamingClient.newCall(request);
                 activeCall = call;
 
@@ -330,11 +401,9 @@ public class RagRepository {
                         );
                         return;
                     }
-
                     BufferedReader reader = new BufferedReader(
                         new InputStreamReader(response.body().byteStream())
                     );
-
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (Thread.currentThread().isInterrupted()) break;
@@ -353,21 +422,17 @@ public class RagRepository {
                                 break;
                             }
                         } catch (Exception e) {
-                            Log.w(TAG, "Failed to parse line: " + line);
+                            Log.w(TAG, "Parse error: " + line);
                         }
                     }
                 } catch (Exception e) {
-                    // Cancelled calls throw an IOException - swallow silently
-                    if (call.isCanceled()) {
-                        Log.d(TAG, "Stream was cancelled.");
-                    } else {
-                        throw e;
-                    }
+                    if (!call.isCanceled()) throw e;
+                    Log.d(TAG, "Stream cancelled.");
                 } finally {
                     activeCall = null;
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Stream query failed: " + e.getMessage(), e);
+                Log.e(TAG, "Stream failed: " + e.getMessage(), e);
                 callback.onError(
                     "Could not reach the Q&A server. Make sure it is running on port 8000."
                 );
@@ -385,32 +450,36 @@ public class RagRepository {
             callback.onError("Question cannot be empty.");
             return;
         }
-
         new Thread(() -> {
             try {
-                float[] queryEmbedding = embeddingEngine.embed(question.trim());
-                if (queryEmbedding == null) {
+                float[] emb = embeddingEngine.embed(question.trim());
+                if (emb == null) {
                     callback.onError("Could not process your question.");
                     return;
                 }
 
-                SelectionResult selection = selectChunks(queryEmbedding);
+                SelectionResult selection = selectChunks(emb);
                 if (selection == null) {
+                    callback.onError("No indexed content found.");
+                    return;
+                }
+
+                if (selection.bestScore < MIN_RELEVANCE) {
                     callback.onError(
-                        "No indexed content found. Index some documents first."
+                        "I could not find relevant content for this question."
                     );
                     return;
                 }
 
-                RagRequest ragRequest = new RagRequest(
+                RagRequest req = new RagRequest(
                     question.trim(),
                     selection.chunks,
                     selection.sourceDocName
                 );
-                final String sourceDocName = selection.sourceDocName;
+                final String src = selection.sourceDocName;
 
                 apiService
-                    .ask(ragRequest)
+                    .ask(req)
                     .enqueue(
                         new Callback<RagResponse>() {
                             @Override
@@ -422,25 +491,12 @@ public class RagRepository {
                                     response.isSuccessful() &&
                                     response.body() != null
                                 ) {
-                                    String answer = response.body().answer;
+                                    String ans = response.body().answer;
                                     if (
-                                        answer == null ||
-                                        answer.trim().isEmpty()
-                                    ) {
-                                        callback.onError(
-                                            "The model returned an empty answer."
-                                        );
-                                    } else {
-                                        callback.onAnswer(
-                                            answer.trim(),
-                                            sourceDocName
-                                        );
-                                    }
-                                } else {
-                                    callback.onError(
-                                        "Backend returned an error."
-                                    );
-                                }
+                                        ans == null || ans.trim().isEmpty()
+                                    ) callback.onError("Empty answer.");
+                                    else callback.onAnswer(ans.trim(), src);
+                                } else callback.onError("Backend error.");
                             }
 
                             @Override
@@ -448,10 +504,6 @@ public class RagRepository {
                                 retrofit2.Call<RagResponse> call,
                                 Throwable t
                             ) {
-                                Log.e(
-                                    TAG,
-                                    "Network failure: " + t.getMessage()
-                                );
                                 callback.onError(
                                     "Could not reach the Q&A server."
                                 );
@@ -459,8 +511,7 @@ public class RagRepository {
                         }
                     );
             } catch (Exception e) {
-                Log.e(TAG, "Query failed: " + e.getMessage(), e);
-                callback.onError("Something went wrong. Please try again.");
+                callback.onError("Something went wrong.");
             }
         })
             .start();
