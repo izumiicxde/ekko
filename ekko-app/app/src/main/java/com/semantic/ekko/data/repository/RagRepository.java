@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import okhttp3.Call;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -26,7 +27,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import retrofit2.Call;
 import retrofit2.Callback;
 
 public class RagRepository {
@@ -43,6 +43,9 @@ public class RagRepository {
     private final RagApiService apiService;
     private final OkHttpClient streamingClient;
     private final String baseUrl;
+
+    // Holds the active streaming call so it can be cancelled
+    private volatile Call activeCall = null;
 
     // =========================
     // CALLBACKS
@@ -71,6 +74,19 @@ public class RagRepository {
         this.apiService = RagClient.getInstance();
         this.streamingClient = RagClient.getStreamingClient();
         this.baseUrl = RagClient.getBaseUrl();
+    }
+
+    // =========================
+    // CANCEL
+    // =========================
+
+    public void cancelStream() {
+        Call call = activeCall;
+        if (call != null && !call.isCanceled()) {
+            call.cancel();
+            Log.d(TAG, "Stream cancelled by user.");
+        }
+        activeCall = null;
     }
 
     // =========================
@@ -119,26 +135,10 @@ public class RagRepository {
         }
     }
 
-    /**
-     * Two-stage retrieval using chunk-based document scoring:
-     *
-     * Stage 1 - Document ranking:
-     *   Score each document by the average cosine similarity of its top
-     *   SCORE_TOP_N chunks against the query. Skip documents with fewer
-     *   than MIN_CHUNKS chunks.
-     *
-     * Stage 2 - Chunk retrieval:
-     *   From top documents, always include opening chunks (index 0, 1)
-     *   plus top scored chunks up to CHUNKS_PER_DOC.
-     *
-     * Source label shows all contributing document names since context
-     * from multiple documents is sent to the backend.
-     */
     private SelectionResult selectChunks(float[] queryEmbedding) {
         List<ChunkEntity> allChunks = chunkDao.getAll();
         if (allChunks.isEmpty()) return null;
 
-        // Group chunks by document
         Map<Long, List<ChunkEntity>> chunksByDoc = new HashMap<>();
         for (ChunkEntity chunk : allChunks) {
             if (!chunksByDoc.containsKey(chunk.documentId)) {
@@ -147,14 +147,12 @@ public class RagRepository {
             chunksByDoc.get(chunk.documentId).add(chunk);
         }
 
-        // Load document names
         List<DocumentEntity> allDocs = documentDao.getAll();
         Map<Long, String> docNames = new HashMap<>();
         for (DocumentEntity doc : allDocs) {
             docNames.put(doc.id, doc.name);
         }
 
-        // Score each document by average of top SCORE_TOP_N chunk scores
         List<ScoredDoc> scoredDocs = new ArrayList<>();
 
         for (Map.Entry<
@@ -214,7 +212,6 @@ public class RagRepository {
 
         int docLimit = Math.min(TOP_DOCS, scoredDocs.size());
 
-        // Build combined source label from all contributing documents
         StringBuilder sourceNames = new StringBuilder();
         StringBuilder docLog = new StringBuilder("Top docs: ");
         for (int i = 0; i < docLimit; i++) {
@@ -234,12 +231,11 @@ public class RagRepository {
         }
         Log.d(TAG, docLog.toString());
 
-        // Stage 2: pick chunks from each top document
         List<String> selectedChunks = new ArrayList<>();
 
         for (int d = 0; d < docLimit; d++) {
             ScoredDoc topDoc = scoredDocs.get(d);
-            List<ScoredChunk> scoredChunks = topDoc.scoredChunks; // already sorted
+            List<ScoredChunk> scoredChunks = topDoc.scoredChunks;
 
             ScoredChunk firstChunk = null;
             ScoredChunk secondChunk = null;
@@ -281,7 +277,7 @@ public class RagRepository {
     }
 
     // =========================
-    // STREAMING QUERY (raw OkHttp)
+    // STREAMING QUERY
     // =========================
 
     public void queryStream(String question, RagStreamCallback callback) {
@@ -323,11 +319,11 @@ public class RagRepository {
                     .post(requestBody)
                     .build();
 
-                try (
-                    Response response = streamingClient
-                        .newCall(request)
-                        .execute()
-                ) {
+                // Store the call so it can be cancelled
+                Call call = streamingClient.newCall(request);
+                activeCall = call;
+
+                try (Response response = call.execute()) {
                     if (!response.isSuccessful() || response.body() == null) {
                         callback.onError(
                             "Backend returned an error. Is the server running?"
@@ -341,6 +337,7 @@ public class RagRepository {
 
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        if (Thread.currentThread().isInterrupted()) break;
                         if (line.trim().isEmpty()) continue;
                         try {
                             JSONObject json = new JSONObject(line);
@@ -359,6 +356,15 @@ public class RagRepository {
                             Log.w(TAG, "Failed to parse line: " + line);
                         }
                     }
+                } catch (Exception e) {
+                    // Cancelled calls throw an IOException - swallow silently
+                    if (call.isCanceled()) {
+                        Log.d(TAG, "Stream was cancelled.");
+                    } else {
+                        throw e;
+                    }
+                } finally {
+                    activeCall = null;
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Stream query failed: " + e.getMessage(), e);
@@ -371,7 +377,7 @@ public class RagRepository {
     }
 
     // =========================
-    // NON-STREAMING QUERY (for enhanced summary in DetailViewModel)
+    // NON-STREAMING QUERY
     // =========================
 
     public void query(String question, RagCallback callback) {
@@ -409,7 +415,7 @@ public class RagRepository {
                         new Callback<RagResponse>() {
                             @Override
                             public void onResponse(
-                                Call<RagResponse> call,
+                                retrofit2.Call<RagResponse> call,
                                 retrofit2.Response<RagResponse> response
                             ) {
                                 if (
@@ -439,7 +445,7 @@ public class RagRepository {
 
                             @Override
                             public void onFailure(
-                                Call<RagResponse> call,
+                                retrofit2.Call<RagResponse> call,
                                 Throwable t
                             ) {
                                 Log.e(

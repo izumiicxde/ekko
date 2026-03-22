@@ -57,16 +57,17 @@ public class QAViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> isLoading = new MutableLiveData<>(
         false
     );
+    private final MutableLiveData<Boolean> isStopped = new MutableLiveData<>(
+        false
+    );
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private RagRepository ragRepository;
 
-    // Token batching: accumulate tokens and flush to UI every 80ms
-    // instead of posting on every single token. Reduces adapter rebinds
-    // from ~10/sec to ~12/sec max while keeping the streaming feel.
     private static final long FLUSH_INTERVAL_MS = 80;
     private final StringBuilder pendingTokens = new StringBuilder();
     private boolean flushScheduled = false;
+    private volatile boolean cancelled = false;
 
     private final Runnable flushRunnable = () -> {
         flushScheduled = false;
@@ -106,6 +107,7 @@ public class QAViewModel extends AndroidViewModel {
             return;
         }
 
+        cancelled = false;
         pendingTokens.setLength(0);
         flushScheduled = false;
 
@@ -123,13 +125,12 @@ public class QAViewModel extends AndroidViewModel {
             new RagRepository.RagStreamCallback() {
                 @Override
                 public void onToken(String token) {
-                    // Accumulate tokens and schedule a flush if not already scheduled.
-                    // This runs on the background thread so synchronize on pendingTokens.
+                    if (cancelled) return;
                     synchronized (pendingTokens) {
                         pendingTokens.append(token);
                     }
                     mainHandler.post(() -> {
-                        if (!flushScheduled) {
+                        if (!flushScheduled && !cancelled) {
                             flushScheduled = true;
                             mainHandler.postDelayed(
                                 flushRunnable,
@@ -141,12 +142,11 @@ public class QAViewModel extends AndroidViewModel {
 
                 @Override
                 public void onComplete(String sourceDocumentName) {
-                    // Flush any remaining tokens immediately before marking complete
                     mainHandler.post(() -> {
                         mainHandler.removeCallbacks(flushRunnable);
                         flushScheduled = false;
                         synchronized (pendingTokens) {
-                            if (pendingTokens.length() > 0) {
+                            if (pendingTokens.length() > 0 && !cancelled) {
                                 uiEvent.setValue(
                                     UiEvent.updateToken(
                                         pendingTokens.toString()
@@ -155,9 +155,11 @@ public class QAViewModel extends AndroidViewModel {
                                 pendingTokens.setLength(0);
                             }
                         }
-                        uiEvent.setValue(
-                            UiEvent.updateSource(sourceDocumentName)
-                        );
+                        if (!cancelled) {
+                            uiEvent.setValue(
+                                UiEvent.updateSource(sourceDocumentName)
+                            );
+                        }
                         isLoading.setValue(false);
                     });
                 }
@@ -168,20 +170,36 @@ public class QAViewModel extends AndroidViewModel {
                         mainHandler.removeCallbacks(flushRunnable);
                         flushScheduled = false;
                         pendingTokens.setLength(0);
-                        uiEvent.setValue(
-                            UiEvent.replace(
-                                new QAMessage(
-                                    QAMessage.TYPE_ERROR,
-                                    message,
-                                    null
+                        if (!cancelled) {
+                            uiEvent.setValue(
+                                UiEvent.replace(
+                                    new QAMessage(
+                                        QAMessage.TYPE_ERROR,
+                                        message,
+                                        null
+                                    )
                                 )
-                            )
-                        );
+                            );
+                        }
                         isLoading.setValue(false);
                     });
                 }
             }
         );
+    }
+
+    // =========================
+    // STOP
+    // =========================
+
+    public void stop() {
+        if (!Boolean.TRUE.equals(isLoading.getValue())) return;
+        cancelled = true;
+        mainHandler.removeCallbacks(flushRunnable);
+        flushScheduled = false;
+        pendingTokens.setLength(0);
+        if (ragRepository != null) ragRepository.cancelStream();
+        isLoading.postValue(false);
     }
 
     private void post(UiEvent event) {
@@ -193,10 +211,6 @@ public class QAViewModel extends AndroidViewModel {
         super.onCleared();
         mainHandler.removeCallbacks(flushRunnable);
     }
-
-    // =========================
-    // LIVEDATA
-    // =========================
 
     public LiveData<UiEvent> getUiEvent() {
         return uiEvent;

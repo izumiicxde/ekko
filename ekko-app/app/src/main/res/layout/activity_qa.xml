@@ -1,16 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/android:colorBackground">
+    android:background="?attr/android:colorBackground"
+>
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/android:colorBackground"
-        app:elevation="0dp">
+        app:elevation="0dp"
+    >
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -18,7 +20,8 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingStart="4dp"
-            android:paddingEnd="16dp">
+            android:paddingEnd="16dp"
+        >
 
             <ImageButton
                 android:id="@+id/btnBack"
@@ -28,7 +31,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_close"
                 android:contentDescription="Back"
-                app:tint="?attr/colorOnSurface" />
+                app:tint="?attr/colorOnSurface"
+            />
 
             <TextView
                 android:layout_width="0dp"
@@ -39,7 +43,8 @@
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/bricolage_grotesque"
-                android:layout_marginStart="4dp" />
+                android:layout_marginStart="4dp"
+            />
 
         </LinearLayout>
 
@@ -49,7 +54,8 @@
             android:layout_height="wrap_content"
             android:indeterminate="true"
             android:visibility="gone"
-            app:trackCornerRadius="0dp" />
+            app:trackCornerRadius="0dp"
+        />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -62,7 +68,8 @@
         android:paddingTop="8dp"
         android:paddingBottom="80dp"
         android:clipToPadding="false"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -74,7 +81,8 @@
         android:paddingTop="10dp"
         android:paddingBottom="16dp"
         android:background="?attr/android:colorBackground"
-        android:layout_gravity="bottom">
+        android:layout_gravity="bottom"
+    >
 
         <LinearLayout
             android:layout_width="0dp"
@@ -86,7 +94,8 @@
             android:paddingStart="14dp"
             android:paddingEnd="4dp"
             android:paddingTop="4dp"
-            android:paddingBottom="4dp">
+            android:paddingBottom="4dp"
+        >
 
             <EditText
                 android:id="@+id/editQuestion"
@@ -102,17 +111,33 @@
                 android:imeOptions="actionSend"
                 android:inputType="textCapSentences|textMultiLine"
                 android:maxLines="4"
-                android:minLines="1" />
+                android:minLines="1"
+            />
 
+            <!-- Stop button: shown only while streaming, tinted error red -->
+            <ImageButton
+                android:id="@+id/btnStop"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_stop"
+                android:contentDescription="Stop generation"
+                android:visibility="gone"
+                app:tint="?attr/colorError"
+            />
+
+            <!-- Send button: hidden while streaming -->
             <ImageButton
                 android:id="@+id/btnSend"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:padding="10dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_search"
-                android:contentDescription="Send"
-                app:tint="?attr/colorPrimary" />
+                android:src="@drawable/ic_send"
+                android:contentDescription="Send question"
+                app:tint="?attr/colorPrimary"
+            />
 
         </LinearLayout>
 

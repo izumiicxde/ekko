@@ -22,6 +22,7 @@ public class QAActivity extends AppCompatActivity {
     private RecyclerView recyclerMessages;
     private EditText editQuestion;
     private ImageButton btnSend;
+    private ImageButton btnStop;
     private LinearProgressIndicator progressLoading;
 
     private final StringBuilder streamingBuffer = new StringBuilder();
@@ -43,6 +44,7 @@ public class QAActivity extends AppCompatActivity {
         recyclerMessages = findViewById(R.id.recyclerMessages);
         editQuestion = findViewById(R.id.editQuestion);
         btnSend = findViewById(R.id.btnSend);
+        btnStop = findViewById(R.id.btnStop);
         progressLoading = findViewById(R.id.progressLoading);
     }
 
@@ -64,8 +66,6 @@ public class QAActivity extends AppCompatActivity {
 
                 switch (event.type) {
                     case QAViewModel.UiEvent.ADD_MESSAGE:
-                        // Reset buffer on both user message and answer placeholder
-                        // so stale content from the previous question never bleeds through
                         if (
                             event.message.type == QAMessage.TYPE_USER ||
                             event.message.type == QAMessage.TYPE_ANSWER
@@ -102,8 +102,16 @@ public class QAActivity extends AppCompatActivity {
                 progressLoading.setVisibility(
                     loading ? View.VISIBLE : View.GONE
                 );
-                btnSend.setEnabled(!loading);
                 editQuestion.setEnabled(!loading);
+
+                // Toggle send/stop buttons based on loading state
+                if (loading) {
+                    btnSend.setVisibility(View.GONE);
+                    btnStop.setVisibility(View.VISIBLE);
+                } else {
+                    btnStop.setVisibility(View.GONE);
+                    btnSend.setVisibility(View.VISIBLE);
+                }
             });
     }
 
@@ -116,6 +124,7 @@ public class QAActivity extends AppCompatActivity {
 
     private void setupInput() {
         btnSend.setOnClickListener(v -> submitQuestion());
+        btnStop.setOnClickListener(v -> viewModel.stop());
 
         editQuestion.setOnEditorActionListener((v, actionId, event) -> {
             if (
