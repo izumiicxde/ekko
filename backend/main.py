@@ -1,6 +1,5 @@
 import json
 import logging
-import traceback
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -13,9 +12,8 @@ logger = logging.getLogger("ekko-rag")
 app = FastAPI(title="Ekko RAG Backend")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_URL_STREAM = "http://localhost:11434/api/generate"
-# OLLAMA_MODEL = "gemma2:2b"
 OLLAMA_MODEL = "qwen2.5:0.5b"
+
 
 # =========================
 # REQUEST / RESPONSE MODELS
@@ -49,7 +47,9 @@ def build_prompt(question: str, chunks: list[str], document_name: str) -> str:
         f"You are a document assistant. Answer the user's question using only "
         f"the context provided below{doc_ref}. "
         f"If the context does not contain enough information to answer, say so clearly. "
-        f"Do not make up information.\n\n"
+        f"Do not make up information. "
+        f"Format your answer using markdown: use **bold** for key terms, "
+        f"bullet points for lists, and code blocks for any code.\n\n"
         f"Context:\n{context}\n\n"
         f"Question: {question}\n\n"
         f"Answer:"
@@ -68,7 +68,6 @@ async def health():
 
 @app.post("/rag")
 async def rag(request: RAGRequest):
-    """Non-streaming endpoint kept for compatibility."""
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
     if not request.chunks:
@@ -101,12 +100,6 @@ async def rag(request: RAGRequest):
 
 @app.post("/rag/stream")
 async def rag_stream(request: RAGRequest):
-    """
-    Streaming endpoint. Returns a stream of Server-Sent Events.
-    Each event is a JSON object with a single field:
-      {"token": "..."} for each token as it is generated
-      {"done": true}   when generation is complete
-    """
     if not request.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
     if not request.chunks:
@@ -119,14 +112,12 @@ async def rag_stream(request: RAGRequest):
 
     async def token_generator():
         try:
-            timeout = httpx.Timeout(connect=30.0, read=None, write=30.0, pool=30.0)
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
                     "POST",
-                    OLLAMA_URL_STREAM,
+                    OLLAMA_URL,
                     json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True},
                 ) as response:
-                    response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line.strip():
                             continue
@@ -142,42 +133,9 @@ async def rag_stream(request: RAGRequest):
                                 yield json.dumps({"done": True}) + "\n"
                                 break
                         except json.JSONDecodeError:
-                            logger.warning(f"Skipping non-JSON stream line: {line!r}")
                             continue
-        except httpx.TimeoutException as e:
-            logger.exception("Stream timeout while waiting for Ollama output.")
-            yield (
-                json.dumps(
-                    {"error": "Model stream timed out before producing a response."}
-                )
-                + "\n"
-            )
-        except httpx.HTTPStatusError as e:
-            status_code = e.response.status_code if e.response is not None else 502
-            body = ""
-            if e.response is not None:
-                try:
-                    body = e.response.text
-                except Exception:
-                    body = "<unavailable>"
-            logger.error(
-                "Ollama stream HTTP error status=%s body=%r",
-                status_code,
-                body,
-            )
-            yield (
-                json.dumps(
-                    {"error": f"Language model stream failed with HTTP {status_code}."}
-                )
-                + "\n"
-            )
         except Exception as e:
-            logger.error(
-                "Stream error type=%s message=%r\n%s",
-                type(e).__name__,
-                str(e),
-                traceback.format_exc(),
-            )
-            yield json.dumps({"error": "Internal streaming error."}) + "\n"
+            logger.error(f"Stream error: {e}")
+            yield json.dumps({"error": str(e)}) + "\n"
 
     return StreamingResponse(token_generator(), media_type="application/x-ndjson")
