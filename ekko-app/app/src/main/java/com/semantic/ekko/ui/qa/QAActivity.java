@@ -17,12 +17,14 @@ import com.semantic.ekko.R;
 public class QAActivity extends AppCompatActivity {
 
     private QAViewModel viewModel;
-    private QAAdapter   adapter;
+    private QAAdapter adapter;
 
-    private RecyclerView            recyclerMessages;
-    private EditText                editQuestion;
-    private ImageButton             btnSend;
+    private RecyclerView recyclerMessages;
+    private EditText editQuestion;
+    private ImageButton btnSend;
     private LinearProgressIndicator progressLoading;
+
+    private final StringBuilder streamingBuffer = new StringBuilder();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,9 +41,9 @@ public class QAActivity extends AppCompatActivity {
 
     private void bindViews() {
         recyclerMessages = findViewById(R.id.recyclerMessages);
-        editQuestion     = findViewById(R.id.editQuestion);
-        btnSend          = findViewById(R.id.btnSend);
-        progressLoading  = findViewById(R.id.progressLoading);
+        editQuestion = findViewById(R.id.editQuestion);
+        btnSend = findViewById(R.id.btnSend);
+        progressLoading = findViewById(R.id.progressLoading);
     }
 
     private void setupRecycler() {
@@ -55,27 +57,73 @@ public class QAActivity extends AppCompatActivity {
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(QAViewModel.class);
 
-        viewModel.getMessages().observe(this, messages -> {
-            adapter.setMessages(messages);
-            if (!messages.isEmpty()) {
-                recyclerMessages.smoothScrollToPosition(messages.size() - 1);
-            }
-        });
+        viewModel
+            .getUiEvent()
+            .observe(this, event -> {
+                if (event == null) return;
 
-        viewModel.getIsLoading().observe(this, loading -> {
-            if (loading == null) return;
-            progressLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
-            btnSend.setEnabled(!loading);
-            editQuestion.setEnabled(!loading);
+                switch (event.type) {
+                    case QAViewModel.UiEvent.ADD_MESSAGE:
+                        // Reset buffer on both user message and answer placeholder
+                        // so stale content from the previous question never bleeds through
+                        if (
+                            event.message.type == QAMessage.TYPE_USER ||
+                            event.message.type == QAMessage.TYPE_ANSWER
+                        ) {
+                            streamingBuffer.setLength(0);
+                        }
+                        adapter.addMessage(event.message);
+                        scrollToBottom();
+                        break;
+                    case QAViewModel.UiEvent.UPDATE_LAST:
+                        if (event.token != null) {
+                            streamingBuffer.append(event.token);
+                            adapter.appendStreamingToken(
+                                streamingBuffer.toString()
+                            );
+                        } else if (event.source != null) {
+                            adapter.finalizeStreamingMessage(
+                                streamingBuffer.toString(),
+                                event.source
+                            );
+                        }
+                        break;
+                    case QAViewModel.UiEvent.REPLACE_LAST:
+                        adapter.replaceLastMessage(event.message);
+                        scrollToBottom();
+                        break;
+                }
+            });
+
+        viewModel
+            .getIsLoading()
+            .observe(this, loading -> {
+                if (loading == null) return;
+                progressLoading.setVisibility(
+                    loading ? View.VISIBLE : View.GONE
+                );
+                btnSend.setEnabled(!loading);
+                editQuestion.setEnabled(!loading);
+            });
+    }
+
+    private void scrollToBottom() {
+        recyclerMessages.post(() -> {
+            int count = adapter.getItemCount();
+            if (count > 0) recyclerMessages.scrollToPosition(count - 1);
         });
     }
 
     private void setupInput() {
         btnSend.setOnClickListener(v -> submitQuestion());
+
         editQuestion.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_SEND ||
-                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
-                    && event.getAction() == KeyEvent.ACTION_DOWN)) {
+            if (
+                actionId == EditorInfo.IME_ACTION_SEND ||
+                (event != null &&
+                    event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
+                    event.getAction() == KeyEvent.ACTION_DOWN)
+            ) {
                 submitQuestion();
                 return true;
             }
@@ -92,7 +140,12 @@ public class QAActivity extends AppCompatActivity {
     }
 
     private void hideKeyboard() {
-        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        if (imm != null) imm.hideSoftInputFromWindow(editQuestion.getWindowToken(), 0);
+        InputMethodManager imm = (InputMethodManager) getSystemService(
+            INPUT_METHOD_SERVICE
+        );
+        if (imm != null) imm.hideSoftInputFromWindow(
+            editQuestion.getWindowToken(),
+            0
+        );
     }
 }

@@ -1,24 +1,45 @@
 package com.semantic.ekko.network;
 
 import com.semantic.ekko.BuildConfig;
+import java.util.concurrent.TimeUnit;
+import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-/**
- * Singleton Retrofit client for the Ekko RAG backend.
- *
- * Base URL is configured via local.properties at build time:
- *   rag.base.url=http://192.168.x.x:8000/
- *
- * If not set, defaults to http://10.0.2.2:8000/ which works for the
- * Android emulator pointing to the host machine.
- *
- * For physical devices, set rag.base.url in local.properties to your
- * machine's LAN IP. See README for setup instructions.
- */
 public class RagClient {
 
     private static volatile RagApiService instance;
+    private static volatile OkHttpClient streamingClient;
+
+    // Standard client for non-streaming calls
+    private static OkHttpClient buildStandardClient() {
+        return new OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build();
+    }
+
+    // Streaming client with no read timeout so the connection stays open
+    // for the full duration of Ollama generation
+    public static OkHttpClient getStreamingClient() {
+        if (streamingClient == null) {
+            synchronized (RagClient.class) {
+                if (streamingClient == null) {
+                    streamingClient = new OkHttpClient.Builder()
+                        .connectTimeout(30, TimeUnit.SECONDS)
+                        .readTimeout(0, TimeUnit.SECONDS) // no timeout for streaming
+                        .writeTimeout(30, TimeUnit.SECONDS)
+                        .build();
+                }
+            }
+        }
+        return streamingClient;
+    }
+
+    public static String getBaseUrl() {
+        return BuildConfig.RAG_BASE_URL;
+    }
 
     public static RagApiService getInstance() {
         if (instance == null) {
@@ -26,6 +47,7 @@ public class RagClient {
                 if (instance == null) {
                     Retrofit retrofit = new Retrofit.Builder()
                         .baseUrl(BuildConfig.RAG_BASE_URL)
+                        .client(buildStandardClient())
                         .addConverterFactory(GsonConverterFactory.create())
                         .build();
                     instance = retrofit.create(RagApiService.class);
