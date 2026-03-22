@@ -15,6 +15,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
+import com.semantic.ekko.ui.qa.QAActivity;
 import java.util.List;
 
 public class DetailActivity extends AppCompatActivity {
@@ -35,6 +36,7 @@ public class DetailActivity extends AppCompatActivity {
     private ChipGroup chipGroupEntities;
     private ChipGroup chipGroupCorrection;
     private MaterialButton btnOpenFile;
+    private MaterialButton btnChatWithFile;
     private MaterialButton btnEnhanceSummary;
     private View labelEntities;
     private View progressEnhanceSummary;
@@ -56,10 +58,6 @@ public class DetailActivity extends AppCompatActivity {
         viewModel.loadDocument(docId);
     }
 
-    // =========================
-    // BIND
-    // =========================
-
     private void bindViews() {
         txtDocName = findViewById(R.id.txtDocName);
         txtFileType = findViewById(R.id.txtFileType);
@@ -72,16 +70,13 @@ public class DetailActivity extends AppCompatActivity {
         chipGroupEntities = findViewById(R.id.chipGroupEntities);
         chipGroupCorrection = findViewById(R.id.chipGroupCorrection);
         btnOpenFile = findViewById(R.id.btnOpenFile);
+        btnChatWithFile = findViewById(R.id.btnChatWithFile);
         btnEnhanceSummary = findViewById(R.id.btnEnhanceSummary);
         labelEntities = findViewById(R.id.labelEntities);
         progressEnhanceSummary = findViewById(R.id.progressEnhanceSummary);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
-
-    // =========================
-    // VIEWMODEL
-    // =========================
 
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(DetailViewModel.class);
@@ -98,13 +93,11 @@ public class DetailActivity extends AppCompatActivity {
         viewModel
             .getErrorMessage()
             .observe(this, msg -> {
-                if (msg != null) {
-                    Snackbar.make(
-                        btnOpenFile,
-                        msg,
-                        Snackbar.LENGTH_LONG
-                    ).show();
-                }
+                if (msg != null) Snackbar.make(
+                    btnOpenFile,
+                    msg,
+                    Snackbar.LENGTH_LONG
+                ).show();
             });
 
         viewModel
@@ -129,24 +122,18 @@ public class DetailActivity extends AppCompatActivity {
             });
     }
 
-    // =========================
-    // BIND DOCUMENT
-    // =========================
-
     private void bindDocument(DocumentEntity doc) {
         txtDocName.setText(doc.name);
-
-        String fileType =
-            doc.fileType != null ? doc.fileType.toUpperCase() : "FILE";
-        txtFileType.setText(fileType);
-
+        txtFileType.setText(
+            doc.fileType != null ? doc.fileType.toUpperCase() : "FILE"
+        );
         chipCategory.setText(doc.category != null ? doc.category : "General");
 
-        String wordCountLabel =
+        String wordLabel =
             doc.wordCount >= 1000
                 ? String.format("%.1fk", doc.wordCount / 1000f)
                 : String.valueOf(doc.wordCount);
-        txtWordCount.setText(wordCountLabel);
+        txtWordCount.setText(wordLabel);
         txtReadTime.setText(String.valueOf(Math.max(1, doc.wordCount / 200)));
 
         if (doc.summary != null && !doc.summary.isEmpty()) {
@@ -156,12 +143,11 @@ public class DetailActivity extends AppCompatActivity {
             txtSummary.setVisibility(View.GONE);
         }
 
-        // Enhance summary only available if document has been re-indexed with chunks
-        if (doc.chunks != null && !doc.chunks.isEmpty()) {
-            btnEnhanceSummary.setVisibility(View.VISIBLE);
-        } else {
-            btnEnhanceSummary.setVisibility(View.GONE);
-        }
+        btnEnhanceSummary.setVisibility(
+            (doc.chunks != null && !doc.chunks.isEmpty())
+                ? View.VISIBLE
+                : View.GONE
+        );
 
         chipGroupKeywords.removeAllViews();
         if (doc.keywords != null && !doc.keywords.isEmpty()) {
@@ -208,8 +194,7 @@ public class DetailActivity extends AppCompatActivity {
         chipGroupCorrection.setOnCheckedStateChangeListener(
             (group, checkedIds) -> {
                 if (checkedIds.isEmpty() || currentDoc == null) return;
-                int id = checkedIds.get(0);
-                String selected = chipIdToCategory(id);
+                String selected = chipIdToCategory(checkedIds.get(0));
                 if (
                     selected == null || selected.equals(currentDoc.category)
                 ) return;
@@ -228,11 +213,14 @@ public class DetailActivity extends AppCompatActivity {
         btnEnhanceSummary.setOnClickListener(v ->
             viewModel.fetchEnhancedSummary()
         );
-    }
 
-    // =========================
-    // OPEN FILE
-    // =========================
+        btnChatWithFile.setOnClickListener(v -> {
+            Intent intent = new Intent(this, QAActivity.class);
+            intent.putExtra(QAActivity.EXTRA_DOCUMENT_ID, doc.id);
+            intent.putExtra(QAActivity.EXTRA_DOCUMENT_NAME, doc.name);
+            startActivity(intent);
+        });
+    }
 
     private void openFile(DocumentEntity doc) {
         try {
@@ -250,15 +238,10 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
-    // =========================
-    // HELPERS
-    // =========================
-
     private void preselectCorrection(String category) {
         int chipId;
-        if (category == null) {
-            chipId = R.id.chipCorGeneral;
-        } else switch (category) {
+        if (category == null) chipId = R.id.chipCorGeneral;
+        else switch (category) {
             case "Technical":
                 chipId = R.id.chipCorTechnical;
                 break;

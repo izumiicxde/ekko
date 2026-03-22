@@ -55,7 +55,6 @@
             android:paddingBottom="32dp"
         >
 
-            <!-- Doc name -->
             <TextView
                 android:id="@+id/txtDocName"
                 android:layout_width="match_parent"
@@ -69,7 +68,6 @@
                 tools:text="Introduction to Machine Learning.pdf"
             />
 
-            <!-- Category + file type row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -124,7 +122,6 @@
                     android:orientation="vertical"
                     android:gravity="center"
                 >
-
                     <TextView
                         android:id="@+id/txtWordCount"
                         android:layout_width="wrap_content"
@@ -135,7 +132,6 @@
                         android:textStyle="bold"
                         tools:text="22.4k"
                     />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -145,7 +141,6 @@
                         android:fontFamily="@font/bricolage_grotesque"
                         android:layout_marginTop="2dp"
                     />
-
                 </LinearLayout>
 
                 <View
@@ -161,7 +156,6 @@
                     android:orientation="vertical"
                     android:gravity="center"
                 >
-
                     <TextView
                         android:id="@+id/txtReadTime"
                         android:layout_width="wrap_content"
@@ -172,7 +166,6 @@
                         android:textStyle="bold"
                         tools:text="112"
                     />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -182,7 +175,6 @@
                         android:fontFamily="@font/bricolage_grotesque"
                         android:layout_marginTop="2dp"
                     />
-
                 </LinearLayout>
 
                 <View
@@ -198,7 +190,6 @@
                     android:orientation="vertical"
                     android:gravity="center"
                 >
-
                     <TextView
                         android:id="@+id/txtEntityCount"
                         android:layout_width="wrap_content"
@@ -209,7 +200,6 @@
                         android:textStyle="bold"
                         tools:text="5"
                     />
-
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -219,22 +209,43 @@
                         android:fontFamily="@font/bricolage_grotesque"
                         android:layout_marginTop="2dp"
                     />
-
                 </LinearLayout>
 
             </LinearLayout>
 
-            <!-- Open file button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnOpenFile"
+            <!-- Action buttons -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
                 android:layout_marginTop="12dp"
-                android:text="Open File"
-                android:textSize="14sp"
-                android:fontFamily="@font/bricolage_grotesque"
-                app:cornerRadius="12dp"
-            />
+            >
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOpenFile"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="Open File"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    app:cornerRadius="12dp"
+                />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChatWithFile"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="Chat with AI"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    app:cornerRadius="12dp"
+                />
+
+            </LinearLayout>
 
             <!-- Summary section -->
             <LinearLayout
@@ -297,7 +308,7 @@
                 tools:text="This document introduces core machine learning concepts."
             />
 
-            <!-- Keywords section -->
+            <!-- Keywords -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -319,7 +330,7 @@
                 app:chipSpacingVertical="4dp"
             />
 
-            <!-- Entities section -->
+            <!-- Entities -->
             <TextView
                 android:id="@+id/labelEntities"
                 android:layout_width="wrap_content"
@@ -342,7 +353,7 @@
                 app:chipSpacingVertical="4dp"
             />
 
-            <!-- Correct category section -->
+            <!-- Correct category -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -374,7 +385,6 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     style="@style/Widget.Material3.Chip.Filter"
                 />
-
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorResearch"
                     android:layout_width="wrap_content"
@@ -383,7 +393,6 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     style="@style/Widget.Material3.Chip.Filter"
                 />
-
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorLegal"
                     android:layout_width="wrap_content"
@@ -392,7 +401,6 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     style="@style/Widget.Material3.Chip.Filter"
                 />
-
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorMedical"
                     android:layout_width="wrap_content"
@@ -401,7 +409,6 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     style="@style/Widget.Material3.Chip.Filter"
                 />
-
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorGeneral"
                     android:layout_width="wrap_content"
