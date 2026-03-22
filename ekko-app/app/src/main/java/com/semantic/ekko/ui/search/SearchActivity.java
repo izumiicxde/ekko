@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -30,6 +31,7 @@ public class SearchActivity extends AppCompatActivity {
     private SearchResultAdapter adapter;
 
     private EditText editSearch;
+    private ImageView btnSearch;
     private LinearProgressIndicator progressSearch;
     private RecyclerView recyclerResults;
     private LinearLayout layoutEmptyState;
@@ -62,6 +64,7 @@ public class SearchActivity extends AppCompatActivity {
 
     private void bindViews() {
         editSearch = findViewById(R.id.editSearch);
+        btnSearch = findViewById(R.id.btnSearch);
         progressSearch = findViewById(R.id.progressSearch);
         recyclerResults = findViewById(R.id.recyclerResults);
         layoutEmptyState = findViewById(R.id.layoutEmptyState);
@@ -106,10 +109,21 @@ public class SearchActivity extends AppCompatActivity {
                     txtResultCount.setVisibility(View.GONE);
                     recyclerResults.setVisibility(View.GONE);
                     layoutEmptyState.setVisibility(View.VISIBLE);
-                    txtEmptyTitle.setText("No results found");
-                    txtEmptySubtitle.setText(
-                        "Try a different query or add more documents."
-                    );
+
+                    String query = editSearch.getText().toString().trim();
+                    if (query.isEmpty()) {
+                        // Fully cleared: show default prompt
+                        txtEmptyTitle.setText("Search your documents");
+                        txtEmptySubtitle.setText(
+                            "Type a query above to find relevant documents using semantic search."
+                        );
+                    } else {
+                        // Query entered but no matches
+                        txtEmptyTitle.setText("No results found");
+                        txtEmptySubtitle.setText(
+                            "Try a different query or add more documents."
+                        );
+                    }
                 } else {
                     txtResultCount.setVisibility(View.VISIBLE);
                     txtResultCount.setText(
@@ -143,7 +157,6 @@ public class SearchActivity extends AppCompatActivity {
     // =========================
 
     private void setupSearchInput() {
-        // Live search with debounce
         editSearch.addTextChangedListener(
             new TextWatcher() {
                 @Override
@@ -165,11 +178,26 @@ public class SearchActivity extends AppCompatActivity {
                 @Override
                 public void afterTextChanged(Editable s) {
                     String query = s.toString().trim();
-                    if (query.length() < 2) return;
 
-                    if (
-                        debounceRunnable != null
-                    ) debounceHandler.removeCallbacks(debounceRunnable);
+                    // Toggle icon: clear when text present, search when empty
+                    if (query.isEmpty()) {
+                        btnSearch.setImageResource(R.drawable.ic_search);
+                    } else {
+                        btnSearch.setImageResource(R.drawable.ic_close);
+                    }
+
+                    if (query.length() < 2) {
+                        // Clear stale results and reset to default empty state
+                        if (debounceRunnable != null) {
+                            debounceHandler.removeCallbacks(debounceRunnable);
+                        }
+                        clearResults();
+                        return;
+                    }
+
+                    if (debounceRunnable != null) {
+                        debounceHandler.removeCallbacks(debounceRunnable);
+                    }
                     debounceRunnable = () -> viewModel.search(query);
                     debounceHandler.postDelayed(
                         debounceRunnable,
@@ -179,7 +207,6 @@ public class SearchActivity extends AppCompatActivity {
             }
         );
 
-        // Also search on keyboard search action or enter
         editSearch.setOnEditorActionListener((v, actionId, event) -> {
             if (
                 actionId == EditorInfo.IME_ACTION_SEARCH ||
@@ -191,7 +218,14 @@ public class SearchActivity extends AppCompatActivity {
             return false;
         });
 
-        findViewById(R.id.btnSearch).setOnClickListener(v -> performSearch());
+        btnSearch.setOnClickListener(v -> {
+            String query = editSearch.getText().toString().trim();
+            if (query.isEmpty()) {
+                performSearch();
+            } else {
+                clearInput();
+            }
+        });
     }
 
     private void performSearch() {
@@ -202,6 +236,37 @@ public class SearchActivity extends AppCompatActivity {
         );
         hideKeyboard();
         viewModel.search(query);
+    }
+
+    // =========================
+    // CLEAR
+    // =========================
+
+    /**
+     * Clears the search input field, resets the icon, and shows the default
+     * empty state. Does not post an empty results list to the ViewModel since
+     * the ViewModel has no clearResults() concept; the UI resets directly.
+     */
+    private void clearInput() {
+        if (debounceRunnable != null) debounceHandler.removeCallbacks(
+            debounceRunnable
+        );
+        editSearch.setText("");
+        btnSearch.setImageResource(R.drawable.ic_search);
+        editSearch.requestFocus();
+        showKeyboard();
+        clearResults();
+    }
+
+    private void clearResults() {
+        adapter.submitList(null);
+        txtResultCount.setVisibility(View.GONE);
+        recyclerResults.setVisibility(View.GONE);
+        layoutEmptyState.setVisibility(View.VISIBLE);
+        txtEmptyTitle.setText("Search your documents");
+        txtEmptySubtitle.setText(
+            "Type a query above to find relevant documents using semantic search."
+        );
     }
 
     // =========================
