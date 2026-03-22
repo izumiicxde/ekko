@@ -1,19 +1,22 @@
 package com.semantic.ekko.network;
 
+import com.semantic.ekko.BuildConfig;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Singleton Retrofit client for the Ekko RAG backend.
  *
- * Base URL targets the FastAPI server running on the host machine.
- * Use 10.0.2.2:8000 for the Android emulator (maps to host localhost).
- * Replace with the host machine's LAN IP when running on a physical device,
- * for example http://192.168.1.x:8000/
+ * Base URL is configured via local.properties at build time:
+ *   rag.base.url=http://192.168.x.x:8000/
+ *
+ * If not set, defaults to http://10.0.2.2:8000/ which works for the
+ * Android emulator pointing to the host machine.
+ *
+ * For physical devices, set rag.base.url in local.properties to your
+ * machine's LAN IP. See README for setup instructions.
  */
 public class RagClient {
-
-    public static final String BASE_URL = "http://10.0.2.2:8000/";
 
     private static volatile RagApiService instance;
 
@@ -22,7 +25,7 @@ public class RagClient {
             synchronized (RagClient.class) {
                 if (instance == null) {
                     Retrofit retrofit = new Retrofit.Builder()
-                        .baseUrl(BASE_URL)
+                        .baseUrl(BuildConfig.RAG_BASE_URL)
                         .addConverterFactory(GsonConverterFactory.create())
                         .build();
                     instance = retrofit.create(RagApiService.class);

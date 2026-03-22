@@ -3,6 +3,9 @@ package com.semantic.ekko.processing;
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
+import com.semantic.ekko.data.db.AppDatabase;
+import com.semantic.ekko.data.db.ChunkDao;
+import com.semantic.ekko.data.model.ChunkEntity;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.ml.DocumentClassifier;
@@ -36,6 +39,7 @@ public class DocumentIndexer {
     private final TextSummarizer summarizer;
     private final EntityExtractorHelper entityExtractor;
     private final DocumentRepository repository;
+    private final ChunkDao chunkDao;
     private final ExecutorService executor;
 
     public DocumentIndexer(
@@ -51,262 +55,144 @@ public class DocumentIndexer {
         this.summarizer = summarizer;
         this.entityExtractor = entityExtractor;
         this.repository = new DocumentRepository(context);
+        this.chunkDao = AppDatabase.getInstance(context).chunkDao();
         this.executor = Executors.newSingleThreadExecutor();
     }
 
-    // =========================
-    // INDEX
-    // =========================
-
-    public void indexDocuments(
-        List<DocumentEntity> documents,
-        ProgressListener listener
-    ) {
+    public void indexDocuments(List<DocumentEntity> documents, ProgressListener listener) {
         executor.execute(() -> {
             int total = documents.size();
             AtomicInteger indexed = new AtomicInteger(0);
             AtomicInteger failed = new AtomicInteger(0);
             List<String> failedNames = new ArrayList<>();
 
-            if (listener != null) listener.onStageChanged(
-                "Scanning documents..."
-            );
+            if (listener != null) listener.onStageChanged("Scanning documents...");
 
             for (int i = 0; i < total; i++) {
                 DocumentEntity doc = documents.get(i);
-                if (listener != null) listener.onDocumentProcessed(
-                    i + 1,
-                    total,
-                    doc.name
-                );
+                if (listener != null) listener.onDocumentProcessed(i + 1, total, doc.name);
 
                 try {
-                    // Step 1: Extract text
-                    if (listener != null) listener.onStageChanged(
-                        "Extracting text..."
-                    );
+                    if (listener != null) listener.onStageChanged("Extracting text...");
                     String rawText = extractText(doc);
 
                     if (rawText == null || rawText.trim().length() < 20) {
-                        Log.w(
-                            TAG,
-                            doc.name +
-                                ": text extraction poor, using filename only"
-                        );
-                        rawText = doc.name
-                            .replaceAll("\\.[^.]+$", "")
-                            .replaceAll("[_\\-]", " ");
+                        Log.w(TAG, doc.name + ": text extraction poor, using filename only");
+                        rawText = doc.name.replaceAll("\\.[^.]+$", "").replaceAll("[_\\-]", " ");
                         failedNames.add(doc.name + " (no readable text)");
                     }
 
-                    Log.d(
-                        TAG,
-                        "Extracted " +
-                            rawText.length() +
-                            " chars from " +
-                            doc.name
-                    );
-
-                    // Step 2: Clean text
                     String cleanedText = TextPreprocessor.clean(rawText);
                     String mlText = TextPreprocessor.cleanForMl(rawText);
-
                     doc.rawText = cleanedText;
                     doc.wordCount = TextPreprocessor.wordCount(cleanedText);
 
-                    // Step 3: Classify
-                    if (listener != null) listener.onStageChanged(
-                        "Classifying..."
-                    );
+                    if (listener != null) listener.onStageChanged("Classifying...");
                     doc.category = classifier.classify(mlText);
-                    Log.d(TAG, doc.name + " -> category: " + doc.category);
 
-                    // Step 4: Embed
-                    if (listener != null) listener.onStageChanged(
-                        "Embedding..."
-                    );
-                    String embeddingInput = buildEmbeddingInput(
-                        doc.name,
-                        mlText
-                    );
+                    if (listener != null) listener.onStageChanged("Embedding...");
+                    String embeddingInput = buildEmbeddingInput(doc.name, mlText);
                     float[] embedding = embeddingEngine.embed(embeddingInput);
-                    if (embedding != null) {
-                        doc.embedding = EmbeddingEngine.toBytes(embedding);
-                    } else {
-                        Log.w(TAG, doc.name + ": embedding returned null");
-                    }
+                    if (embedding != null) doc.embedding = EmbeddingEngine.toBytes(embedding);
 
-                    // Step 5: Summarize
-                    if (listener != null) listener.onStageChanged(
-                        "Summarizing..."
-                    );
+                    if (listener != null) listener.onStageChanged("Summarizing...");
                     try {
                         doc.summary = summarizer.summarize(cleanedText);
                     } catch (Exception e) {
-                        Log.w(
-                            TAG,
-                            doc.name +
-                                ": summarization failed: " +
-                                e.getMessage()
-                        );
                         doc.summary = "";
                     }
 
-                    // Step 6: Extract keywords
-                    if (listener != null) listener.onStageChanged(
-                        "Extracting keywords..."
-                    );
+                    if (listener != null) listener.onStageChanged("Extracting keywords...");
                     try {
-                        List<String> keywords =
-                            TextPreprocessor.extractKeywords(mlText, 5);
+                        List<String> keywords = TextPreprocessor.extractKeywords(mlText, 5);
                         doc.keywords = String.join(",", keywords);
                     } catch (Exception e) {
-                        Log.w(
-                            TAG,
-                            doc.name +
-                                ": keyword extraction failed: " +
-                                e.getMessage()
-                        );
                         doc.keywords = "";
                     }
 
-                    // Step 7: Extract entities
-                    if (listener != null) listener.onStageChanged(
-                        "Extracting entities..."
-                    );
+                    if (listener != null) listener.onStageChanged("Extracting entities...");
                     try {
                         CountDownLatch latch = new CountDownLatch(1);
-                        entityExtractor.extractEntities(
-                            cleanedText,
-                            entities -> {
-                                doc.entities =
-                                    EntityExtractorHelper.entitiesToString(
-                                        entities
-                                    );
-                                latch.countDown();
-                            }
-                        );
+                        entityExtractor.extractEntities(cleanedText, entities -> {
+                            doc.entities = EntityExtractorHelper.entitiesToString(entities);
+                            latch.countDown();
+                        });
                         latch.await();
                     } catch (Exception e) {
-                        Log.w(
-                            TAG,
-                            doc.name +
-                                ": entity extraction failed: " +
-                                e.getMessage()
-                        );
                         doc.entities = "";
                     }
 
-                    // Step 8: Chunk text for RAG
-                    if (listener != null) listener.onStageChanged(
-                        "Chunking..."
-                    );
+                    if (listener != null) listener.onStageChanged("Saving...");
+                    final long[] docId = {-1};
+                    CountDownLatch insertLatch = new CountDownLatch(1);
+                    repository.insert(doc, id -> {
+                        docId[0] = id;
+                        insertLatch.countDown();
+                    });
+                    insertLatch.await();
+
+                    if (listener != null) listener.onStageChanged("Chunking for Q&A...");
                     try {
                         List<String> chunks = ChunkUtils.chunk(cleanedText);
-                        doc.chunks = ChunkUtils.toJson(chunks);
-                        Log.d(
-                            TAG,
-                            doc.name + ": " + chunks.size() + " chunks produced"
-                        );
+                        List<ChunkEntity> chunkEntities = new ArrayList<>();
+                        for (int c = 0; c < chunks.size(); c++) {
+                            String chunkText = chunks.get(c);
+                            float[] chunkEmbedding = embeddingEngine.embed(chunkText);
+                            byte[] embeddingBytes = chunkEmbedding != null
+                                ? EmbeddingEngine.toBytes(chunkEmbedding) : null;
+                            chunkEntities.add(new ChunkEntity(docId[0], c, chunkText, embeddingBytes));
+                        }
+                        chunkDao.deleteByDocumentId(docId[0]);
+                        chunkDao.insertAll(chunkEntities);
+                        Log.d(TAG, doc.name + ": " + chunkEntities.size() + " chunks indexed");
                     } catch (Exception e) {
-                        Log.w(
-                            TAG,
-                            doc.name + ": chunking failed: " + e.getMessage()
-                        );
-                        doc.chunks = "";
+                        Log.w(TAG, doc.name + ": chunk indexing failed: " + e.getMessage());
                     }
-
-                    // Step 9: Save to DB
-                    if (listener != null) listener.onStageChanged("Saving...");
-                    repository.insert(doc, null);
 
                     indexed.incrementAndGet();
                     Log.d(TAG, "Indexed: " + doc.name);
+
                 } catch (Exception e) {
-                    Log.e(
-                        TAG,
-                        "Failed to index " + doc.name + ": " + e.getMessage(),
-                        e
-                    );
+                    Log.e(TAG, "Failed to index " + doc.name + ": " + e.getMessage(), e);
                     failed.incrementAndGet();
                     failedNames.add(doc.name + " (error)");
                 }
             }
 
-            Log.d(
-                TAG,
-                "Indexing complete. Indexed: " +
-                    indexed.get() +
-                    " Failed: " +
-                    failed.get()
-            );
-            if (listener != null) listener.onComplete(
-                indexed.get(),
-                failed.get(),
-                failedNames
-            );
+            if (listener != null) listener.onComplete(indexed.get(), failed.get(), failedNames);
         });
     }
 
-    // =========================
-    // EMBEDDING INPUT
-    // =========================
-
     private String buildEmbeddingInput(String name, String text) {
-        String title = name
-            .replaceAll("\\.[^.]+$", "")
-            .replaceAll("[_\\-]", " ")
-            .trim();
-
+        String title = name.replaceAll("\\.[^.]+$", "").replaceAll("[_\\-]", " ").trim();
         String[] words = text.split("\\s+");
         int total = words.length;
-
         StringBuilder sb = new StringBuilder(title).append(" ");
-
         int chunk = Math.min(60, total);
         for (int i = 0; i < chunk; i++) sb.append(words[i]).append(" ");
-
         if (total > 120) {
             int mid = total / 2;
             int end = Math.min(mid + 30, total);
             for (int i = mid; i < end; i++) sb.append(words[i]).append(" ");
         }
-
         return sb.toString().trim();
     }
-
-    // =========================
-    // TEXT EXTRACTION
-    // =========================
 
     private String extractText(DocumentEntity doc) {
         Uri uri = Uri.parse(doc.uri);
         try {
             switch (doc.fileType) {
-                case "pdf":
-                    return PdfTextExtractor.extract(context, uri);
-                case "docx":
-                    return DocxTextExtractor.extract(context, uri);
-                case "pptx":
-                    return PptxTextExtractor.extract(context, uri);
-                case "txt":
-                    return TxtTextExtractor.extract(context, uri);
-                default:
-                    Log.w(TAG, "Unsupported file type: " + doc.fileType);
-                    return "";
+                case "pdf":  return PdfTextExtractor.extract(context, uri);
+                case "docx": return DocxTextExtractor.extract(context, uri);
+                case "pptx": return PptxTextExtractor.extract(context, uri);
+                case "txt":  return TxtTextExtractor.extract(context, uri);
+                default: return "";
             }
         } catch (Exception e) {
-            Log.e(
-                TAG,
-                "Text extraction failed for " + doc.name + ": " + e.getMessage()
-            );
+            Log.e(TAG, "Text extraction failed for " + doc.name + ": " + e.getMessage());
             return "";
         }
     }
-
-    // =========================
-    // CLEANUP
-    // =========================
 
     public void shutdown() {
         executor.shutdown();

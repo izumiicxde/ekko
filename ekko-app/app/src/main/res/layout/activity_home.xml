@@ -39,6 +39,17 @@
             />
 
             <ImageButton
+                android:id="@+id/btnAskEkko"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_search"
+                android:contentDescription="Ask Ekko"
+                app:tint="?attr/colorPrimary"
+            />
+
+            <ImageButton
                 android:id="@+id/btnStatistics"
                 android:layout_width="35dp"
                 android:layout_height="35dp"

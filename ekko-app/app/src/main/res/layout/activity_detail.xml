@@ -228,27 +228,63 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnOpenFile"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="48dp"
                 android:layout_marginTop="12dp"
                 android:text="Open File"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:fontFamily="@font/bricolage_grotesque"
                 app:cornerRadius="12dp"
             />
 
             <!-- Summary section -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Summary"
-                android:textSize="13sp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:textStyle="bold"
-                android:letterSpacing="0.06"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="8dp"
-            />
+            >
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Summary"
+                    android:textSize="13sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06"
+                />
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressEnhanceSummary"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="8dp"
+                    android:visibility="gone"
+                    app:indicatorSize="18dp"
+                    app:trackThickness="2dp"
+                    app:indicatorInset="0dp"
+                />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEnhanceSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:text="Enhance"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    app:cornerRadius="8dp"
+                    android:visibility="gone"
+                />
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/txtSummary"

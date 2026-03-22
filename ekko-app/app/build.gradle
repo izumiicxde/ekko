@@ -13,6 +13,14 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        def localProperties = new Properties()
+        def localPropertiesFile = rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                localPropertiesFile.withReader('UTF-8') { reader ->
+                localProperties.load(reader)
+            }
+        }
+        buildConfigField "String", "RAG_BASE_URL", "\"${localProperties.getProperty('rag.base.url', 'http://10.0.2.2:8000/')}\""
     }
     configurations.all {
         exclude group: 'org.tensorflow', module: 'tensorflow-lite-api'
@@ -41,6 +49,10 @@ android {
         pickFirst '**/libc++_shared.so'
         pickFirst '**/libfbjni.so'
     }
+    buildFeatures {
+            buildConfig true
+        }
+
 }
 
 dependencies {

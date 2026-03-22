@@ -35,7 +35,9 @@ public class DetailActivity extends AppCompatActivity {
     private ChipGroup chipGroupEntities;
     private ChipGroup chipGroupCorrection;
     private MaterialButton btnOpenFile;
+    private MaterialButton btnEnhanceSummary;
     private View labelEntities;
+    private View progressEnhanceSummary;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +72,9 @@ public class DetailActivity extends AppCompatActivity {
         chipGroupEntities = findViewById(R.id.chipGroupEntities);
         chipGroupCorrection = findViewById(R.id.chipGroupCorrection);
         btnOpenFile = findViewById(R.id.btnOpenFile);
+        btnEnhanceSummary = findViewById(R.id.btnEnhanceSummary);
         labelEntities = findViewById(R.id.labelEntities);
+        progressEnhanceSummary = findViewById(R.id.progressEnhanceSummary);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
@@ -102,6 +106,27 @@ public class DetailActivity extends AppCompatActivity {
                     ).show();
                 }
             });
+
+        viewModel
+            .getAiSummary()
+            .observe(this, summary -> {
+                if (summary != null && !summary.isEmpty()) {
+                    txtSummary.setVisibility(View.VISIBLE);
+                    txtSummary.setText(summary);
+                    btnEnhanceSummary.setText("Enhanced");
+                    btnEnhanceSummary.setEnabled(false);
+                }
+            });
+
+        viewModel
+            .getSummaryLoading()
+            .observe(this, loading -> {
+                if (loading == null) return;
+                progressEnhanceSummary.setVisibility(
+                    loading ? View.VISIBLE : View.GONE
+                );
+                btnEnhanceSummary.setEnabled(!loading);
+            });
     }
 
     // =========================
@@ -129,6 +154,13 @@ public class DetailActivity extends AppCompatActivity {
             txtSummary.setText(doc.summary);
         } else {
             txtSummary.setVisibility(View.GONE);
+        }
+
+        // Enhance summary only available if document has been re-indexed with chunks
+        if (doc.chunks != null && !doc.chunks.isEmpty()) {
+            btnEnhanceSummary.setVisibility(View.VISIBLE);
+        } else {
+            btnEnhanceSummary.setVisibility(View.GONE);
         }
 
         chipGroupKeywords.removeAllViews();
@@ -193,6 +225,9 @@ public class DetailActivity extends AppCompatActivity {
         );
 
         btnOpenFile.setOnClickListener(v -> openFile(doc));
+        btnEnhanceSummary.setOnClickListener(v ->
+            viewModel.fetchEnhancedSummary()
+        );
     }
 
     // =========================

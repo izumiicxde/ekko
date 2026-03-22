@@ -21,6 +21,7 @@ import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
+import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchActivity;
 import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
@@ -79,7 +80,6 @@ public class HomeActivity extends AppCompatActivity {
         setupSearchBar();
         setupClickListeners();
 
-        // Init ML on background thread
         Executors.newSingleThreadExecutor().execute(() -> {
             viewModel.initMl();
             runOnUiThread(() -> viewModel.loadDocuments());
@@ -183,10 +183,9 @@ public class HomeActivity extends AppCompatActivity {
     // =========================
 
     private void setupSearchBar() {
-        searchBar.setOnClickListener(v -> {
-            Intent intent = new Intent(this, SearchActivity.class);
-            startActivity(intent);
-        });
+        searchBar.setOnClickListener(v ->
+            startActivity(new Intent(this, SearchActivity.class))
+        );
     }
 
     // =========================
@@ -208,6 +207,11 @@ public class HomeActivity extends AppCompatActivity {
 
         findViewById(R.id.btnSortFilter).setOnClickListener(v ->
             showSortFilterSheet()
+        );
+
+        // Q&A entry point
+        findViewById(R.id.btnAskEkko).setOnClickListener(v ->
+            startActivity(new Intent(this, QAActivity.class))
         );
     }
 
