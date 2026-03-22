@@ -8,14 +8,14 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 @Entity(
-        tableName = "documents",
-        foreignKeys = @ForeignKey(
-                entity = FolderEntity.class,
-                parentColumns = "id",
-                childColumns = "folder_id",
-                onDelete = ForeignKey.CASCADE
-        ),
-        indices = { @Index("folder_id") }
+    tableName = "documents",
+    foreignKeys = @ForeignKey(
+        entity = FolderEntity.class,
+        parentColumns = "id",
+        childColumns = "folder_id",
+        onDelete = ForeignKey.CASCADE
+    ),
+    indices = { @Index("folder_id") }
 )
 public class DocumentEntity {
 
@@ -58,10 +58,24 @@ public class DocumentEntity {
     @ColumnInfo(name = "indexed_at")
     public long indexedAt; // System.currentTimeMillis()
 
+    /**
+     * JSON array string of overlapping text chunks produced during indexing.
+     * Used by RagRepository to find the top-k most relevant chunks for a query
+     * and send them to the FastAPI backend for answer generation.
+     * Null for documents indexed before version 2.
+     */
+    @ColumnInfo(name = "chunks")
+    public String chunks;
+
     public DocumentEntity() {}
 
     @Ignore
-    public DocumentEntity(String name, String uri, long folderId, String fileType) {
+    public DocumentEntity(
+        String name,
+        String uri,
+        long folderId,
+        String fileType
+    ) {
         this.name = name;
         this.uri = uri;
         this.folderId = folderId;

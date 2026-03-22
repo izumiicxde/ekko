@@ -197,7 +197,26 @@ public class DocumentIndexer {
                         doc.entities = "";
                     }
 
-                    // Step 8: Save to DB
+                    // Step 8: Chunk text for RAG
+                    if (listener != null) listener.onStageChanged(
+                        "Chunking..."
+                    );
+                    try {
+                        List<String> chunks = ChunkUtils.chunk(cleanedText);
+                        doc.chunks = ChunkUtils.toJson(chunks);
+                        Log.d(
+                            TAG,
+                            doc.name + ": " + chunks.size() + " chunks produced"
+                        );
+                    } catch (Exception e) {
+                        Log.w(
+                            TAG,
+                            doc.name + ": chunking failed: " + e.getMessage()
+                        );
+                        doc.chunks = "";
+                    }
+
+                    // Step 9: Save to DB
                     if (listener != null) listener.onStageChanged("Saving...");
                     repository.insert(doc, null);
 
