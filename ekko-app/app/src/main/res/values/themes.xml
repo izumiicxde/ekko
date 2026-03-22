@@ -1,51 +1,55 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-
     <style name="Base.Theme.Ekko" parent="Theme.Material3.Light.NoActionBar">
-
         <!-- Primary: deep indigo -->
         <item name="colorPrimary">#4F46E5</item>
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorPrimaryContainer">#E0E7FF</item>
         <item name="colorOnPrimaryContainer">#1E1B4B</item>
-
         <!-- Secondary: slate -->
         <item name="colorSecondary">#6366F1</item>
         <item name="colorOnSecondary">#FFFFFF</item>
         <item name="colorSecondaryContainer">#EEF2FF</item>
         <item name="colorOnSecondaryContainer">#312E81</item>
-
         <!-- Tertiary: violet accent -->
         <item name="colorTertiary">#7C3AED</item>
         <item name="colorOnTertiary">#FFFFFF</item>
         <item name="colorTertiaryContainer">#EDE9FE</item>
         <item name="colorOnTertiaryContainer">#2E1065</item>
-
         <!-- Surface: clean white -->
         <item name="colorSurface">#FFFFFF</item>
         <item name="colorOnSurface">#111827</item>
         <item name="colorSurfaceVariant">#F3F4F6</item>
         <item name="colorOnSurfaceVariant">#6B7280</item>
-
         <!-- Background -->
         <item name="android:colorBackground">#F9FAFB</item>
         <item name="colorOnBackground">#111827</item>
-
         <!-- Outline -->
         <item name="colorOutline">#D1D5DB</item>
         <item name="colorOutlineVariant">#E5E7EB</item>
-
         <!-- Error -->
         <item name="colorError">#DC2626</item>
         <item name="colorOnError">#FFFFFF</item>
         <item name="colorErrorContainer">#FEE2E2</item>
         <item name="colorOnErrorContainer">#7F1D1D</item>
-
         <!-- Status bar -->
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-
+        <item
+            name="android:windowLightStatusBar"
+            tools:targetApi="m"
+        >true</item>
     </style>
 
     <style name="Theme.Ekko" parent="Base.Theme.Ekko" />
+
+    <!-- Bottom navigation label styles -->
+    <style name="BottomNavTextActive">
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">@font/bricolage_grotesque</item>
+    </style>
+
+    <style name="BottomNavTextInactive">
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">@font/bricolage_grotesque</item>
+    </style>
 
 </resources>
