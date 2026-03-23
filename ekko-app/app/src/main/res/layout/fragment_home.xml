@@ -5,65 +5,159 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/android:colorBackground"
+    android:background="@android:color/transparent"
 >
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appBarLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/android:colorBackground"
-        app:elevation="0dp"
-    >
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:orientation="horizontal"
-            android:paddingStart="20dp"
-            android:paddingEnd="8dp"
-            android:gravity="center_vertical"
-        >
-
-            <TextView
-                android:id="@+id/txtAppTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Ekko"
-                android:textSize="24sp"
-                android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:textStyle="bold"
-            />
-
-        </LinearLayout>
-
-    </com.google.android.material.appbar.AppBarLayout>
-
     <androidx.core.widget.NestedScrollView
-        android:id="@+id/nestedScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
     >
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="10dp"
         >
 
-            <!-- Indexing Progress -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dashboard"
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:fontFamily="@font/bricolage_grotesque"
+            />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Your documents, claims, and assistance in one place"
+                android:textSize="24sp"
+                android:lineSpacingExtra="2dp"
+                android:textColor="?attr/colorOnSurface"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:textStyle="bold"
+            />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                app:cardBackgroundColor="?attr/colorSurface"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+            >
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                >
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Need help with a claim right now?"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/bricolage_grotesque"
+                    />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Wise Bot walks you through claims and answers questions from your indexed files."
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:fontFamily="@font/bricolage_grotesque"
+                    />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnHeroWiseBot"
+                        android:layout_width="wrap_content"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="12dp"
+                        android:text="Open Wise Bot"
+                        android:textAllCaps="false"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        app:icon="@drawable/ic_chat"
+                        app:iconTint="?attr/colorOnPrimary"
+                        app:iconPadding="8dp"
+                        app:backgroundTint="?attr/colorPrimary"
+                        app:cornerRadius="12dp"
+                        android:textColor="?attr/colorOnPrimary"
+                    />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+            >
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/fabAddFolder"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="Upload policy"
+                    android:textAllCaps="false"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:textStyle="bold"
+                    app:icon="@drawable/ic_upload"
+                    app:iconPadding="8dp"
+                    app:cornerRadius="12dp"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:iconTint="?attr/colorOnPrimary"
+                    android:textColor="?attr/colorOnPrimary"
+                />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/cardQuickVault"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="My vault"
+                    android:textAllCaps="false"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    app:icon="@drawable/ic_search"
+                    app:iconPadding="8dp"
+                    app:iconTint="?attr/colorPrimary"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="?attr/colorOutline"
+                    app:backgroundTint="?attr/colorSurface"
+                    app:cornerRadius="12dp"
+                    android:textColor="?attr/colorPrimary"
+                />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/layoutIndexingProgress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
+                android:layout_marginTop="12dp"
+                android:padding="14dp"
+                android:background="@drawable/bg_quick_action_card"
                 android:visibility="gone"
             >
 
@@ -72,7 +166,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="6dp"
+                    android:layout_marginBottom="8dp"
                 >
 
                     <TextView
@@ -84,7 +178,7 @@
                         android:textColor="?attr/colorOnSurface"
                         android:fontFamily="@font/bricolage_grotesque"
                         android:textStyle="bold"
-                        tools:text="Embedding..."
+                        tools:text="Indexing..."
                     />
 
                     <TextView
@@ -96,7 +190,6 @@
                         android:fontFamily="@font/bricolage_grotesque"
                         tools:text="2 / 10"
                     />
-
                 </LinearLayout>
 
                 <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -104,21 +197,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:indeterminate="false"
-                    app:trackCornerRadius="4dp"
+                    app:trackCornerRadius="6dp"
                 />
-
             </LinearLayout>
 
-            <!-- Filter chips -->
             <HorizontalScrollView
                 android:id="@+id/scrollFilterChips"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:scrollbars="none"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="2dp"
             >
 
                 <com.google.android.material.chip.ChipGroup
@@ -128,19 +217,14 @@
                     app:singleSelection="true"
                     app:selectionRequired="false"
                 />
-
             </HorizontalScrollView>
 
-            <!-- Doc count + sort -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingStart="20dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
                 android:gravity="center_vertical"
+                android:paddingTop="8dp"
             >
 
                 <TextView
@@ -148,98 +232,99 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/bricolage_grotesque"
-                    tools:text="7 documents"
+                    tools:text="4 uploads"
                 />
 
                 <ImageButton
                     android:id="@+id/btnSortFilter"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:padding="10dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_sort"
                     android:contentDescription="Sort and filter"
                     app:tint="?attr/colorOnSurfaceVariant"
                 />
-
             </LinearLayout>
 
-            <!-- Document list -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerDocuments"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingBottom="16dp"
+                android:layout_marginTop="6dp"
                 android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
+                android:paddingBottom="16dp"
                 tools:listitem="@layout/item_document"
             />
 
-            <!-- Empty state -->
             <LinearLayout
                 android:id="@+id/layoutEmptyState"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center"
-                android:paddingTop="80dp"
-                android:paddingBottom="40dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
+                android:paddingTop="56dp"
+                android:paddingBottom="36dp"
                 android:visibility="gone"
             >
 
                 <ImageView
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:src="@drawable/ic_folder_open"
+                    android:alpha="0.35"
                     app:tint="?attr/colorOnSurfaceVariant"
-                    android:alpha="0.3"
-                    android:contentDescription="No documents"
+                    android:contentDescription="No uploads"
                 />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="No documents yet"
-                    android:textSize="18sp"
+                    android:layout_marginTop="16dp"
+                    android:text="No uploads yet"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/bricolage_grotesque"
+                    android:textSize="18sp"
                     android:textStyle="bold"
-                    android:layout_marginTop="20dp"
+                    android:fontFamily="@font/bricolage_grotesque"
                 />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tap the button below to add a folder and start indexing your documents."
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="@font/bricolage_grotesque"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:lineSpacingMultiplier="1.5"
+                    android:text="Upload a policy to get started with AI summaries and Wise Bot."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/bricolage_grotesque"
                 />
-
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/cardQuickProfile"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginBottom="12dp"
+                android:text="Profile and settings"
+                android:textAllCaps="false"
+                android:fontFamily="@font/bricolage_grotesque"
+                app:icon="@drawable/ic_settings"
+                app:iconPadding="8dp"
+                app:iconTint="?attr/colorPrimary"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutline"
+                app:backgroundTint="?attr/colorSurface"
+                app:cornerRadius="12dp"
+                android:textColor="?attr/colorPrimary"
+            />
 
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
-
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/fabAddFolder"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="20dp"
-        android:text="Add Folder"
-        app:icon="@drawable/ic_add"
-        android:fontFamily="@font/bricolage_grotesque"
-        android:textSize="14sp"
-    />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

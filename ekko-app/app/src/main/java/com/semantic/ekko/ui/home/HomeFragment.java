@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -24,6 +25,7 @@ import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
+import com.semantic.ekko.ui.qa.QAActivity;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,10 +46,6 @@ public class HomeFragment extends Fragment {
     private ChipGroup chipGroupFilters;
     private View fabAddFolder;
 
-    // =========================
-    // FOLDER PICKER
-    // =========================
-
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
             new ActivityResultContracts.OpenDocumentTree(),
@@ -62,10 +60,6 @@ public class HomeFragment extends Fragment {
                 viewModel.addFolderAndIndex(uri);
             }
         );
-
-    // =========================
-    // LIFECYCLE
-    // =========================
 
     @Nullable
     @Override
@@ -101,10 +95,6 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    // =========================
-    // BIND
-    // =========================
-
     private void bindViews(View view) {
         recyclerDocuments = view.findViewById(R.id.recyclerDocuments);
         layoutIndexingProgress = view.findViewById(R.id.layoutIndexingProgress);
@@ -117,26 +107,16 @@ public class HomeFragment extends Fragment {
         fabAddFolder = view.findViewById(R.id.fabAddFolder);
     }
 
-    // =========================
-    // RECYCLER
-    // =========================
-
     private void setupRecycler() {
         adapter = new DocumentAdapter(doc -> {
             Intent intent = new Intent(getActivity(), DetailActivity.class);
             intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
             startActivity(intent);
         });
-        recyclerDocuments.setLayoutManager(
-            new LinearLayoutManager(getContext())
-        );
+        recyclerDocuments.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerDocuments.setAdapter(adapter);
         recyclerDocuments.setNestedScrollingEnabled(false);
     }
-
-    // =========================
-    // VIEWMODEL
-    // =========================
 
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
@@ -153,9 +133,7 @@ public class HomeFragment extends Fragment {
         viewModel
             .getIsIndexing()
             .observe(getViewLifecycleOwner(), indexing -> {
-                layoutIndexingProgress.setVisibility(
-                    indexing ? View.VISIBLE : View.GONE
-                );
+                layoutIndexingProgress.setVisibility(indexing ? View.VISIBLE : View.GONE);
                 fabAddFolder.setEnabled(!indexing);
             });
 
@@ -172,12 +150,7 @@ public class HomeFragment extends Fragment {
                 progressIndexing.setMax(progress.total);
                 progressIndexing.setProgress(progress.current);
                 txtIndexingDoc.setText(
-                    progress.docName +
-                        " (" +
-                        progress.current +
-                        "/" +
-                        progress.total +
-                        ")"
+                    progress.docName + " (" + progress.current + "/" + progress.total + ")"
                 );
             });
 
@@ -185,29 +158,24 @@ public class HomeFragment extends Fragment {
             .getErrorMessage()
             .observe(getViewLifecycleOwner(), msg -> {
                 if (msg != null && !msg.isEmpty()) {
-                    Snackbar.make(
-                        recyclerDocuments,
-                        msg,
-                        Snackbar.LENGTH_LONG
-                    ).show();
+                    Snackbar.make(recyclerDocuments, msg, Snackbar.LENGTH_LONG).show();
                 }
             });
     }
 
-    // =========================
-    // CLICK LISTENERS
-    // =========================
-
     private void setupClickListeners(View root) {
         fabAddFolder.setOnClickListener(v -> folderPicker.launch(null));
-        root
-            .findViewById(R.id.btnSortFilter)
-            .setOnClickListener(v -> showSortFilterSheet());
-    }
+        root.findViewById(R.id.btnSortFilter).setOnClickListener(v -> showSortFilterSheet());
 
-    // =========================
-    // FILTER CHIPS
-    // =========================
+        root.findViewById(R.id.btnHeroWiseBot).setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), QAActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
+        });
+
+        root.findViewById(R.id.cardQuickVault).setOnClickListener(v -> selectBottomTab(R.id.nav_search));
+        root.findViewById(R.id.cardQuickProfile).setOnClickListener(v -> selectBottomTab(R.id.nav_settings));
+    }
 
     private String activeChipKeyword = null;
     private boolean chipsBuilt = false;
@@ -263,29 +231,27 @@ public class HomeFragment extends Fragment {
     private void applyChipColor(Chip chip, boolean active) {
         int bg = active
             ? com.google.android.material.color.MaterialColors.getColor(
-                  requireContext(),
-                  com.google.android.material.R.attr.colorPrimaryContainer,
-                  0
-              )
+                requireContext(),
+                com.google.android.material.R.attr.colorPrimaryContainer,
+                0
+            )
             : com.google.android.material.color.MaterialColors.getColor(
-                  requireContext(),
-                  com.google.android.material.R.attr.colorSurfaceVariant,
-                  0
-              );
+                requireContext(),
+                com.google.android.material.R.attr.colorSurfaceVariant,
+                0
+            );
         int fg = active
             ? com.google.android.material.color.MaterialColors.getColor(
-                  requireContext(),
-                  com.google.android.material.R.attr.colorOnPrimaryContainer,
-                  0
-              )
+                requireContext(),
+                com.google.android.material.R.attr.colorOnPrimaryContainer,
+                0
+            )
             : com.google.android.material.color.MaterialColors.getColor(
-                  requireContext(),
-                  com.google.android.material.R.attr.colorOnSurfaceVariant,
-                  0
-              );
-        chip.setChipBackgroundColor(
-            android.content.res.ColorStateList.valueOf(bg)
-        );
+                requireContext(),
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+                0
+            );
+        chip.setChipBackgroundColor(android.content.res.ColorStateList.valueOf(bg));
         chip.setTextColor(fg);
     }
 
@@ -302,10 +268,6 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    // =========================
-    // SORT FILTER SHEET
-    // =========================
-
     private void showSortFilterSheet() {
         SortFilterBottomSheet sheet = new SortFilterBottomSheet(
             viewModel.getCurrentSortOrder(),
@@ -318,9 +280,13 @@ public class HomeFragment extends Fragment {
         sheet.show(getChildFragmentManager(), "sort_filter");
     }
 
-    // =========================
-    // HELPERS
-    // =========================
+    private void selectBottomTab(int tabId) {
+        if (getActivity() == null) return;
+        BottomNavigationView nav = getActivity().findViewById(R.id.bottomNav);
+        if (nav != null) {
+            nav.setSelectedItemId(tabId);
+        }
+    }
 
     private void updateEmptyState(List<DocumentEntity> docs) {
         boolean isEmpty = docs == null || docs.isEmpty();
@@ -329,6 +295,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void updateDocCount(int count) {
-        txtDocCount.setText(count + (count == 1 ? " document" : " documents"));
+        txtDocCount.setText(count + (count == 1 ? " upload in vault" : " uploads in vault"));
     }
 }
