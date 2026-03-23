@@ -1,11 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="@android:color/transparent">
+    android:background="@android:color/transparent"
+>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,7 +16,8 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:paddingTop="10dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="16dp"
+    >
 
         <TextView
             android:layout_width="wrap_content"
@@ -22,17 +25,19 @@
             android:text="Profile"
             android:textSize="14sp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/bricolage_grotesque" />
+            android:fontFamily="@font/bricolage_grotesque"
+        />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Account, privacy, and app preferences"
+            android:text="Manage folders, privacy, and assistant"
             android:textSize="24sp"
             android:textColor="?attr/colorOnSurface"
             android:textStyle="bold"
-            android:fontFamily="@font/bricolage_grotesque" />
+            android:fontFamily="@font/bricolage_grotesque"
+        />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -42,34 +47,78 @@
             app:cardCornerRadius="16dp"
             app:cardElevation="1dp"
             app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutlineVariant">
+            app:strokeColor="?attr/colorOutlineVariant"
+        >
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="16dp"
+            >
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Data protection"
+                    android:text="Policy folders"
                     android:textSize="17sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/bricolage_grotesque" />
+                    android:fontFamily="@font/bricolage_grotesque"
+                />
 
                 <TextView
+                    android:id="@+id/txtFolderHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Your indexed data stays on-device and retrieval context is sent only for answering your current question."
+                    android:layout_marginTop="6dp"
+                    android:text="Exclude folders to hide them from Home, Search, and Wise Bot context."
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:lineSpacingExtra="2dp" />
+                    android:lineSpacingExtra="2dp"
+                />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddFolder"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="12dp"
+                    android:text="Add Policy Folder"
+                    android:textAllCaps="false"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    app:icon="@drawable/ic_upload"
+                    app:iconPadding="8dp"
+                    app:iconTint="?attr/colorOnPrimary"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:cornerRadius="12dp"
+                    android:textColor="?attr/colorOnPrimary"
+                />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerFolders"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_folder_setting"
+                />
+
+                <TextView
+                    android:id="@+id/txtNoFolders"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="No folders added yet."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:visibility="gone"
+                />
 
             </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
@@ -83,44 +132,11 @@
             android:fontFamily="@font/bricolage_grotesque"
             app:icon="@drawable/ic_chat"
             app:iconPadding="8dp"
-            app:iconTint="@android:color/white"
+            app:iconTint="?attr/colorOnPrimary"
             app:backgroundTint="?attr/colorPrimary"
             app:cornerRadius="12dp"
-            android:textColor="@android:color/white" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSettingsVault"
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginTop="10dp"
-            android:text="Go to My Vault"
-            android:textAllCaps="false"
-            android:fontFamily="@font/bricolage_grotesque"
-            app:icon="@drawable/ic_search"
-            app:iconPadding="8dp"
-            app:iconTint="?attr/colorPrimary"
-            app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutline"
-            app:backgroundTint="?attr/colorSurface"
-            app:cornerRadius="12dp"
-            android:textColor="?attr/colorPrimary" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSettingsDashboard"
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginTop="10dp"
-            android:text="Back to Dashboard"
-            android:textAllCaps="false"
-            android:fontFamily="@font/bricolage_grotesque"
-            app:icon="@drawable/ic_home"
-            app:iconPadding="8dp"
-            app:iconTint="?attr/colorPrimary"
-            app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutline"
-            app:backgroundTint="?attr/colorSurface"
-            app:cornerRadius="12dp"
-            android:textColor="?attr/colorPrimary" />
+            android:textColor="?attr/colorOnPrimary"
+        />
 
     </LinearLayout>
 

@@ -17,32 +17,23 @@
         android:fontFamily="@font/bricolage_grotesque"
         android:layout_marginBottom="6dp" />
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/txtAnswer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_bubble_answer"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:textSize="14sp"
+        android:textColor="?attr/colorOnSurface"
+        android:lineSpacingMultiplier="1.4"
+        android:lineSpacingExtra="2dp" />
 
-        <TextView
-            android:id="@+id/txtAnswer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurface"
-            android:lineSpacingMultiplier="1.4"
-            android:lineSpacingExtra="2dp" />
-
-        <TextView
-            android:id="@+id/txtSource"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="10sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:visibility="gone" />
-
-    </LinearLayout>
+    <TextView
+        android:id="@+id/txtSource"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="10sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:fontFamily="@font/bricolage_grotesque"
+        android:visibility="gone" />
 
 </LinearLayout>

@@ -15,10 +15,12 @@ import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.processing.DocumentIndexer;
 import com.semantic.ekko.processing.DocumentScanner;
 import com.semantic.ekko.util.FileUtils;
+import com.semantic.ekko.util.PrefsManager;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.List;
+import java.util.Set;
 
 public class HomeViewModel extends AndroidViewModel {
 
@@ -37,6 +39,7 @@ public class HomeViewModel extends AndroidViewModel {
 
     private final DocumentRepository documentRepository;
     private final FolderRepository folderRepository;
+    private final PrefsManager prefsManager;
 
     private EntityExtractorHelper entityExtractor;
     private DocumentIndexer indexer;
@@ -53,6 +56,7 @@ public class HomeViewModel extends AndroidViewModel {
         super(application);
         documentRepository = new DocumentRepository(application);
         folderRepository = new FolderRepository(application);
+        prefsManager = new PrefsManager(application);
     }
 
     public void initMl() {
@@ -88,9 +92,25 @@ public class HomeViewModel extends AndroidViewModel {
     // =========================
 
     public void loadDocuments() {
-        documentRepository.getAll(docs -> {
-            List<DocumentEntity> filtered = applyFilterAndSort(docs);
-            documents.postValue(filtered);
+        folderRepository.getAll(folders -> {
+            Set<String> excludedUris = prefsManager.getExcludedFolderUris();
+            Set<Long> excludedFolderIds = new HashSet<>();
+            for (FolderEntity folder : folders) {
+                if (excludedUris.contains(folder.uri)) {
+                    excludedFolderIds.add(folder.id);
+                }
+            }
+
+            documentRepository.getAll(docs -> {
+                List<DocumentEntity> visibleDocs = new ArrayList<>();
+                for (DocumentEntity doc : docs) {
+                    if (!excludedFolderIds.contains(doc.folderId)) {
+                        visibleDocs.add(doc);
+                    }
+                }
+                List<DocumentEntity> filtered = applyFilterAndSort(visibleDocs);
+                documents.postValue(filtered);
+            });
         });
     }
 

@@ -5,20 +5,25 @@ import android.util.Log;
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.ChunkDao;
 import com.semantic.ekko.data.db.DocumentDao;
+import com.semantic.ekko.data.db.FolderDao;
 import com.semantic.ekko.data.model.ChunkEntity;
 import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.ml.EmbeddingEngine;
 import com.semantic.ekko.network.RagApiService;
 import com.semantic.ekko.network.RagClient;
 import com.semantic.ekko.network.RagRequest;
 import com.semantic.ekko.network.RagResponse;
+import com.semantic.ekko.util.PrefsManager;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import okhttp3.Call;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -45,6 +50,8 @@ public class RagRepository {
     private final EmbeddingEngine embeddingEngine;
     private final ChunkDao chunkDao;
     private final DocumentDao documentDao;
+    private final FolderDao folderDao;
+    private final PrefsManager prefsManager;
     private final RagApiService apiService;
     private final OkHttpClient streamingClient;
     private final String baseUrl;
@@ -67,6 +74,8 @@ public class RagRepository {
         AppDatabase db = AppDatabase.getInstance(context);
         this.chunkDao = db.chunkDao();
         this.documentDao = db.documentDao();
+        this.folderDao = db.folderDao();
+        this.prefsManager = new PrefsManager(context);
         this.apiService = RagClient.getInstance();
         this.streamingClient = RagClient.getStreamingClient();
         this.baseUrl = RagClient.getBaseUrl();
@@ -154,6 +163,14 @@ public class RagRepository {
         List<ChunkEntity> allChunks = chunkDao.getAll();
         if (allChunks.isEmpty()) return null;
 
+        Set<String> excludedUris = prefsManager.getExcludedFolderUris();
+        Set<Long> excludedFolderIds = new HashSet<>();
+        for (FolderEntity folder : folderDao.getAll()) {
+            if (excludedUris.contains(folder.uri)) {
+                excludedFolderIds.add(folder.id);
+            }
+        }
+
         Map<Long, List<ChunkEntity>> chunksByDoc = new HashMap<>();
         for (ChunkEntity chunk : allChunks) {
             if (!chunksByDoc.containsKey(chunk.documentId)) chunksByDoc.put(
@@ -174,6 +191,10 @@ public class RagRepository {
         > entry : chunksByDoc.entrySet()) {
             long docId = entry.getKey();
             List<ChunkEntity> docChunks = entry.getValue();
+            DocumentEntity doc = documentDao.getById(docId);
+            if (doc == null || excludedFolderIds.contains(doc.folderId)) {
+                continue;
+            }
             String docName = docNames.getOrDefault(docId, "Unknown");
 
             if (docChunks.size() < MIN_CHUNKS) {

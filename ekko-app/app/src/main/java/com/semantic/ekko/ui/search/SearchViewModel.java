@@ -6,10 +6,16 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.semantic.ekko.EkkoApp;
+import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.model.SearchResult;
 import com.semantic.ekko.data.repository.DocumentRepository;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ml.EmbeddingEngine;
+import com.semantic.ekko.util.PrefsManager;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SearchViewModel extends AndroidViewModel {
 
@@ -26,10 +32,14 @@ public class SearchViewModel extends AndroidViewModel {
         new MutableLiveData<>();
 
     private final DocumentRepository repository;
+    private final FolderRepository folderRepository;
+    private final PrefsManager prefsManager;
 
     public SearchViewModel(@NonNull Application application) {
         super(application);
         repository = new DocumentRepository(application);
+        folderRepository = new FolderRepository(application);
+        prefsManager = new PrefsManager(application);
     }
 
     public void search(String query) {
@@ -59,8 +69,30 @@ public class SearchViewModel extends AndroidViewModel {
                     query.trim(),
                     MIN_SCORE,
                     searchResults -> {
-                        results.postValue(searchResults);
-                        isSearching.postValue(false);
+                        folderRepository.getAll(folders -> {
+                            Set<String> excludedUris =
+                                prefsManager.getExcludedFolderUris();
+                            Set<Long> excludedFolderIds = new HashSet<>();
+                            for (FolderEntity folder : folders) {
+                                if (excludedUris.contains(folder.uri)) {
+                                    excludedFolderIds.add(folder.id);
+                                }
+                            }
+
+                            List<SearchResult> visibleResults =
+                                new ArrayList<>();
+                            for (SearchResult result : searchResults) {
+                                if (
+                                    !excludedFolderIds.contains(
+                                        result.getDocument().folderId
+                                    )
+                                ) {
+                                    visibleResults.add(result);
+                                }
+                            }
+                            results.postValue(visibleResults);
+                            isSearching.postValue(false);
+                        });
                     }
                 );
             } catch (Exception e) {

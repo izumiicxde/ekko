@@ -1,15 +1,12 @@
 package com.semantic.ekko.ui.home;
 
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -44,22 +41,6 @@ public class HomeFragment extends Fragment {
     private TextView txtDocCount;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
-    private View fabAddFolder;
-
-    private final ActivityResultLauncher<Uri> folderPicker =
-        registerForActivityResult(
-            new ActivityResultContracts.OpenDocumentTree(),
-            uri -> {
-                if (uri == null || getActivity() == null) return;
-                getActivity()
-                    .getContentResolver()
-                    .takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    );
-                viewModel.addFolderAndIndex(uri);
-            }
-        );
 
     @Nullable
     @Override
@@ -95,6 +76,14 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (viewModel != null) {
+            viewModel.loadDocuments();
+        }
+    }
+
     private void bindViews(View view) {
         recyclerDocuments = view.findViewById(R.id.recyclerDocuments);
         layoutIndexingProgress = view.findViewById(R.id.layoutIndexingProgress);
@@ -104,7 +93,6 @@ public class HomeFragment extends Fragment {
         txtDocCount = view.findViewById(R.id.txtDocCount);
         progressIndexing = view.findViewById(R.id.progressIndexing);
         chipGroupFilters = view.findViewById(R.id.chipGroupFilters);
-        fabAddFolder = view.findViewById(R.id.fabAddFolder);
     }
 
     private void setupRecycler() {
@@ -113,7 +101,9 @@ public class HomeFragment extends Fragment {
             intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
             startActivity(intent);
         });
-        recyclerDocuments.setLayoutManager(new LinearLayoutManager(getContext()));
+        recyclerDocuments.setLayoutManager(
+            new LinearLayoutManager(getContext())
+        );
         recyclerDocuments.setAdapter(adapter);
         recyclerDocuments.setNestedScrollingEnabled(false);
     }
@@ -133,8 +123,9 @@ public class HomeFragment extends Fragment {
         viewModel
             .getIsIndexing()
             .observe(getViewLifecycleOwner(), indexing -> {
-                layoutIndexingProgress.setVisibility(indexing ? View.VISIBLE : View.GONE);
-                fabAddFolder.setEnabled(!indexing);
+                layoutIndexingProgress.setVisibility(
+                    indexing ? View.VISIBLE : View.GONE
+                );
             });
 
         viewModel
@@ -150,7 +141,12 @@ public class HomeFragment extends Fragment {
                 progressIndexing.setMax(progress.total);
                 progressIndexing.setProgress(progress.current);
                 txtIndexingDoc.setText(
-                    progress.docName + " (" + progress.current + "/" + progress.total + ")"
+                    progress.docName +
+                        " (" +
+                        progress.current +
+                        "/" +
+                        progress.total +
+                        ")"
                 );
             });
 
@@ -158,23 +154,31 @@ public class HomeFragment extends Fragment {
             .getErrorMessage()
             .observe(getViewLifecycleOwner(), msg -> {
                 if (msg != null && !msg.isEmpty()) {
-                    Snackbar.make(recyclerDocuments, msg, Snackbar.LENGTH_LONG).show();
+                    Snackbar.make(
+                        recyclerDocuments,
+                        msg,
+                        Snackbar.LENGTH_LONG
+                    ).show();
                 }
             });
     }
 
     private void setupClickListeners(View root) {
-        fabAddFolder.setOnClickListener(v -> folderPicker.launch(null));
-        root.findViewById(R.id.btnSortFilter).setOnClickListener(v -> showSortFilterSheet());
+        root
+            .findViewById(R.id.btnSortFilter)
+            .setOnClickListener(v -> showSortFilterSheet());
 
-        root.findViewById(R.id.btnHeroWiseBot).setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), QAActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            startActivity(intent);
-        });
+        root
+            .findViewById(R.id.btnHeroWiseBot)
+            .setOnClickListener(v -> {
+                Intent intent = new Intent(getActivity(), QAActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(intent);
+            });
 
-        root.findViewById(R.id.cardQuickVault).setOnClickListener(v -> selectBottomTab(R.id.nav_search));
-        root.findViewById(R.id.cardQuickProfile).setOnClickListener(v -> selectBottomTab(R.id.nav_settings));
+        root
+            .findViewById(R.id.cardQuickProfile)
+            .setOnClickListener(v -> selectBottomTab(R.id.nav_settings));
     }
 
     private String activeChipKeyword = null;
@@ -231,27 +235,29 @@ public class HomeFragment extends Fragment {
     private void applyChipColor(Chip chip, boolean active) {
         int bg = active
             ? com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                com.google.android.material.R.attr.colorPrimaryContainer,
-                0
-            )
+                  requireContext(),
+                  com.google.android.material.R.attr.colorPrimaryContainer,
+                  0
+              )
             : com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                com.google.android.material.R.attr.colorSurfaceVariant,
-                0
-            );
+                  requireContext(),
+                  com.google.android.material.R.attr.colorSurfaceVariant,
+                  0
+              );
         int fg = active
             ? com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                com.google.android.material.R.attr.colorOnPrimaryContainer,
-                0
-            )
+                  requireContext(),
+                  com.google.android.material.R.attr.colorOnPrimaryContainer,
+                  0
+              )
             : com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-                0
-            );
-        chip.setChipBackgroundColor(android.content.res.ColorStateList.valueOf(bg));
+                  requireContext(),
+                  com.google.android.material.R.attr.colorOnSurfaceVariant,
+                  0
+              );
+        chip.setChipBackgroundColor(
+            android.content.res.ColorStateList.valueOf(bg)
+        );
         chip.setTextColor(fg);
     }
 
@@ -295,6 +301,8 @@ public class HomeFragment extends Fragment {
     }
 
     private void updateDocCount(int count) {
-        txtDocCount.setText(count + (count == 1 ? " upload in vault" : " uploads in vault"));
+        txtDocCount.setText(
+            count + (count == 1 ? " upload in vault" : " uploads in vault")
+        );
     }
 }
