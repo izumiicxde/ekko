@@ -3,6 +3,7 @@ package com.semantic.ekko.ui.main;
 import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -11,6 +12,7 @@ import com.semantic.ekko.ui.home.HomeFragment;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchFragment;
 import com.semantic.ekko.ui.settings.SettingsFragment;
+import com.semantic.ekko.util.PrefsManager;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        applySavedTheme();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -140,5 +143,19 @@ public class MainActivity extends AppCompatActivity {
             default:
                 return new HomeFragment();
         }
+    }
+
+    private void applySavedTheme() {
+        PrefsManager prefsManager = new PrefsManager(this);
+        String theme = prefsManager.getTheme();
+        int mode;
+        if ("light".equals(theme)) {
+            mode = AppCompatDelegate.MODE_NIGHT_NO;
+        } else if ("dark".equals(theme)) {
+            mode = AppCompatDelegate.MODE_NIGHT_YES;
+        } else {
+            mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+        }
+        AppCompatDelegate.setDefaultNightMode(mode);
     }
 }

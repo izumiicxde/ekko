@@ -144,6 +144,13 @@ public class PrefsManager {
         prefs.edit().putStringSet(KEY_EXCLUDED_FOLDERS, set).apply();
     }
 
+    public void clearExcludedFolders() {
+        prefs
+            .edit()
+            .putStringSet(KEY_EXCLUDED_FOLDERS, new HashSet<>())
+            .apply();
+    }
+
     // =========================
     // CLEAR ALL
     // =========================

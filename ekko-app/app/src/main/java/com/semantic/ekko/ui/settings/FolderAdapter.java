@@ -3,6 +3,7 @@ package com.semantic.ekko.ui.settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -14,10 +15,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class FolderAdapter extends RecyclerView.Adapter<FolderAdapter.FolderViewHolder> {
+public class FolderAdapter
+    extends RecyclerView.Adapter<FolderAdapter.FolderViewHolder>
+{
 
     public interface Listener {
         void onFolderIncludeChanged(FolderEntity folder, boolean included);
+        void onFolderRemove(FolderEntity folder);
     }
 
     private final Listener listener;
@@ -31,20 +35,30 @@ public class FolderAdapter extends RecyclerView.Adapter<FolderAdapter.FolderView
     public void submit(List<FolderEntity> newFolders, Set<String> excluded) {
         folders.clear();
         if (newFolders != null) folders.addAll(newFolders);
-        excludedUris = excluded != null ? new HashSet<>(excluded) : new HashSet<>();
+        excludedUris =
+            excluded != null ? new HashSet<>(excluded) : new HashSet<>();
         notifyDataSetChanged();
     }
 
     @NonNull
     @Override
-    public FolderViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-            .inflate(R.layout.item_folder_setting, parent, false);
+    public FolderViewHolder onCreateViewHolder(
+        @NonNull ViewGroup parent,
+        int viewType
+    ) {
+        View view = LayoutInflater.from(parent.getContext()).inflate(
+            R.layout.item_folder_setting,
+            parent,
+            false
+        );
         return new FolderViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull FolderViewHolder holder, int position) {
+    public void onBindViewHolder(
+        @NonNull FolderViewHolder holder,
+        int position
+    ) {
         holder.bind(folders.get(position));
     }
 
@@ -58,23 +72,36 @@ public class FolderAdapter extends RecyclerView.Adapter<FolderAdapter.FolderView
         private final TextView txtFolderName;
         private final TextView txtFolderUri;
         private final MaterialSwitch switchInclude;
+        private final ImageButton btnRemoveFolder;
 
         FolderViewHolder(@NonNull View itemView) {
             super(itemView);
             txtFolderName = itemView.findViewById(R.id.txtFolderName);
             txtFolderUri = itemView.findViewById(R.id.txtFolderUri);
             switchInclude = itemView.findViewById(R.id.switchInclude);
+            btnRemoveFolder = itemView.findViewById(R.id.btnRemoveFolder);
         }
 
         void bind(FolderEntity folder) {
-            txtFolderName.setText(folder.name != null && !folder.name.isEmpty() ? folder.name : "Unnamed folder");
+            txtFolderName.setText(
+                folder.name != null && !folder.name.isEmpty()
+                    ? folder.name
+                    : "Unnamed folder"
+            );
             txtFolderUri.setText(folder.uri);
 
             boolean included = !excludedUris.contains(folder.uri);
             switchInclude.setOnCheckedChangeListener(null);
             switchInclude.setChecked(included);
             switchInclude.setOnCheckedChangeListener((button, isChecked) -> {
-                if (listener != null) listener.onFolderIncludeChanged(folder, isChecked);
+                if (listener != null) listener.onFolderIncludeChanged(
+                    folder,
+                    isChecked
+                );
+            });
+
+            btnRemoveFolder.setOnClickListener(v -> {
+                if (listener != null) listener.onFolderRemove(folder);
             });
         }
     }
