@@ -13,7 +13,6 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -175,10 +174,6 @@ public class HomeFragment extends Fragment {
                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                 startActivity(intent);
             });
-
-        root
-            .findViewById(R.id.cardQuickProfile)
-            .setOnClickListener(v -> selectBottomTab(R.id.nav_settings));
     }
 
     private String activeChipKeyword = null;
@@ -284,14 +279,6 @@ public class HomeFragment extends Fragment {
             }
         );
         sheet.show(getChildFragmentManager(), "sort_filter");
-    }
-
-    private void selectBottomTab(int tabId) {
-        if (getActivity() == null) return;
-        BottomNavigationView nav = getActivity().findViewById(R.id.bottomNav);
-        if (nav != null) {
-            nav.setSelectedItemId(tabId);
-        }
     }
 
     private void updateEmptyState(List<DocumentEntity> docs) {
