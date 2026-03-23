@@ -106,8 +106,8 @@ public class DetailActivity extends AppCompatActivity {
                 if (summary != null && !summary.isEmpty()) {
                     txtSummary.setVisibility(View.VISIBLE);
                     txtSummary.setText(summary);
-                    btnEnhanceSummary.setText("Enhanced");
-                    btnEnhanceSummary.setEnabled(false);
+                    btnEnhanceSummary.setText("Regenerate");
+                    btnEnhanceSummary.setEnabled(true);
                 }
             });
 
@@ -139,8 +139,11 @@ public class DetailActivity extends AppCompatActivity {
         if (doc.summary != null && !doc.summary.isEmpty()) {
             txtSummary.setVisibility(View.VISIBLE);
             txtSummary.setText(doc.summary);
+            btnEnhanceSummary.setText("Regenerate");
         } else {
-            txtSummary.setVisibility(View.GONE);
+            txtSummary.setVisibility(View.VISIBLE);
+            txtSummary.setText("No AI summary yet. Tap Generate.");
+            btnEnhanceSummary.setText("Generate");
         }
 
         btnEnhanceSummary.setVisibility(
@@ -211,7 +214,7 @@ public class DetailActivity extends AppCompatActivity {
 
         btnOpenFile.setOnClickListener(v -> openFile(doc));
         btnEnhanceSummary.setOnClickListener(v ->
-            viewModel.fetchEnhancedSummary()
+            viewModel.generateAiSummary()
         );
 
         btnChatWithFile.setOnClickListener(v -> {

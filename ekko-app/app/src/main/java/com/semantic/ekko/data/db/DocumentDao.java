@@ -63,6 +63,9 @@ public interface DocumentDao {
     @Query("UPDATE documents SET category = :category WHERE id = :id")
     void updateCategory(long id, String category);
 
+    @Query("UPDATE documents SET summary = :summary WHERE id = :id")
+    void updateSummary(long id, String summary);
+
     // =========================
     // STATISTICS QUERIES
     // =========================

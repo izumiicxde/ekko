@@ -466,6 +466,80 @@ public class RagRepository {
     // NON-STREAMING QUERY
     // =========================
 
+    public void queryForDocument(
+        String question,
+        long documentId,
+        RagCallback callback
+    ) {
+        if (question == null || question.trim().isEmpty()) {
+            callback.onError("Question cannot be empty.");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                float[] emb = embeddingEngine.embed(question.trim());
+                if (emb == null) {
+                    callback.onError("Could not process your question.");
+                    return;
+                }
+
+                SelectionResult selection = selectChunksForDocument(
+                    emb,
+                    documentId
+                );
+                if (selection == null) {
+                    callback.onError(
+                        "This document has no indexed content. Please re-index it."
+                    );
+                    return;
+                }
+
+                RagRequest req = new RagRequest(
+                    question.trim(),
+                    selection.chunks,
+                    selection.sourceDocName
+                );
+                final String src = selection.sourceDocName;
+
+                apiService
+                    .ask(req)
+                    .enqueue(
+                        new Callback<RagResponse>() {
+                            @Override
+                            public void onResponse(
+                                retrofit2.Call<RagResponse> call,
+                                retrofit2.Response<RagResponse> response
+                            ) {
+                                if (
+                                    response.isSuccessful() &&
+                                    response.body() != null
+                                ) {
+                                    String ans = response.body().answer;
+                                    if (
+                                        ans == null || ans.trim().isEmpty()
+                                    ) callback.onError("Empty answer.");
+                                    else callback.onAnswer(ans.trim(), src);
+                                } else callback.onError("Backend error.");
+                            }
+
+                            @Override
+                            public void onFailure(
+                                retrofit2.Call<RagResponse> call,
+                                Throwable t
+                            ) {
+                                callback.onError(
+                                    "Could not reach the Q&A server."
+                                );
+                            }
+                        }
+                    );
+            } catch (Exception e) {
+                callback.onError("Something went wrong.");
+            }
+        })
+            .start();
+    }
+
     public void query(String question, RagCallback callback) {
         if (question == null || question.trim().isEmpty()) {
             callback.onError("Question cannot be empty.");

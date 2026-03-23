@@ -59,26 +59,43 @@ public class DocumentIndexer {
         this.executor = Executors.newSingleThreadExecutor();
     }
 
-    public void indexDocuments(List<DocumentEntity> documents, ProgressListener listener) {
+    public void indexDocuments(
+        List<DocumentEntity> documents,
+        ProgressListener listener
+    ) {
         executor.execute(() -> {
             int total = documents.size();
             AtomicInteger indexed = new AtomicInteger(0);
             AtomicInteger failed = new AtomicInteger(0);
             List<String> failedNames = new ArrayList<>();
 
-            if (listener != null) listener.onStageChanged("Scanning documents...");
+            if (listener != null) listener.onStageChanged(
+                "Scanning documents..."
+            );
 
             for (int i = 0; i < total; i++) {
                 DocumentEntity doc = documents.get(i);
-                if (listener != null) listener.onDocumentProcessed(i + 1, total, doc.name);
+                if (listener != null) listener.onDocumentProcessed(
+                    i + 1,
+                    total,
+                    doc.name
+                );
 
                 try {
-                    if (listener != null) listener.onStageChanged("Extracting text...");
+                    if (listener != null) listener.onStageChanged(
+                        "Extracting text..."
+                    );
                     String rawText = extractText(doc);
 
                     if (rawText == null || rawText.trim().length() < 20) {
-                        Log.w(TAG, doc.name + ": text extraction poor, using filename only");
-                        rawText = doc.name.replaceAll("\\.[^.]+$", "").replaceAll("[_\\-]", " ");
+                        Log.w(
+                            TAG,
+                            doc.name +
+                                ": text extraction poor, using filename only"
+                        );
+                        rawText = doc.name
+                            .replaceAll("\\.[^.]+$", "")
+                            .replaceAll("[_\\-]", " ");
                         failedNames.add(doc.name + " (no readable text)");
                     }
 
@@ -87,43 +104,58 @@ public class DocumentIndexer {
                     doc.rawText = cleanedText;
                     doc.wordCount = TextPreprocessor.wordCount(cleanedText);
 
-                    if (listener != null) listener.onStageChanged("Classifying...");
+                    if (listener != null) listener.onStageChanged(
+                        "Classifying..."
+                    );
                     doc.category = classifier.classify(mlText);
 
-                    if (listener != null) listener.onStageChanged("Embedding...");
-                    String embeddingInput = buildEmbeddingInput(doc.name, mlText);
+                    if (listener != null) listener.onStageChanged(
+                        "Embedding..."
+                    );
+                    String embeddingInput = buildEmbeddingInput(
+                        doc.name,
+                        mlText
+                    );
                     float[] embedding = embeddingEngine.embed(embeddingInput);
-                    if (embedding != null) doc.embedding = EmbeddingEngine.toBytes(embedding);
+                    if (embedding != null) doc.embedding =
+                        EmbeddingEngine.toBytes(embedding);
 
-                    if (listener != null) listener.onStageChanged("Summarizing...");
-                    try {
-                        doc.summary = summarizer.summarize(cleanedText);
-                    } catch (Exception e) {
-                        doc.summary = "";
-                    }
+                    // Summary is generated on-demand in Detail screen.
+                    doc.summary = "";
 
-                    if (listener != null) listener.onStageChanged("Extracting keywords...");
+                    if (listener != null) listener.onStageChanged(
+                        "Extracting keywords..."
+                    );
                     try {
-                        List<String> keywords = TextPreprocessor.extractKeywords(mlText, 5);
+                        List<String> keywords =
+                            TextPreprocessor.extractKeywords(mlText, 5);
                         doc.keywords = String.join(",", keywords);
                     } catch (Exception e) {
                         doc.keywords = "";
                     }
 
-                    if (listener != null) listener.onStageChanged("Extracting entities...");
+                    if (listener != null) listener.onStageChanged(
+                        "Extracting entities..."
+                    );
                     try {
                         CountDownLatch latch = new CountDownLatch(1);
-                        entityExtractor.extractEntities(cleanedText, entities -> {
-                            doc.entities = EntityExtractorHelper.entitiesToString(entities);
-                            latch.countDown();
-                        });
+                        entityExtractor.extractEntities(
+                            cleanedText,
+                            entities -> {
+                                doc.entities =
+                                    EntityExtractorHelper.entitiesToString(
+                                        entities
+                                    );
+                                latch.countDown();
+                            }
+                        );
                         latch.await();
                     } catch (Exception e) {
                         doc.entities = "";
                     }
 
                     if (listener != null) listener.onStageChanged("Saving...");
-                    final long[] docId = {-1};
+                    final long[] docId = { -1 };
                     CountDownLatch insertLatch = new CountDownLatch(1);
                     repository.insert(doc, id -> {
                         docId[0] = id;
@@ -131,40 +163,74 @@ public class DocumentIndexer {
                     });
                     insertLatch.await();
 
-                    if (listener != null) listener.onStageChanged("Chunking for Q&A...");
+                    if (listener != null) listener.onStageChanged(
+                        "Chunking for Q&A..."
+                    );
                     try {
                         List<String> chunks = ChunkUtils.chunk(cleanedText);
                         List<ChunkEntity> chunkEntities = new ArrayList<>();
                         for (int c = 0; c < chunks.size(); c++) {
                             String chunkText = chunks.get(c);
-                            float[] chunkEmbedding = embeddingEngine.embed(chunkText);
-                            byte[] embeddingBytes = chunkEmbedding != null
-                                ? EmbeddingEngine.toBytes(chunkEmbedding) : null;
-                            chunkEntities.add(new ChunkEntity(docId[0], c, chunkText, embeddingBytes));
+                            float[] chunkEmbedding = embeddingEngine.embed(
+                                chunkText
+                            );
+                            byte[] embeddingBytes =
+                                chunkEmbedding != null
+                                    ? EmbeddingEngine.toBytes(chunkEmbedding)
+                                    : null;
+                            chunkEntities.add(
+                                new ChunkEntity(
+                                    docId[0],
+                                    c,
+                                    chunkText,
+                                    embeddingBytes
+                                )
+                            );
                         }
                         chunkDao.deleteByDocumentId(docId[0]);
                         chunkDao.insertAll(chunkEntities);
-                        Log.d(TAG, doc.name + ": " + chunkEntities.size() + " chunks indexed");
+                        Log.d(
+                            TAG,
+                            doc.name +
+                                ": " +
+                                chunkEntities.size() +
+                                " chunks indexed"
+                        );
                     } catch (Exception e) {
-                        Log.w(TAG, doc.name + ": chunk indexing failed: " + e.getMessage());
+                        Log.w(
+                            TAG,
+                            doc.name +
+                                ": chunk indexing failed: " +
+                                e.getMessage()
+                        );
                     }
 
                     indexed.incrementAndGet();
                     Log.d(TAG, "Indexed: " + doc.name);
-
                 } catch (Exception e) {
-                    Log.e(TAG, "Failed to index " + doc.name + ": " + e.getMessage(), e);
+                    Log.e(
+                        TAG,
+                        "Failed to index " + doc.name + ": " + e.getMessage(),
+                        e
+                    );
                     failed.incrementAndGet();
                     failedNames.add(doc.name + " (error)");
                 }
             }
 
-            if (listener != null) listener.onComplete(indexed.get(), failed.get(), failedNames);
+            if (listener != null) listener.onComplete(
+                indexed.get(),
+                failed.get(),
+                failedNames
+            );
         });
     }
 
     private String buildEmbeddingInput(String name, String text) {
-        String title = name.replaceAll("\\.[^.]+$", "").replaceAll("[_\\-]", " ").trim();
+        String title = name
+            .replaceAll("\\.[^.]+$", "")
+            .replaceAll("[_\\-]", " ")
+            .trim();
         String[] words = text.split("\\s+");
         int total = words.length;
         StringBuilder sb = new StringBuilder(title).append(" ");
@@ -182,14 +248,22 @@ public class DocumentIndexer {
         Uri uri = Uri.parse(doc.uri);
         try {
             switch (doc.fileType) {
-                case "pdf":  return PdfTextExtractor.extract(context, uri);
-                case "docx": return DocxTextExtractor.extract(context, uri);
-                case "pptx": return PptxTextExtractor.extract(context, uri);
-                case "txt":  return TxtTextExtractor.extract(context, uri);
-                default: return "";
+                case "pdf":
+                    return PdfTextExtractor.extract(context, uri);
+                case "docx":
+                    return DocxTextExtractor.extract(context, uri);
+                case "pptx":
+                    return PptxTextExtractor.extract(context, uri);
+                case "txt":
+                    return TxtTextExtractor.extract(context, uri);
+                default:
+                    return "";
             }
         } catch (Exception e) {
-            Log.e(TAG, "Text extraction failed for " + doc.name + ": " + e.getMessage());
+            Log.e(
+                TAG,
+                "Text extraction failed for " + doc.name + ": " + e.getMessage()
+            );
             return "";
         }
     }

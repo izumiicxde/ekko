@@ -13,13 +13,17 @@ import com.semantic.ekko.ml.EmbeddingEngine;
 
 public class DetailViewModel extends AndroidViewModel {
 
-    private final MutableLiveData<DocumentEntity> document       = new MutableLiveData<>();
-    private final MutableLiveData<String>         errorMessage   = new MutableLiveData<>();
-    private final MutableLiveData<String>         aiSummary      = new MutableLiveData<>();
-    private final MutableLiveData<Boolean>        summaryLoading = new MutableLiveData<>(false);
+    private final MutableLiveData<DocumentEntity> document =
+        new MutableLiveData<>();
+    private final MutableLiveData<String> errorMessage =
+        new MutableLiveData<>();
+    private final MutableLiveData<String> aiSummary = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> summaryLoading =
+        new MutableLiveData<>(false);
 
     private final DocumentRepository repository;
     private RagRepository ragRepository;
+    private long currentDocumentId = -1L;
 
     public DetailViewModel(@NonNull Application application) {
         super(application);
@@ -32,6 +36,7 @@ public class DetailViewModel extends AndroidViewModel {
     }
 
     public void loadDocument(long documentId) {
+        currentDocumentId = documentId;
         repository.getById(documentId, doc -> {
             if (doc != null) document.postValue(doc);
             else errorMessage.postValue("Document not found.");
@@ -43,32 +48,52 @@ public class DetailViewModel extends AndroidViewModel {
         repository.updateCategory(doc.id, newCategory);
     }
 
-    public void fetchEnhancedSummary() {
+    public void generateAiSummary() {
         if (ragRepository == null) {
             errorMessage.postValue("ML not ready.");
             return;
         }
+        if (currentDocumentId <= 0) {
+            errorMessage.postValue("Document not loaded.");
+            return;
+        }
         summaryLoading.postValue(true);
         aiSummary.postValue(null);
-        ragRepository.query(
+        ragRepository.queryForDocument(
             "Provide a clear and concise summary of this document.",
+            currentDocumentId,
             new RagRepository.RagCallback() {
                 @Override
                 public void onAnswer(String answer, String sourceDocumentName) {
+                    repository.updateSummary(currentDocumentId, answer);
                     summaryLoading.postValue(false);
                     aiSummary.postValue(answer);
                 }
+
                 @Override
                 public void onError(String message) {
                     summaryLoading.postValue(false);
-                    errorMessage.postValue("Could not enhance summary: " + message);
+                    errorMessage.postValue(
+                        "Could not generate summary: " + message
+                    );
                 }
             }
         );
     }
 
-    public LiveData<DocumentEntity> getDocument()       { return document; }
-    public LiveData<String>         getErrorMessage()   { return errorMessage; }
-    public LiveData<String>         getAiSummary()      { return aiSummary; }
-    public LiveData<Boolean>        getSummaryLoading() { return summaryLoading; }
+    public LiveData<DocumentEntity> getDocument() {
+        return document;
+    }
+
+    public LiveData<String> getErrorMessage() {
+        return errorMessage;
+    }
+
+    public LiveData<String> getAiSummary() {
+        return aiSummary;
+    }
+
+    public LiveData<Boolean> getSummaryLoading() {
+        return summaryLoading;
+    }
 }
