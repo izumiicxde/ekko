@@ -49,7 +49,6 @@ public class DocumentAdapter
             ) {
                 return (
                     a.name.equals(b.name) &&
-                    equalOrNull(a.summary, b.summary) &&
                     equalOrNull(a.category, b.category) &&
                     equalOrNull(a.keywords, b.keywords) &&
                     equalOrNull(a.fileType, b.fileType) &&
@@ -98,7 +97,6 @@ public class DocumentAdapter
         private final TextView txtDocName;
         private final TextView txtCategory;
         private final TextView chipFileType;
-        private final TextView txtSummary;
         private final ChipGroup chipGroupKeywords;
         private final TextView txtIndexedAt;
         private final TextView txtWordCount;
@@ -110,7 +108,6 @@ public class DocumentAdapter
             txtDocName = itemView.findViewById(R.id.txtDocName);
             txtCategory = itemView.findViewById(R.id.txtCategory);
             chipFileType = itemView.findViewById(R.id.chipFileType);
-            txtSummary = itemView.findViewById(R.id.txtSummary);
             chipGroupKeywords = itemView.findViewById(R.id.chipGroupKeywords);
             txtIndexedAt = itemView.findViewById(R.id.txtIndexedAt);
             txtWordCount = itemView.findViewById(R.id.txtWordCount);
@@ -129,13 +126,6 @@ public class DocumentAdapter
                 doc.fileType != null ? doc.fileType.toUpperCase() : "FILE";
             chipFileType.setText(fileType);
             imgFileIcon.setImageResource(resolveFileIcon(doc.fileType));
-
-            if (doc.summary != null && !doc.summary.isEmpty()) {
-                txtSummary.setVisibility(View.VISIBLE);
-                txtSummary.setText(doc.summary);
-            } else {
-                txtSummary.setVisibility(View.GONE);
-            }
 
             chipGroupKeywords.removeAllViews();
             if (doc.keywords != null && !doc.keywords.isEmpty()) {
