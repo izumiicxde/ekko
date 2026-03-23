@@ -1,6 +1,8 @@
 package com.semantic.ekko.ui.qa;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -17,6 +19,9 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.semantic.ekko.R;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 public class QAActivity extends AppCompatActivity {
 
@@ -37,6 +42,16 @@ public class QAActivity extends AppCompatActivity {
     private TextView txtEmptySubtitle;
     private TextView txtQaTitle;
     private TextView txtQaSubtitle;
+    private ChipGroup chipGroupInputCompletions;
+
+    private final List<String> includedFileNames = new ArrayList<>();
+    private int completionReplaceStart = -1;
+    private int completionReplaceEnd = -1;
+    private int completionMode = 0;
+    private static final int MODE_NONE = 0;
+    private static final int MODE_AT_FILE = 1;
+    private static final int MODE_FILE_COMMAND = 2;
+    private static final int MODE_SLASH_COMMAND = 3;
 
     private final StringBuilder streamingBuffer = new StringBuilder();
 
@@ -73,6 +88,9 @@ public class QAActivity extends AppCompatActivity {
         txtEmptySubtitle = findViewById(R.id.txtEmptySubtitle);
         txtQaTitle = findViewById(R.id.txtQaTitle);
         txtQaSubtitle = findViewById(R.id.txtQaSubtitle);
+        chipGroupInputCompletions = findViewById(
+            R.id.chipGroupInputCompletions
+        );
     }
 
     private void setupRecycler() {
@@ -192,6 +210,12 @@ public class QAActivity extends AppCompatActivity {
                     btnSend.setVisibility(View.VISIBLE);
                 }
             });
+
+        viewModel.getIncludedFileNames(names -> {
+            includedFileNames.clear();
+            if (names != null) includedFileNames.addAll(names);
+            updateInlineCompletions(editQuestion.getText().toString());
+        });
     }
 
     private void setupSuggestions(String[] suggestions) {
@@ -225,6 +249,30 @@ public class QAActivity extends AppCompatActivity {
     private void setupInput() {
         btnSend.setOnClickListener(v -> submitQuestion());
         btnStop.setOnClickListener(v -> viewModel.stop());
+        editQuestion.addTextChangedListener(
+            new TextWatcher() {
+                @Override
+                public void beforeTextChanged(
+                    CharSequence s,
+                    int start,
+                    int count,
+                    int after
+                ) {}
+
+                @Override
+                public void onTextChanged(
+                    CharSequence s,
+                    int start,
+                    int before,
+                    int count
+                ) {
+                    updateInlineCompletions(s == null ? "" : s.toString());
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
+            }
+        );
         editQuestion.setOnEditorActionListener((v, actionId, event) -> {
             if (
                 actionId == EditorInfo.IME_ACTION_SEND ||
@@ -243,8 +291,141 @@ public class QAActivity extends AppCompatActivity {
         String question = editQuestion.getText().toString().trim();
         if (question.isEmpty()) return;
         editQuestion.setText("");
+        hideInlineCompletions();
         hideKeyboard();
         viewModel.ask(question);
+    }
+
+    private void updateInlineCompletions(String input) {
+        if (viewModel.isDocumentMode()) {
+            hideInlineCompletions();
+            return;
+        }
+
+        int cursor = Math.max(0, editQuestion.getSelectionStart());
+        if (cursor > input.length()) cursor = input.length();
+        String before = input.substring(0, cursor);
+
+        int tokenStart =
+            Math.max(before.lastIndexOf(' '), before.lastIndexOf('\n')) + 1;
+        String token = before.substring(tokenStart);
+        String tokenLower = token.toLowerCase(Locale.US);
+
+        int segmentStart = before.lastIndexOf('\n') + 1;
+        String segment = before.substring(segmentStart);
+        String segmentLower = segment.toLowerCase(Locale.US);
+
+        if (segmentLower.startsWith("/file ") && !segment.contains(":")) {
+            String query = segment.substring(6).trim().toLowerCase(Locale.US);
+            List<String> options = new ArrayList<>();
+            for (String file : includedFileNames) {
+                if (
+                    query.isEmpty() ||
+                    file.toLowerCase(Locale.US).contains(query)
+                ) {
+                    options.add(file);
+                }
+                if (options.size() >= 6) break;
+            }
+            showInlineCompletions(
+                options,
+                MODE_FILE_COMMAND,
+                segmentStart,
+                cursor
+            );
+            return;
+        }
+
+        if (token.startsWith("@")) {
+            String query = token.substring(1).trim().toLowerCase(Locale.US);
+            List<String> options = new ArrayList<>();
+            if ("latest".contains(query)) options.add("latest");
+            for (String file : includedFileNames) {
+                if (
+                    query.isEmpty() ||
+                    file.toLowerCase(Locale.US).contains(query)
+                ) {
+                    options.add(file);
+                }
+                if (options.size() >= 6) break;
+            }
+            showInlineCompletions(options, MODE_AT_FILE, tokenStart, cursor);
+            return;
+        }
+
+        if (token.startsWith("/")) {
+            List<String> options = new ArrayList<>();
+            if ("/file".startsWith(tokenLower)) options.add("/file ");
+            if ("/latest:".startsWith(tokenLower)) options.add("/latest: ");
+            showInlineCompletions(
+                options,
+                MODE_SLASH_COMMAND,
+                tokenStart,
+                cursor
+            );
+            return;
+        }
+
+        hideInlineCompletions();
+    }
+
+    private void showInlineCompletions(
+        List<String> options,
+        int mode,
+        int replaceStart,
+        int replaceEnd
+    ) {
+        if (options == null || options.isEmpty()) {
+            hideInlineCompletions();
+            return;
+        }
+        completionMode = mode;
+        completionReplaceStart = replaceStart;
+        completionReplaceEnd = replaceEnd;
+        chipGroupInputCompletions.removeAllViews();
+        for (String value : options) {
+            Chip chip = new Chip(this);
+            chip.setText(value);
+            chip.setCheckable(false);
+            chip.setOnClickListener(v -> applyCompletion(value));
+            chipGroupInputCompletions.addView(chip);
+        }
+        chipGroupInputCompletions.setVisibility(View.VISIBLE);
+    }
+
+    private void applyCompletion(String value) {
+        if (
+            completionReplaceStart < 0 ||
+            completionReplaceEnd < completionReplaceStart
+        ) {
+            return;
+        }
+
+        String insertion;
+        if (completionMode == MODE_AT_FILE) {
+            insertion = "@" + value + ": ";
+        } else if (completionMode == MODE_FILE_COMMAND) {
+            insertion = "/file " + value + ": ";
+        } else {
+            insertion = value;
+        }
+
+        Editable editable = editQuestion.getText();
+        editable.replace(
+            completionReplaceStart,
+            completionReplaceEnd,
+            insertion
+        );
+        editQuestion.setSelection(completionReplaceStart + insertion.length());
+        hideInlineCompletions();
+    }
+
+    private void hideInlineCompletions() {
+        completionMode = MODE_NONE;
+        completionReplaceStart = -1;
+        completionReplaceEnd = -1;
+        chipGroupInputCompletions.setVisibility(View.GONE);
+        chipGroupInputCompletions.removeAllViews();
     }
 
     private void hideKeyboard() {

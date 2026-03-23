@@ -15,6 +15,7 @@ import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.data.repository.RagRepository;
 import com.semantic.ekko.util.PrefsManager;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -466,6 +467,11 @@ public class QAViewModel extends AndroidViewModel {
         }
 
         String lower = trimmed.toLowerCase(Locale.US);
+        if (lower.startsWith("/latest:")) {
+            String question = trimmed.substring(8).trim();
+            return new ParsedScope(true, "latest", question);
+        }
+
         if (lower.startsWith("/file ")) {
             int separator = trimmed.indexOf(':');
             if (separator <= 5) {
@@ -563,6 +569,47 @@ public class QAViewModel extends AndroidViewModel {
     protected void onCleared() {
         super.onCleared();
         mainHandler.removeCallbacks(flushRunnable);
+    }
+
+    public interface FileNamesCallback {
+        void onResult(List<String> names);
+    }
+
+    public void getIncludedFileNames(FileNamesCallback callback) {
+        folderRepository.getAll(folders -> {
+            Set<String> excludedUris = prefsManager.getExcludedFolderUris();
+            Set<Long> includedFolderIds = new HashSet<>();
+            if (folders != null) {
+                for (FolderEntity folder : folders) {
+                    if (!excludedUris.contains(folder.uri)) {
+                        includedFolderIds.add(folder.id);
+                    }
+                }
+            }
+
+            documentRepository.getAll(docs -> {
+                List<DocumentEntity> safeDocs =
+                    docs == null ? Collections.emptyList() : docs;
+                safeDocs.sort((a, b) -> Long.compare(b.indexedAt, a.indexedAt));
+
+                Set<String> seen = new HashSet<>();
+                List<String> names = new ArrayList<>();
+                for (DocumentEntity doc : safeDocs) {
+                    if (
+                        doc == null || !includedFolderIds.contains(doc.folderId)
+                    ) {
+                        continue;
+                    }
+                    if (doc.name == null || doc.name.trim().isEmpty()) continue;
+                    String normalized = doc.name.trim().toLowerCase(Locale.US);
+                    if (seen.add(normalized)) {
+                        names.add(doc.name.trim());
+                    }
+                }
+
+                mainHandler.post(() -> callback.onResult(names));
+            });
+        });
     }
 
     public LiveData<UiEvent> getUiEvent() {
