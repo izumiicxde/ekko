@@ -283,18 +283,47 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnEnhanceSummary"
                     android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:text="Generate"
-                    android:textSize="11sp"
+                    android:layout_height="40dp"
+                    android:text="Generate AI summary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
                     android:fontFamily="@font/bricolage_grotesque"
                     android:minWidth="0dp"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    app:cornerRadius="8dp"
-                    android:visibility="gone"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    app:cornerRadius="10dp"
+                    app:backgroundTint="?attr/colorPrimary"
+                    android:textColor="?attr/colorOnPrimary"
+                    app:iconTint="?attr/colorOnPrimary"
                 />
 
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutSummaryLoading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="10dp"
+                android:visibility="gone"
+            >
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Generating AI summary..."
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:layout_marginBottom="6dp"
+                />
+
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"
+                />
             </LinearLayout>
 
             <TextView

@@ -16,6 +16,7 @@ import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.ui.qa.QAActivity;
+import io.noties.markwon.Markwon;
 import java.util.List;
 
 public class DetailActivity extends AppCompatActivity {
@@ -40,11 +41,14 @@ public class DetailActivity extends AppCompatActivity {
     private MaterialButton btnEnhanceSummary;
     private View labelEntities;
     private View progressEnhanceSummary;
+    private View layoutSummaryLoading;
+    private Markwon markwon;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
+        markwon = Markwon.create(this);
 
         bindViews();
         setupViewModel();
@@ -74,6 +78,7 @@ public class DetailActivity extends AppCompatActivity {
         btnEnhanceSummary = findViewById(R.id.btnEnhanceSummary);
         labelEntities = findViewById(R.id.labelEntities);
         progressEnhanceSummary = findViewById(R.id.progressEnhanceSummary);
+        layoutSummaryLoading = findViewById(R.id.layoutSummaryLoading);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
@@ -104,8 +109,9 @@ public class DetailActivity extends AppCompatActivity {
             .getAiSummary()
             .observe(this, summary -> {
                 if (summary != null && !summary.isEmpty()) {
+                    if (currentDoc != null) currentDoc.summary = summary;
                     txtSummary.setVisibility(View.VISIBLE);
-                    txtSummary.setText(summary);
+                    renderMarkdownSummary(summary);
                     btnEnhanceSummary.setText("Regenerate");
                     btnEnhanceSummary.setEnabled(true);
                 }
@@ -118,7 +124,18 @@ public class DetailActivity extends AppCompatActivity {
                 progressEnhanceSummary.setVisibility(
                     loading ? View.VISIBLE : View.GONE
                 );
+                layoutSummaryLoading.setVisibility(
+                    loading ? View.VISIBLE : View.GONE
+                );
                 btnEnhanceSummary.setEnabled(!loading);
+                btnEnhanceSummary.setText(
+                    loading ? "Generating..." : getSummaryActionText()
+                );
+                if (loading) {
+                    renderMarkdownSummary(
+                        "Generating AI summary. This can take a few seconds."
+                    );
+                }
             });
     }
 
@@ -138,19 +155,15 @@ public class DetailActivity extends AppCompatActivity {
 
         if (doc.summary != null && !doc.summary.isEmpty()) {
             txtSummary.setVisibility(View.VISIBLE);
-            txtSummary.setText(doc.summary);
+            renderMarkdownSummary(doc.summary);
             btnEnhanceSummary.setText("Regenerate");
         } else {
             txtSummary.setVisibility(View.VISIBLE);
-            txtSummary.setText("No AI summary yet. Tap Generate.");
-            btnEnhanceSummary.setText("Generate");
+            renderMarkdownSummary(
+                "No AI summary yet. Tap the button to generate."
+            );
+            btnEnhanceSummary.setText("Generate AI summary");
         }
-
-        btnEnhanceSummary.setVisibility(
-            (doc.chunks != null && !doc.chunks.isEmpty())
-                ? View.VISIBLE
-                : View.GONE
-        );
 
         chipGroupKeywords.removeAllViews();
         if (doc.keywords != null && !doc.keywords.isEmpty()) {
@@ -272,5 +285,28 @@ public class DetailActivity extends AppCompatActivity {
         if (id == R.id.chipCorMedical) return "Medical";
         if (id == R.id.chipCorGeneral) return "General";
         return null;
+    }
+
+    private String getSummaryActionText() {
+        if (
+            currentDoc != null &&
+            currentDoc.summary != null &&
+            !currentDoc.summary.isEmpty()
+        ) {
+            return "Regenerate";
+        }
+        return "Generate AI summary";
+    }
+
+    private void renderMarkdownSummary(String text) {
+        if (text == null) {
+            txtSummary.setText("");
+            return;
+        }
+        try {
+            markwon.setMarkdown(txtSummary, text);
+        } catch (Exception ignored) {
+            txtSummary.setText(text);
+        }
     }
 }
