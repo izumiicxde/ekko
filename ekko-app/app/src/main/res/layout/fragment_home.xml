@@ -25,84 +25,51 @@
             android:paddingTop="10dp"
         >
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Dashboard"
-                android:textSize="14sp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/bricolage_grotesque"
-            />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Your documents, claims, and assistance in one place"
-                android:textSize="24sp"
-                android:lineSpacingExtra="2dp"
-                android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:textStyle="bold"
-            />
-
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                app:cardBackgroundColor="?attr/colorSurface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="2dp"
-                app:strokeWidth="1dp"
-                app:strokeColor="?attr/colorOutlineVariant"
+                android:layout_marginTop="4dp"
+                android:orientation="vertical"
             >
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Need help with long or study documents?"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:lineSpacingExtra="2dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                />
 
-                <LinearLayout
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                >
+                    android:layout_marginTop="6dp"
+                    android:text="Ekko Bot can summarize dense content, explain hard sections, and answer questions from your included sources."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="2dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Need help with a claim right now?"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:fontFamily="@font/bricolage_grotesque"
-                    />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="Wise Bot walks you through claims and answers questions from your indexed files."
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp"
-                        android:lineSpacingExtra="2dp"
-                        android:fontFamily="@font/bricolage_grotesque"
-                    />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnHeroWiseBot"
-                        android:layout_width="wrap_content"
-                        android:layout_height="46dp"
-                        android:layout_marginTop="12dp"
-                        android:text="Open Wise Bot"
-                        android:textAllCaps="false"
-                        android:textStyle="bold"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        app:icon="@drawable/ic_chat"
-                        app:iconTint="?attr/colorOnPrimary"
-                        app:iconPadding="8dp"
-                        app:backgroundTint="?attr/colorPrimary"
-                        app:cornerRadius="12dp"
-                        android:textColor="?attr/colorOnPrimary"
-                    />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnHeroWiseBot"
+                    android:layout_width="wrap_content"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="12dp"
+                    android:text="Ask Ekko Bot"
+                    android:textAllCaps="false"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    app:icon="@drawable/ic_chat"
+                    app:iconTint="?attr/colorOnPrimary"
+                    app:iconPadding="8dp"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:cornerRadius="12dp"
+                    android:textColor="?attr/colorOnPrimary"
+                />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/layoutIndexingProgress"
@@ -252,7 +219,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:gravity="center"
-                    android:text="Upload a policy to get started with AI summaries and Wise Bot."
+                    android:text="Add source folders in Settings to get started with AI summaries and Ekko Bot."
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
                     android:fontFamily="@font/bricolage_grotesque"

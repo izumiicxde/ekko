@@ -1,16 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_main_gradient">
+    android:background="@drawable/bg_main_gradient"
+>
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        app:elevation="0dp">
+        app:elevation="0dp"
+    >
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -20,7 +22,8 @@
             android:paddingStart="8dp"
             android:paddingEnd="16dp"
             android:paddingTop="10dp"
-            android:paddingBottom="8dp">
+            android:paddingBottom="8dp"
+        >
 
             <ImageButton
                 android:id="@+id/btnBack"
@@ -30,24 +33,27 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_close"
                 android:contentDescription="Back"
-                app:tint="?attr/colorOnSurface" />
+                app:tint="?attr/colorOnSurface"
+            />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:layout_marginStart="4dp">
+                android:layout_marginStart="4dp"
+            >
 
                 <TextView
                     android:id="@+id/txtQaTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Wise Bot"
+                    android:text="Ekko Bot"
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
-                    android:fontFamily="@font/bricolage_grotesque" />
+                    android:fontFamily="@font/bricolage_grotesque"
+                />
 
                 <TextView
                     android:id="@+id/txtQaSubtitle"
@@ -56,7 +62,8 @@
                     android:text="Answers from your uploaded documents"
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:fontFamily="@font/bricolage_grotesque" />
+                    android:fontFamily="@font/bricolage_grotesque"
+                />
             </LinearLayout>
         </LinearLayout>
 
@@ -66,7 +73,8 @@
             android:layout_height="wrap_content"
             android:indeterminate="true"
             android:visibility="gone"
-            app:trackCornerRadius="0dp" />
+            app:trackCornerRadius="0dp"
+        />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -80,7 +88,8 @@
         android:paddingBottom="100dp"
         android:clipToPadding="false"
         android:visibility="gone"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    />
 
     <LinearLayout
         android:id="@+id/layoutEmptyState"
@@ -91,7 +100,8 @@
         android:paddingStart="24dp"
         android:paddingEnd="24dp"
         android:paddingBottom="120dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    >
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -100,32 +110,36 @@
             app:cardCornerRadius="18dp"
             app:cardElevation="2dp"
             app:strokeWidth="1dp"
-            app:strokeColor="?attr/colorOutlineVariant">
+            app:strokeColor="?attr/colorOutlineVariant"
+        >
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:gravity="center"
-                android:padding="22dp">
+                android:padding="22dp"
+            >
 
                 <ImageView
                     android:layout_width="54dp"
                     android:layout_height="54dp"
                     android:src="@drawable/ic_chat"
                     app:tint="?attr/colorPrimary"
-                    android:contentDescription="Wise bot" />
+                    android:contentDescription="Wise bot"
+                />
 
                 <TextView
                     android:id="@+id/txtEmptyTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Ask Wise Bot anything"
+                    android:text="Ask Ekko Bot anything"
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:layout_marginTop="14dp" />
+                    android:layout_marginTop="14dp"
+                />
 
                 <TextView
                     android:id="@+id/txtEmptySubtitle"
@@ -137,7 +151,8 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     android:gravity="center"
                     android:lineSpacingMultiplier="1.35"
-                    android:layout_marginTop="8dp" />
+                    android:layout_marginTop="8dp"
+                />
 
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/chipGroupSuggestions"
@@ -145,7 +160,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     app:chipSpacingHorizontal="4dp"
-                    app:chipSpacingVertical="8dp" />
+                    app:chipSpacingVertical="8dp"
+                />
 
             </LinearLayout>
 
@@ -164,7 +180,8 @@
         app:cardCornerRadius="18dp"
         app:cardElevation="8dp"
         app:strokeWidth="1dp"
-        app:strokeColor="?attr/colorOutlineVariant">
+        app:strokeColor="?attr/colorOutlineVariant"
+    >
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -174,7 +191,8 @@
             android:paddingStart="14dp"
             android:paddingEnd="6dp"
             android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:paddingBottom="6dp"
+        >
 
             <EditText
                 android:id="@+id/editQuestion"
@@ -190,7 +208,8 @@
                 android:imeOptions="actionSend"
                 android:inputType="textCapSentences|textMultiLine"
                 android:maxLines="4"
-                android:minLines="1" />
+                android:minLines="1"
+            />
 
             <ImageButton
                 android:id="@+id/btnStop"
@@ -201,7 +220,8 @@
                 android:src="@drawable/ic_stop"
                 android:contentDescription="Stop generation"
                 android:visibility="gone"
-                app:tint="?attr/colorError" />
+                app:tint="?attr/colorError"
+            />
 
             <ImageButton
                 android:id="@+id/btnSend"
@@ -211,7 +231,8 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_send"
                 android:contentDescription="Send question"
-                app:tint="?attr/colorPrimary" />
+                app:tint="?attr/colorPrimary"
+            />
 
         </LinearLayout>
 

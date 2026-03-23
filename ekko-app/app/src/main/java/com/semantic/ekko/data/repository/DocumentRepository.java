@@ -51,12 +51,29 @@ public class DocumentRepository {
         executor.execute(() -> documentDao.deleteByFolderId(folderId));
     }
 
+    public void deleteByFolderIds(List<Long> folderIds, Runnable onComplete) {
+        executor.execute(() -> {
+            if (folderIds != null) {
+                for (Long folderId : folderIds) {
+                    if (folderId != null) {
+                        documentDao.deleteByFolderId(folderId);
+                    }
+                }
+            }
+            if (onComplete != null) onComplete.run();
+        });
+    }
+
     public void deleteAll() {
         executor.execute(documentDao::deleteAll);
     }
 
     public void updateCategory(long id, String category) {
         executor.execute(() -> documentDao.updateCategory(id, category));
+    }
+
+    public void updateSummary(long id, String summary) {
+        executor.execute(() -> documentDao.updateSummary(id, summary));
     }
 
     // =========================

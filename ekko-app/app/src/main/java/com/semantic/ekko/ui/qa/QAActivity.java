@@ -110,9 +110,9 @@ public class QAActivity extends AppCompatActivity {
                 }
             );
         } else {
-            txtQaTitle.setText("Wise Bot");
+            txtQaTitle.setText("Ekko Bot");
             txtQaSubtitle.setText("Answers from your uploaded documents");
-            txtEmptyTitle.setText("Ask Wise Bot anything");
+            txtEmptyTitle.setText("Ask Ekko Bot anything");
             txtEmptySubtitle.setText(
                 "Answers are grounded in your indexed documents."
             );
@@ -135,7 +135,8 @@ public class QAActivity extends AppCompatActivity {
                         streamingBuffer.setLength(0);
                         streamingBuffer.append(viewModel.getStreamingBuffer());
                         if (event.history != null) {
-                            for (QAMessage msg : event.history) adapter.addMessage(msg);
+                            for (QAMessage msg : event.history)
+                                adapter.addMessage(msg);
                             scrollToBottom();
                         }
                         updateEmptyState();
@@ -154,7 +155,9 @@ public class QAActivity extends AppCompatActivity {
                     case QAViewModel.UiEvent.UPDATE_LAST:
                         if (event.token != null) {
                             streamingBuffer.append(event.token);
-                            adapter.appendStreamingToken(streamingBuffer.toString());
+                            adapter.appendStreamingToken(
+                                streamingBuffer.toString()
+                            );
                         } else if (event.source != null) {
                             adapter.finalizeStreamingMessage(
                                 streamingBuffer.toString(),

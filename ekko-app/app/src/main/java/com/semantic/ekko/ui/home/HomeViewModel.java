@@ -174,65 +174,71 @@ public class HomeViewModel extends AndroidViewModel {
                     return;
                 }
 
-                indexer.indexDocuments(
-                    scanResult.documents,
-                    new DocumentIndexer.ProgressListener() {
-                        @Override
-                        public void onStageChanged(String stage) {
-                            indexingStage.postValue(stage);
-                        }
-
-                        @Override
-                        public void onDocumentProcessed(
-                            int current,
-                            int total,
-                            String docName
-                        ) {
-                            indexingProgress.postValue(
-                                new IndexingProgress(current, total, docName)
-                            );
-                        }
-
-                        @Override
-                        public void onComplete(
-                            int indexed,
-                            int failed,
-                            List<String> failedNames
-                        ) {
-                            isIndexing.postValue(false);
-                            indexingStage.postValue("");
-                            loadDocuments();
-                            if (!failedNames.isEmpty()) {
-                                StringBuilder msg = new StringBuilder();
-                                msg
-                                    .append(failedNames.size())
-                                    .append(
-                                        failedNames.size() == 1
-                                            ? " file"
-                                            : " files"
-                                    )
-                                    .append(" could not be fully indexed: ");
-                                for (
-                                    int i = 0;
-                                    i < Math.min(failedNames.size(), 3);
-                                    i++
-                                ) {
-                                    if (i > 0) msg.append(", ");
-                                    msg.append(failedNames.get(i));
-                                }
-                                if (failedNames.size() > 3) {
-                                    msg
-                                        .append(" and ")
-                                        .append(failedNames.size() - 3)
-                                        .append(" more");
-                                }
-                                errorMessage.postValue(msg.toString());
-                            }
-                        }
-                    }
-                );
+                startIndexing(scanResult.documents);
             }
         );
+    }
+
+    public void reindexFolders(List<FolderEntity> folders) {
+        if (isIndexing.getValue() == Boolean.TRUE) return;
+        if (folders == null || folders.isEmpty()) {
+            errorMessage.postValue(
+                "No included folders available to re-index."
+            );
+            return;
+        }
+
+        if (!EkkoApp.getInstance().isMlReady()) {
+            errorMessage.postValue(
+                "ML models are still initializing. Please try again in a moment."
+            );
+            return;
+        }
+
+        if (indexer == null) {
+            initMl();
+            if (indexer == null) {
+                errorMessage.postValue("Failed to initialize indexer.");
+                return;
+            }
+        }
+
+        List<Uri> uris = new ArrayList<>();
+        List<Long> folderIds = new ArrayList<>();
+        for (FolderEntity folder : folders) {
+            if (
+                folder == null || folder.uri == null || folder.uri.isEmpty()
+            ) continue;
+            uris.add(Uri.parse(folder.uri));
+            folderIds.add(folder.id);
+        }
+
+        if (uris.isEmpty()) {
+            errorMessage.postValue("No valid folders found to re-index.");
+            return;
+        }
+
+        isIndexing.postValue(true);
+        indexingStage.postValue("Preparing re-index...");
+
+        documentRepository.deleteByFolderIds(folderIds, () -> {
+            DocumentScanner.ScanResult scanResult = DocumentScanner.scanFolders(
+                getApplication(),
+                uris,
+                folderIds
+            );
+
+            if (scanResult.documents.isEmpty()) {
+                isIndexing.postValue(false);
+                indexingStage.postValue("");
+                errorMessage.postValue(
+                    "No supported documents found in selected folders."
+                );
+                return;
+            }
+
+            startIndexing(scanResult.documents);
+        });
     }
 
     // =========================
@@ -339,6 +345,64 @@ public class HomeViewModel extends AndroidViewModel {
 
     public String getCurrentFileTypeFilter() {
         return activeFileTypeFilter;
+    }
+
+    private void startIndexing(List<DocumentEntity> docs) {
+        indexer.indexDocuments(
+            docs,
+            new DocumentIndexer.ProgressListener() {
+                @Override
+                public void onStageChanged(String stage) {
+                    indexingStage.postValue(stage);
+                }
+
+                @Override
+                public void onDocumentProcessed(
+                    int current,
+                    int total,
+                    String docName
+                ) {
+                    indexingProgress.postValue(
+                        new IndexingProgress(current, total, docName)
+                    );
+                }
+
+                @Override
+                public void onComplete(
+                    int indexed,
+                    int failed,
+                    List<String> failedNames
+                ) {
+                    isIndexing.postValue(false);
+                    indexingStage.postValue("");
+                    loadDocuments();
+                    if (!failedNames.isEmpty()) {
+                        StringBuilder msg = new StringBuilder();
+                        msg
+                            .append(failedNames.size())
+                            .append(
+                                failedNames.size() == 1 ? " file" : " files"
+                            )
+                            .append(" could not be fully indexed: ");
+                        for (
+                            int i = 0;
+                            i < Math.min(failedNames.size(), 3);
+                            i++
+                        ) {
+                            if (i > 0) msg.append(", ");
+                            msg.append(failedNames.get(i));
+                        }
+                        if (failedNames.size() > 3) {
+                            msg
+                                .append(" and ")
+                                .append(failedNames.size() - 3)
+                                .append(" more");
+                        }
+                        errorMessage.postValue(msg.toString());
+                    }
+                }
+            }
+        );
     }
 
     // =========================
