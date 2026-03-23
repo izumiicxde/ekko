@@ -102,6 +102,7 @@ public class QAActivity extends AppCompatActivity {
             txtEmptySubtitle.setText(
                 "Answers are generated only from this file's content."
             );
+            editQuestion.setHint("Ask anything about this document...");
             setupSuggestions(
                 new String[] {
                     "Summarize this document",
@@ -111,16 +112,19 @@ public class QAActivity extends AppCompatActivity {
             );
         } else {
             txtQaTitle.setText("Ekko Bot");
-            txtQaSubtitle.setText("Answers from your uploaded documents");
+            txtQaSubtitle.setText(
+                "Use @file: question or @latest: question for one-file context"
+            );
             txtEmptyTitle.setText("Ask Ekko Bot anything");
             txtEmptySubtitle.setText(
-                "Answers are grounded in your indexed documents."
+                "Answers are grounded in your indexed documents. You can target one file with @filename: ..."
             );
+            editQuestion.setHint("Ask anything or use @filename: question");
             setupSuggestions(
                 new String[] {
                     "What is in my documents?",
-                    "Summarize my latest upload",
-                    "What coverage gaps do I have?",
+                    "@latest: summarize this file",
+                    "/file policy.pdf: list key points",
                 }
             );
         }

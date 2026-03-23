@@ -8,10 +8,17 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.semantic.ekko.EkkoApp;
+import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.data.repository.DocumentRepository;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.data.repository.RagRepository;
-import com.semantic.ekko.ml.EmbeddingEngine;
+import com.semantic.ekko.util.PrefsManager;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class QAViewModel extends AndroidViewModel {
 
@@ -73,6 +80,9 @@ public class QAViewModel extends AndroidViewModel {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private RagRepository ragRepository;
     private EkkoApp.ChatStore chatStore;
+    private final DocumentRepository documentRepository;
+    private final FolderRepository folderRepository;
+    private final PrefsManager prefsManager;
 
     private long documentId = NO_DOCUMENT;
     private boolean docModeSet = false;
@@ -98,6 +108,9 @@ public class QAViewModel extends AndroidViewModel {
     public QAViewModel(@NonNull Application application) {
         super(application);
         chatStore = EkkoApp.getInstance().getChatStore();
+        documentRepository = new DocumentRepository(application);
+        folderRepository = new FolderRepository(application);
+        prefsManager = new PrefsManager(application);
         EkkoApp app = EkkoApp.getInstance();
         if (app.isMlReady()) {
             ragRepository = new RagRepository(
@@ -186,6 +199,32 @@ public class QAViewModel extends AndroidViewModel {
 
         isLoading.postValue(true);
 
+        resolveScopedQuestion(
+            question.trim(),
+            new ScopeResolutionCallback() {
+                @Override
+                public void onResolved(ScopedQuestion scopedQuestion) {
+                    if (scopedQuestion.error != null) {
+                        QAMessage err = new QAMessage(
+                            QAMessage.TYPE_ERROR,
+                            scopedQuestion.error,
+                            null
+                        );
+                        addToHistory(err);
+                        post(UiEvent.add(err));
+                        isLoading.postValue(false);
+                        return;
+                    }
+                    askWithResolvedScope(scopedQuestion);
+                }
+            }
+        );
+    }
+
+    private void askWithResolvedScope(ScopedQuestion scopedQuestion) {
+        long targetDocumentId = scopedQuestion.documentId;
+        String cleanedQuestion = scopedQuestion.question;
+
         RagRepository.RagStreamCallback callback =
             new RagRepository.RagStreamCallback() {
                 @Override
@@ -272,14 +311,205 @@ public class QAViewModel extends AndroidViewModel {
                 }
             };
 
-        if (documentId != NO_DOCUMENT) {
+        if (targetDocumentId != NO_DOCUMENT) {
             ragRepository.queryStreamForDocument(
-                question.trim(),
-                documentId,
+                cleanedQuestion,
+                targetDocumentId,
                 callback
             );
         } else {
-            ragRepository.queryStream(question.trim(), callback);
+            ragRepository.queryStream(cleanedQuestion, callback);
+        }
+    }
+
+    private void resolveScopedQuestion(
+        String rawQuestion,
+        ScopeResolutionCallback callback
+    ) {
+        // Detail-page bot already scoped to one file.
+        if (documentId != NO_DOCUMENT) {
+            callback.onResolved(
+                new ScopedQuestion(rawQuestion, documentId, null)
+            );
+            return;
+        }
+
+        ParsedScope parsed = parseScopePrefix(rawQuestion);
+        if (!parsed.hasScopePrefix) {
+            callback.onResolved(
+                new ScopedQuestion(rawQuestion, NO_DOCUMENT, null)
+            );
+            return;
+        }
+
+        if (parsed.fileName == null || parsed.fileName.isEmpty()) {
+            callback.onResolved(
+                new ScopedQuestion(
+                    rawQuestion,
+                    NO_DOCUMENT,
+                    "Missing file name. Use @filename: question or /file filename: question."
+                )
+            );
+            return;
+        }
+
+        if (parsed.question == null || parsed.question.isEmpty()) {
+            callback.onResolved(
+                new ScopedQuestion(
+                    rawQuestion,
+                    NO_DOCUMENT,
+                    "Missing question after file name. Example: @policy.pdf: summarize this."
+                )
+            );
+            return;
+        }
+
+        findDocumentByName(parsed.fileName, doc -> {
+            if (doc == null) {
+                callback.onResolved(
+                    new ScopedQuestion(
+                        rawQuestion,
+                        NO_DOCUMENT,
+                        "Could not find included file '" +
+                            parsed.fileName +
+                            "'. Try exact name or use @latest: ... "
+                    )
+                );
+                return;
+            }
+            callback.onResolved(
+                new ScopedQuestion(parsed.question, doc.id, null)
+            );
+        });
+    }
+
+    private void findDocumentByName(
+        String fileName,
+        DocumentResolutionCallback callback
+    ) {
+        folderRepository.getAll(folders -> {
+            Set<String> excludedUris = prefsManager.getExcludedFolderUris();
+            Set<Long> includedFolderIds = new HashSet<>();
+            if (folders != null) {
+                for (FolderEntity folder : folders) {
+                    if (!excludedUris.contains(folder.uri)) {
+                        includedFolderIds.add(folder.id);
+                    }
+                }
+            }
+
+            documentRepository.getAll(docs -> {
+                DocumentEntity best = pickBestMatch(
+                    fileName,
+                    docs,
+                    includedFolderIds
+                );
+                callback.onResolved(best);
+            });
+        });
+    }
+
+    private DocumentEntity pickBestMatch(
+        String fileName,
+        List<DocumentEntity> docs,
+        Set<Long> includedFolderIds
+    ) {
+        if (docs == null || docs.isEmpty()) return null;
+        String target = fileName.trim().toLowerCase(Locale.US);
+
+        DocumentEntity exact = null;
+        DocumentEntity contains = null;
+        DocumentEntity latest = null;
+
+        for (DocumentEntity doc : docs) {
+            if (doc == null || !includedFolderIds.contains(doc.folderId)) {
+                continue;
+            }
+            if (latest == null || doc.indexedAt > latest.indexedAt) {
+                latest = doc;
+            }
+            if ("latest".equals(target)) continue;
+
+            String name =
+                doc.name == null ? "" : doc.name.toLowerCase(Locale.US);
+
+            if (name.equals(target)) {
+                if (exact == null || doc.indexedAt > exact.indexedAt) {
+                    exact = doc;
+                }
+            } else if (name.contains(target)) {
+                if (contains == null || doc.indexedAt > contains.indexedAt) {
+                    contains = doc;
+                }
+            }
+        }
+
+        if ("latest".equals(target)) return latest;
+        if (exact != null) return exact;
+        return contains;
+    }
+
+    private ParsedScope parseScopePrefix(String raw) {
+        String trimmed = raw == null ? "" : raw.trim();
+        if (trimmed.isEmpty()) {
+            return new ParsedScope(false, null, null);
+        }
+
+        if (trimmed.startsWith("@")) {
+            int separator = trimmed.indexOf(':');
+            if (separator <= 1) {
+                return new ParsedScope(true, "", "");
+            }
+            String fileName = trimmed.substring(1, separator).trim();
+            String question = trimmed.substring(separator + 1).trim();
+            return new ParsedScope(true, fileName, question);
+        }
+
+        String lower = trimmed.toLowerCase(Locale.US);
+        if (lower.startsWith("/file ")) {
+            int separator = trimmed.indexOf(':');
+            if (separator <= 5) {
+                return new ParsedScope(true, "", "");
+            }
+            String fileName = trimmed.substring(6, separator).trim();
+            String question = trimmed.substring(separator + 1).trim();
+            return new ParsedScope(true, fileName, question);
+        }
+
+        return new ParsedScope(false, null, null);
+    }
+
+    private interface ScopeResolutionCallback {
+        void onResolved(ScopedQuestion scopedQuestion);
+    }
+
+    private interface DocumentResolutionCallback {
+        void onResolved(DocumentEntity document);
+    }
+
+    private static class ParsedScope {
+
+        final boolean hasScopePrefix;
+        final String fileName;
+        final String question;
+
+        ParsedScope(boolean hasScopePrefix, String fileName, String question) {
+            this.hasScopePrefix = hasScopePrefix;
+            this.fileName = fileName;
+            this.question = question;
+        }
+    }
+
+    private static class ScopedQuestion {
+
+        final String question;
+        final long documentId;
+        final String error;
+
+        ScopedQuestion(String question, long documentId, String error) {
+            this.question = question;
+            this.documentId = documentId;
+            this.error = error;
         }
     }
 
