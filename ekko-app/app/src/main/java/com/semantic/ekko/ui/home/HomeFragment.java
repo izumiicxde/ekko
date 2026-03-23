@@ -1,12 +1,15 @@
 package com.semantic.ekko.ui.home;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -19,9 +22,14 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
+import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.ui.qa.QAActivity;
+import com.semantic.ekko.util.PrefsManager;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +48,29 @@ public class HomeFragment extends Fragment {
     private TextView txtDocCount;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
+    private View btnHeroWiseBot;
+    private View btnEmptyAddFolder;
+    private View btnEmptyOpenSettings;
+    private TextView txtEmptySubtitle;
+
+    private FolderRepository folderRepository;
+    private PrefsManager prefsManager;
+    private boolean hasIncludedFolders = false;
+
+    private final ActivityResultLauncher<Uri> folderPicker =
+        registerForActivityResult(
+            new ActivityResultContracts.OpenDocumentTree(),
+            uri -> {
+                if (uri == null || getActivity() == null) return;
+                getActivity()
+                    .getContentResolver()
+                    .takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    );
+                viewModel.addFolderAndIndex(uri);
+            }
+        );
 
     @Nullable
     @Override
@@ -66,6 +97,9 @@ public class HomeFragment extends Fragment {
         setupRecycler();
         setupViewModel();
         setupClickListeners(view);
+        folderRepository = new FolderRepository(requireContext());
+        prefsManager = new PrefsManager(requireContext());
+        refreshFolderAvailabilityState();
 
         Executors.newSingleThreadExecutor().execute(() -> {
             viewModel.initMl();
@@ -81,6 +115,7 @@ public class HomeFragment extends Fragment {
         if (viewModel != null) {
             viewModel.loadDocuments();
         }
+        refreshFolderAvailabilityState();
     }
 
     private void bindViews(View view) {
@@ -92,6 +127,10 @@ public class HomeFragment extends Fragment {
         txtDocCount = view.findViewById(R.id.txtDocCount);
         progressIndexing = view.findViewById(R.id.progressIndexing);
         chipGroupFilters = view.findViewById(R.id.chipGroupFilters);
+        btnHeroWiseBot = view.findViewById(R.id.btnHeroWiseBot);
+        btnEmptyAddFolder = view.findViewById(R.id.btnEmptyAddFolder);
+        btnEmptyOpenSettings = view.findViewById(R.id.btnEmptyOpenSettings);
+        txtEmptySubtitle = view.findViewById(R.id.txtEmptySubtitle);
     }
 
     private void setupRecycler() {
@@ -170,9 +209,29 @@ public class HomeFragment extends Fragment {
         root
             .findViewById(R.id.btnHeroWiseBot)
             .setOnClickListener(v -> {
+                if (!hasIncludedFolders) {
+                    Snackbar.make(
+                        root,
+                        "Add at least one folder in Settings first.",
+                        Snackbar.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
                 Intent intent = new Intent(getActivity(), QAActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                 startActivity(intent);
+            });
+
+        root
+            .findViewById(R.id.btnEmptyAddFolder)
+            .setOnClickListener(v -> folderPicker.launch(null));
+
+        root
+            .findViewById(R.id.btnEmptyOpenSettings)
+            .setOnClickListener(v -> {
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).navigateToSettings();
+                }
             });
     }
 
@@ -285,11 +344,56 @@ public class HomeFragment extends Fragment {
         boolean isEmpty = docs == null || docs.isEmpty();
         layoutEmptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         recyclerDocuments.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+
+        if (!isEmpty) return;
+
+        if (hasIncludedFolders) {
+            txtEmptySubtitle.setText(
+                "No indexed files found in included folders yet. Add documents and re-index from Settings."
+            );
+            btnEmptyAddFolder.setVisibility(View.GONE);
+            btnEmptyOpenSettings.setVisibility(View.VISIBLE);
+        } else {
+            txtEmptySubtitle.setText(
+                "No source folders selected. Add a folder to start indexing and unlock Search + Ekko Bot."
+            );
+            btnEmptyAddFolder.setVisibility(View.VISIBLE);
+            btnEmptyOpenSettings.setVisibility(View.VISIBLE);
+        }
     }
 
     private void updateDocCount(int count) {
         txtDocCount.setText(
             count + (count == 1 ? " upload in vault" : " uploads in vault")
         );
+    }
+
+    private void refreshFolderAvailabilityState() {
+        if (
+            folderRepository == null ||
+            prefsManager == null ||
+            getActivity() == null
+        ) return;
+        folderRepository.getAll(folders -> {
+            Set<String> excluded = prefsManager.getExcludedFolderUris();
+            int includedCount = 0;
+            List<FolderEntity> safeFolders =
+                folders == null ? new ArrayList<>() : folders;
+            for (FolderEntity folder : safeFolders) {
+                if (!excluded.contains(folder.uri)) includedCount++;
+            }
+            boolean hasAnyIncluded = includedCount > 0;
+            getActivity().runOnUiThread(() -> {
+                hasIncludedFolders = hasAnyIncluded;
+                btnHeroWiseBot.setEnabled(hasAnyIncluded);
+                btnHeroWiseBot.setAlpha(hasAnyIncluded ? 1f : 0.5f);
+                List<DocumentEntity> currentDocs = viewModel
+                    .getDocuments()
+                    .getValue();
+                updateEmptyState(
+                    currentDocs == null ? new ArrayList<>() : currentDocs
+                );
+            });
+        });
     }
 }

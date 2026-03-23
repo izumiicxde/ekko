@@ -71,6 +71,16 @@
                 />
             </LinearLayout>
 
+            <View
+                android:id="@+id/dividerHelpSection"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginBottom="6dp"
+                android:background="?attr/colorOutlineVariant"
+                android:alpha="0.6"
+            />
+
             <LinearLayout
                 android:id="@+id/layoutIndexingProgress"
                 android:layout_width="match_parent"
@@ -215,6 +225,7 @@
                 />
 
                 <TextView
+                    android:id="@+id/txtEmptySubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -224,6 +235,40 @@
                     android:textSize="14sp"
                     android:fontFamily="@font/bricolage_grotesque"
                 />
+
+                <LinearLayout
+                    android:id="@+id/layoutEmptyActions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                >
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEmptyAddFolder"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="Add folder"
+                        android:textAllCaps="false"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        app:icon="@drawable/ic_add"
+                        app:iconPadding="6dp"
+                        app:cornerRadius="10dp"
+                    />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEmptyOpenSettings"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="10dp"
+                        android:text="Open settings"
+                        android:textAllCaps="false"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        app:cornerRadius="10dp"
+                    />
+                </LinearLayout>
             </LinearLayout>
 
         </LinearLayout>

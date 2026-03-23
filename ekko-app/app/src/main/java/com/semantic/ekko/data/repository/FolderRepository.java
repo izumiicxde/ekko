@@ -51,9 +51,14 @@ public class FolderRepository {
     }
 
     public void delete(FolderEntity folder) {
+        delete(folder, null);
+    }
+
+    public void delete(FolderEntity folder, Runnable onComplete) {
         executor.execute(() -> {
             documentRepository.deleteByFolderId(folder.id);
             folderDao.delete(folder);
+            if (onComplete != null) onComplete.run();
         });
     }
 

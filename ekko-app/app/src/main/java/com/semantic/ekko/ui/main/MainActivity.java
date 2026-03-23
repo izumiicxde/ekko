@@ -2,17 +2,24 @@ package com.semantic.ekko.ui.main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
+import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.home.HomeFragment;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchFragment;
 import com.semantic.ekko.ui.settings.SettingsFragment;
 import com.semantic.ekko.util.PrefsManager;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,6 +30,9 @@ public class MainActivity extends AppCompatActivity {
     private BottomNavigationView bottomNav;
     private String currentTag = TAG_HOME;
     private boolean ignoreNavSelection = false;
+    private FolderRepository folderRepository;
+    private PrefsManager prefsManager;
+    private boolean hasIncludedFolders = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         bottomNav = findViewById(R.id.bottomNav);
+        folderRepository = new FolderRepository(this);
+        prefsManager = new PrefsManager(this);
 
         if (savedInstanceState == null) {
             showFragment(TAG_HOME);
@@ -45,8 +57,18 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.nav_home) {
                 showFragment(TAG_HOME);
             } else if (id == R.id.nav_search) {
+                if (!hasIncludedFolders) {
+                    showNoFoldersMessage();
+                    syncNavToCurrentTag();
+                    return true;
+                }
                 showFragment(TAG_SEARCH);
             } else if (id == R.id.nav_ask) {
+                if (!hasIncludedFolders) {
+                    showNoFoldersMessage();
+                    syncNavToCurrentTag();
+                    return true;
+                }
                 Intent intent = new Intent(this, QAActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                 startActivity(intent);
@@ -63,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        refreshFolderAvailability();
         // Sync nav bar to current fragment when returning from QAActivity
         syncNavToCurrentTag();
     }
@@ -146,8 +169,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applySavedTheme() {
-        PrefsManager prefsManager = new PrefsManager(this);
-        String theme = prefsManager.getTheme();
+        PrefsManager prefs = new PrefsManager(this);
+        String theme = prefs.getTheme();
         int mode;
         if ("light".equals(theme)) {
             mode = AppCompatDelegate.MODE_NIGHT_NO;
@@ -157,5 +180,46 @@ public class MainActivity extends AppCompatActivity {
             mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
         }
         AppCompatDelegate.setDefaultNightMode(mode);
+    }
+
+    public void navigateToSettings() {
+        showFragment(TAG_SETTINGS);
+        ignoreNavSelection = true;
+        bottomNav.setSelectedItemId(R.id.nav_settings);
+        ignoreNavSelection = false;
+    }
+
+    private void refreshFolderAvailability() {
+        folderRepository.getAll(folders -> {
+            List<FolderEntity> safeFolders =
+                folders == null ? Collections.emptyList() : folders;
+            Set<String> excluded = prefsManager.getExcludedFolderUris();
+            boolean included = false;
+            for (FolderEntity folder : safeFolders) {
+                if (!excluded.contains(folder.uri)) {
+                    included = true;
+                    break;
+                }
+            }
+            boolean finalIncluded = included;
+            runOnUiThread(() -> {
+                hasIncludedFolders = finalIncluded;
+                Menu menu = bottomNav.getMenu();
+                menu.findItem(R.id.nav_search).setEnabled(finalIncluded);
+                menu.findItem(R.id.nav_ask).setEnabled(finalIncluded);
+                if (!finalIncluded && TAG_SEARCH.equals(currentTag)) {
+                    showFragment(TAG_HOME);
+                    syncNavToCurrentTag();
+                }
+            });
+        });
+    }
+
+    private void showNoFoldersMessage() {
+        Snackbar.make(
+            findViewById(R.id.fragmentContainer),
+            "No folders selected. Add one in Settings first.",
+            Snackbar.LENGTH_SHORT
+        ).show();
     }
 }

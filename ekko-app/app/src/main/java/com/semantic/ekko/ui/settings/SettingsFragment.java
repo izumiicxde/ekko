@@ -204,6 +204,14 @@ public class SettingsFragment extends Fragment {
         view
             .findViewById(R.id.btnSettingsWiseBot)
             .setOnClickListener(v -> {
+                if (getIncludedFolders().isEmpty()) {
+                    Snackbar.make(
+                        v,
+                        "Add and include at least one folder first.",
+                        Snackbar.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
                 Intent intent = new Intent(getActivity(), QAActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
                 startActivity(intent);
@@ -251,9 +259,24 @@ public class SettingsFragment extends Fragment {
             )
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Remove", (dialog, which) -> {
-                prefsManager.setFolderExcluded(folder.uri, false);
-                folderRepository.delete(folder);
+                // Hide related files immediately while delete runs in background.
+                prefsManager.setFolderExcluded(folder.uri, true);
+                for (int i = currentFolders.size() - 1; i >= 0; i--) {
+                    if (currentFolders.get(i).id == folder.id) {
+                        currentFolders.remove(i);
+                    }
+                }
+                refreshFolderUi();
                 homeViewModel.loadDocuments();
+                folderRepository.delete(folder, () -> {
+                    prefsManager.setFolderExcluded(folder.uri, false);
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            refreshFolderUi();
+                            homeViewModel.loadDocuments();
+                        });
+                    }
+                });
             })
             .show();
     }
