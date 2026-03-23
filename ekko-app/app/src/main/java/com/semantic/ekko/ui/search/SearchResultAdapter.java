@@ -1,20 +1,18 @@
 package com.semantic.ekko.ui.search;
 
-import android.content.Context;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.SearchResult;
+import java.util.Locale;
 
 public class SearchResultAdapter
     extends ListAdapter<SearchResult, SearchResultAdapter.ViewHolder>
@@ -108,18 +106,17 @@ public class SearchResultAdapter
 
             String fileType =
                 result.getDocument().fileType != null
-                    ? result.getDocument().fileType.toUpperCase()
+                    ? result.getDocument().fileType.toUpperCase(Locale.US)
                     : "FILE";
             txtFileType.setText(fileType);
 
             int wordCount = result.getDocument().wordCount;
             txtWordCount.setText(
                 wordCount >= 1000
-                    ? String.format("%.1fk words", wordCount / 1000f)
+                    ? String.format(Locale.US, "%.1fk words", wordCount / 1000f)
                     : wordCount + " words"
             );
 
-            // Relevance chip: "87% · High"
             String chipLabel =
                 result.getScoreLabel() + " · " + result.getRelevanceTier();
             txtRelevanceChip.setText(chipLabel);
@@ -130,27 +127,22 @@ public class SearchResultAdapter
             });
         }
 
-        /**
-         * Sets chip background color and text color based on relevance tier.
-         * Uses a GradientDrawable so the corner radius is preserved.
-         * Colors are semi-transparent to stay readable on both light and dark surfaces.
-         */
         private void applyChipColor(TextView chip, String tier) {
             int bgColor;
             int textColor;
 
             switch (tier) {
                 case "High":
-                    bgColor = Color.parseColor("#2256A96A"); // green, 13% alpha
-                    textColor = Color.parseColor("#56A96A");
+                    bgColor = Color.parseColor("#1F1A7F37");
+                    textColor = Color.parseColor("#1E7A34");
                     break;
                 case "Medium":
-                    bgColor = Color.parseColor("#22E09A3E"); // amber, 13% alpha
-                    textColor = Color.parseColor("#E09A3E");
+                    bgColor = Color.parseColor("#1FE0A43A");
+                    textColor = Color.parseColor("#9A650A");
                     break;
-                default: // Low
-                    bgColor = Color.parseColor("#22888888"); // grey, 13% alpha
-                    textColor = Color.parseColor("#AAAAAA");
+                default:
+                    bgColor = Color.parseColor("#1F57718E");
+                    textColor = Color.parseColor("#35516F");
                     break;
             }
 

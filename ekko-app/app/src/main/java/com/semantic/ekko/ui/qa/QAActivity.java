@@ -17,7 +17,6 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.semantic.ekko.R;
-import java.util.List;
 
 public class QAActivity extends AppCompatActivity {
 
@@ -36,6 +35,8 @@ public class QAActivity extends AppCompatActivity {
     private ChipGroup chipGroupSuggestions;
     private TextView txtEmptyTitle;
     private TextView txtEmptySubtitle;
+    private TextView txtQaTitle;
+    private TextView txtQaSubtitle;
 
     private final StringBuilder streamingBuffer = new StringBuilder();
 
@@ -70,6 +71,8 @@ public class QAActivity extends AppCompatActivity {
         chipGroupSuggestions = findViewById(R.id.chipGroupSuggestions);
         txtEmptyTitle = findViewById(R.id.txtEmptyTitle);
         txtEmptySubtitle = findViewById(R.id.txtEmptySubtitle);
+        txtQaTitle = findViewById(R.id.txtQaTitle);
+        txtQaSubtitle = findViewById(R.id.txtQaSubtitle);
     }
 
     private void setupRecycler() {
@@ -83,7 +86,6 @@ public class QAActivity extends AppCompatActivity {
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(QAViewModel.class);
 
-        // Set document mode if launched from DetailActivity
         long docId = getIntent().getLongExtra(
             EXTRA_DOCUMENT_ID,
             QAViewModel.NO_DOCUMENT
@@ -92,33 +94,33 @@ public class QAActivity extends AppCompatActivity {
             viewModel.setDocumentMode(docId);
         }
 
-        // Update toolbar title and empty state for document mode
         String docName = getIntent().getStringExtra(EXTRA_DOCUMENT_NAME);
-        TextView txtTitle = findViewById(R.id.txtQaTitle);
         if (viewModel.isDocumentMode() && docName != null) {
-            txtTitle.setText(docName);
+            txtQaTitle.setText(docName);
+            txtQaSubtitle.setText("Document-specific answers");
             txtEmptyTitle.setText("Ask about this document");
             txtEmptySubtitle.setText(
-                "Your questions will be answered using only this file's content."
+                "Answers are generated only from this file's content."
             );
             setupSuggestions(
                 new String[] {
                     "Summarize this document",
                     "What are the key topics?",
-                    "What is the main conclusion?",
+                    "What should I review first?",
                 }
             );
         } else {
-            txtTitle.setText("Ask Ekko");
-            txtEmptyTitle.setText("Ask Ekko anything");
+            txtQaTitle.setText("Wise Bot");
+            txtQaSubtitle.setText("Answers from your uploaded documents");
+            txtEmptyTitle.setText("Ask Wise Bot anything");
             txtEmptySubtitle.setText(
-                "Your questions are answered from your indexed documents."
+                "Answers are grounded in your indexed documents."
             );
             setupSuggestions(
                 new String[] {
                     "What is in my documents?",
-                    "Explain the main concepts",
-                    "Summarize my files",
+                    "Summarize my latest upload",
+                    "What coverage gaps do I have?",
                 }
             );
         }
@@ -133,8 +135,7 @@ public class QAActivity extends AppCompatActivity {
                         streamingBuffer.setLength(0);
                         streamingBuffer.append(viewModel.getStreamingBuffer());
                         if (event.history != null) {
-                            for (QAMessage msg : event.history)
-                                adapter.addMessage(msg);
+                            for (QAMessage msg : event.history) adapter.addMessage(msg);
                             scrollToBottom();
                         }
                         updateEmptyState();
@@ -153,9 +154,7 @@ public class QAActivity extends AppCompatActivity {
                     case QAViewModel.UiEvent.UPDATE_LAST:
                         if (event.token != null) {
                             streamingBuffer.append(event.token);
-                            adapter.appendStreamingToken(
-                                streamingBuffer.toString()
-                            );
+                            adapter.appendStreamingToken(streamingBuffer.toString());
                         } else if (event.source != null) {
                             adapter.finalizeStreamingMessage(
                                 streamingBuffer.toString(),

@@ -1,54 +1,63 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/android:colorBackground"
->
+    android:background="@drawable/bg_main_gradient">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/android:colorBackground"
-        app:elevation="0dp"
-    >
+        android:background="@android:color/transparent"
+        app:elevation="0dp">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="4dp"
+            android:paddingStart="8dp"
             android:paddingEnd="16dp"
-        >
+            android:paddingTop="10dp"
+            android:paddingBottom="8dp">
 
             <ImageButton
                 android:id="@+id/btnBack"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
                 android:padding="10dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_close"
                 android:contentDescription="Back"
-                app:tint="?attr/colorOnSurface"
-            />
+                app:tint="?attr/colorOnSurface" />
 
-            <TextView
-                android:id="@+id/txtQaTitle"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Ask Ekko"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:layout_marginStart="4dp"
-            />
+                android:orientation="vertical"
+                android:layout_marginStart="4dp">
 
+                <TextView
+                    android:id="@+id/txtQaTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Wise Bot"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:fontFamily="@font/bricolage_grotesque" />
+
+                <TextView
+                    android:id="@+id/txtQaSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Answers from your uploaded documents"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:fontFamily="@font/bricolage_grotesque" />
+            </LinearLayout>
         </LinearLayout>
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -57,12 +66,10 @@
             android:layout_height="wrap_content"
             android:indeterminate="true"
             android:visibility="gone"
-            app:trackCornerRadius="0dp"
-        />
+            app:trackCornerRadius="0dp" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Message list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerMessages"
         android:layout_width="match_parent"
@@ -70,96 +77,104 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:paddingTop="8dp"
-        android:paddingBottom="80dp"
+        android:paddingBottom="100dp"
         android:clipToPadding="false"
         android:visibility="gone"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    />
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Empty state -->
     <LinearLayout
         android:id="@+id/layoutEmptyState"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:paddingBottom="100dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    >
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="120dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <ImageView
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:src="@drawable/ic_search"
-            app:tint="?attr/colorPrimary"
-            android:alpha="0.6"
-            android:contentDescription="Ask"
-        />
-
-        <TextView
-            android:id="@+id/txtEmptyTitle"
-            android:layout_width="wrap_content"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Ask Ekko anything"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:layout_marginTop="16dp"
-        />
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutlineVariant">
 
-        <TextView
-            android:id="@+id/txtEmptySubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Your questions are answered from your indexed documents."
-            android:textSize="13sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:gravity="center"
-            android:lineSpacingMultiplier="1.5"
-            android:layout_marginTop="8dp"
-        />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="22dp">
 
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chipGroupSuggestions"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            app:chipSpacingHorizontal="4dp"
-            app:chipSpacingVertical="8dp"
-        />
+                <ImageView
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
+                    android:src="@drawable/ic_chat"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="Wise bot" />
+
+                <TextView
+                    android:id="@+id/txtEmptyTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ask Wise Bot anything"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:layout_marginTop="14dp" />
+
+                <TextView
+                    android:id="@+id/txtEmptySubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Answers are grounded in your indexed documents."
+                    android:textSize="13sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.35"
+                    android:layout_marginTop="8dp" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupSuggestions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    app:chipSpacingHorizontal="4dp"
+                    app:chipSpacingVertical="8dp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 
-    <!-- Input bar -->
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="16dp"
-        android:background="?attr/android:colorBackground"
         android:layout_gravity="bottom"
-    >
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="8dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="?attr/colorOutlineVariant">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="@drawable/bg_search_bar"
             android:paddingStart="14dp"
-            android:paddingEnd="4dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-        >
+            android:paddingEnd="6dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
 
             <EditText
                 android:id="@+id/editQuestion"
@@ -175,8 +190,7 @@
                 android:imeOptions="actionSend"
                 android:inputType="textCapSentences|textMultiLine"
                 android:maxLines="4"
-                android:minLines="1"
-            />
+                android:minLines="1" />
 
             <ImageButton
                 android:id="@+id/btnStop"
@@ -187,8 +201,7 @@
                 android:src="@drawable/ic_stop"
                 android:contentDescription="Stop generation"
                 android:visibility="gone"
-                app:tint="?attr/colorError"
-            />
+                app:tint="?attr/colorError" />
 
             <ImageButton
                 android:id="@+id/btnSend"
@@ -198,11 +211,10 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_send"
                 android:contentDescription="Send question"
-                app:tint="?attr/colorPrimary"
-            />
+                app:tint="?attr/colorPrimary" />
 
         </LinearLayout>
 
-    </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

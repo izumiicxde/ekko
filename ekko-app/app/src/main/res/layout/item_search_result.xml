@@ -1,119 +1,44 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
-    android:layout_marginEnd="16dp"
     android:layout_marginBottom="10dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
+    app:cardElevation="1dp"
     app:strokeWidth="1dp"
     app:strokeColor="?attr/colorOutlineVariant"
-    app:cardBackgroundColor="?attr/colorSurface"
->
+    app:cardBackgroundColor="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="12dp"
-    >
+        android:padding="14dp">
 
-        <!-- Doc name -->
-        <TextView
-            android:id="@+id/txtDocName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
-            tools:text="Introduction to Machine Learning.pdf"
-        />
-
-        <!-- Category -->
-        <TextView
-            android:id="@+id/txtCategory"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:textColor="?attr/colorPrimary"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:layout_marginTop="2dp"
-            tools:text="Technical"
-        />
-
-        <!-- Summary snippet -->
-        <TextView
-            android:id="@+id/txtSummary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="12sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:lineSpacingMultiplier="1.5"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:layout_marginTop="8dp"
-            tools:text="This document introduces supervised learning, gradient descent, and neural networks."
-        />
-
-        <!-- Bottom row: file type chip + spacer + word count + relevance chip -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
-        >
+            android:gravity="center_vertical">
 
-            <!-- File type pill -->
             <TextView
-                android:id="@+id/txtFileType"
-                android:layout_width="wrap_content"
+                android:id="@+id/txtDocName"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:textSize="10sp"
-                android:textColor="?attr/colorPrimary"
+                android:layout_weight="1"
+                android:textSize="15sp"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
-                android:background="@drawable/bg_file_type_pill"
-                tools:text="PDF"
-            />
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="hurricane-claim-checklist.pdf" />
 
-            <!-- Spacer -->
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1"
-            />
-
-            <!-- Word count -->
             <TextView
-                android:id="@+id/txtWordCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="11sp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:layout_marginEnd="8dp"
-                tools:text="22.4k words"
-            />
-
-            <!-- Relevance chip: score + tier in one line -->
-            <TextView
-                android:id="@+id/txtRelevanceChip"
+                android:id="@+id/txtFileType"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingStart="9dp"
@@ -121,11 +46,66 @@
                 android:paddingTop="3dp"
                 android:paddingBottom="3dp"
                 android:textSize="10sp"
+                android:textColor="?attr/colorPrimary"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
-                android:background="@drawable/bg_relevance_chip"
-                tools:text="87% · High"
-            />
+                android:background="@drawable/bg_file_type_pill"
+                tools:text="PDF" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txtCategory"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:layout_marginTop="3dp"
+            tools:text="Insurance" />
+
+        <TextView
+            android:id="@+id/txtSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:lineSpacingExtra="2dp"
+            android:layout_marginTop="8dp"
+            tools:text="Checklist for claim filing with required documentation and timing constraints after storms." />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="10dp">
+
+            <TextView
+                android:id="@+id/txtWordCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="11sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:fontFamily="@font/bricolage_grotesque"
+                tools:text="1.4k words" />
+
+            <TextView
+                android:id="@+id/txtRelevanceChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:textSize="10sp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:textStyle="bold"
+                tools:text="89% · High" />
 
         </LinearLayout>
 
