@@ -105,6 +105,15 @@ class RAGResponse(BaseModel):
     chunks_used: int
 
 
+class SummaryRequest(BaseModel):
+    context: str
+    document_name: str = ""
+
+
+class SummaryResponse(BaseModel):
+    summary: str
+
+
 # =========================
 # KEYWORD CHECK (fast pre-filter)
 # =========================
@@ -202,6 +211,21 @@ def build_prompt(question: str, chunks: list[str], document_name: str) -> str:
 NOT_FOUND = "I could not find this in the provided content."
 
 
+def build_summary_prompt(context: str, document_name: str) -> str:
+    doc_ref = f' from "{document_name}"' if document_name else ""
+    return (
+        f"Below is extracted text{doc_ref}.\n\n"
+        f"EXTRACTED TEXT:\n{context.strip()}\n\n"
+        "Write a concise, accurate summary using only the provided text.\n"
+        "Requirements:\n"
+        "- Keep it brief but informative\n"
+        "- Prefer 1 short paragraph followed by 3-5 bullet points when useful\n"
+        "- Do not mention missing information unless the text is genuinely too short\n"
+        "- Do not add outside facts or assumptions\n\n"
+        "SUMMARY:"
+    )
+
+
 # =========================
 # ROUTES
 # =========================
@@ -258,6 +282,47 @@ async def rag(request: RAGRequest):
             raise HTTPException(status_code=500, detail="Internal server error.")
 
     return RAGResponse(answer=answer, chunks_used=len(request.chunks))
+
+
+@app.post("/summary")
+async def summary(request: SummaryRequest):
+    context = request.context.strip()
+    if not context:
+        raise HTTPException(status_code=400, detail="Context cannot be empty.")
+
+    prompt = build_summary_prompt(context, request.document_name)
+    logger.info(
+        f"Summary request | document='{request.document_name}' | chars={len(context)}"
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                OLLAMA_URL,
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        **OLLAMA_OPTIONS,
+                        "temperature": 0.2,
+                    },
+                },
+            )
+            response.raise_for_status()
+            summary_text = response.json().get("response", "").strip()
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504, detail="Model took too long to respond."
+        )
+    except Exception as e:
+        logger.error(f"Summary generation failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error.")
+
+    if not summary_text:
+        raise HTTPException(status_code=500, detail="Model returned an empty summary.")
+
+    return SummaryResponse(summary=summary_text)
 
 
 @app.post("/rag/stream")

@@ -14,6 +14,8 @@ import com.semantic.ekko.network.RagApiService;
 import com.semantic.ekko.network.RagClient;
 import com.semantic.ekko.network.RagRequest;
 import com.semantic.ekko.network.RagResponse;
+import com.semantic.ekko.network.SummaryRequest;
+import com.semantic.ekko.network.SummaryResponse;
 import com.semantic.ekko.util.PrefsManager;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -529,6 +531,84 @@ public class RagRepository {
                             ) {
                                 callback.onError(
                                     "Could not reach the Q&A server."
+                                );
+                            }
+                        }
+                    );
+            } catch (Exception e) {
+                callback.onError("Something went wrong.");
+            }
+        })
+            .start();
+    }
+
+    public void summarizeDocument(long documentId, RagCallback callback) {
+        if (documentId <= 0) {
+            callback.onError("Document not loaded.");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                DocumentEntity doc = documentDao.getById(documentId);
+                if (doc == null) {
+                    callback.onError("Document not found.");
+                    return;
+                }
+
+                String context = doc.rawText != null ? doc.rawText.trim() : "";
+                if (context.isEmpty()) {
+                    List<ChunkEntity> chunks = chunkDao.getByDocumentId(documentId);
+                    StringBuilder builder = new StringBuilder();
+                    for (ChunkEntity chunk : chunks) {
+                        if (chunk == null || chunk.chunkText == null) continue;
+                        if (builder.length() > 0) builder.append("\n\n");
+                        builder.append(chunk.chunkText.trim());
+                    }
+                    context = builder.toString().trim();
+                }
+
+                if (context.isEmpty()) {
+                    callback.onError(
+                        "This document has no indexed content. Please re-index it."
+                    );
+                    return;
+                }
+
+                SummaryRequest request = new SummaryRequest(context, doc.name);
+                final String sourceName = doc.name != null ? doc.name : "Document";
+
+                apiService
+                    .summarize(request)
+                    .enqueue(
+                        new Callback<SummaryResponse>() {
+                            @Override
+                            public void onResponse(
+                                retrofit2.Call<SummaryResponse> call,
+                                retrofit2.Response<SummaryResponse> response
+                            ) {
+                                if (
+                                    response.isSuccessful() &&
+                                    response.body() != null &&
+                                    response.body().summary != null &&
+                                    !response.body().summary.trim().isEmpty()
+                                ) {
+                                    callback.onAnswer(
+                                        response.body().summary.trim(),
+                                        sourceName
+                                    );
+                                } else {
+                                    callback.onError("Backend error.");
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(
+                                retrofit2.Call<SummaryResponse> call,
+                                Throwable t
+                            ) {
+                                callback.onError(
+                                    "Could not reach the summary server."
                                 );
                             }
                         }

@@ -11,4 +11,7 @@ public interface RagApiService {
 
     @POST("rag")
     Call<RagResponse> ask(@Body RagRequest request);
+
+    @POST("summary")
+    Call<SummaryResponse> summarize(@Body SummaryRequest request);
 }
