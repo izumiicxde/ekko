@@ -10,6 +10,10 @@ import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.data.repository.RagRepository;
 import com.semantic.ekko.ml.EmbeddingEngine;
+import com.semantic.ekko.ml.TextSummarizer;
+import com.semantic.ekko.processing.TextPreprocessor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class DetailViewModel extends AndroidViewModel {
 
@@ -23,6 +27,8 @@ public class DetailViewModel extends AndroidViewModel {
 
     private final DocumentRepository repository;
     private RagRepository ragRepository;
+    private TextSummarizer textSummarizer;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private long currentDocumentId = -1L;
 
     public DetailViewModel(@NonNull Application application) {
@@ -32,6 +38,7 @@ public class DetailViewModel extends AndroidViewModel {
         if (app.isMlReady()) {
             EmbeddingEngine engine = app.getEmbeddingEngine();
             ragRepository = new RagRepository(application, engine);
+            textSummarizer = app.getTextSummarizer();
         }
     }
 
@@ -49,7 +56,7 @@ public class DetailViewModel extends AndroidViewModel {
     }
 
     public void generateAiSummary() {
-        if (ragRepository == null) {
+        if (textSummarizer == null && ragRepository == null) {
             errorMessage.postValue("ML not ready.");
             return;
         }
@@ -59,26 +66,69 @@ public class DetailViewModel extends AndroidViewModel {
         }
         summaryLoading.postValue(true);
         aiSummary.postValue(null);
-        ragRepository.queryForDocument(
-            "Provide a clear and concise summary of this document.",
-            currentDocumentId,
-            new RagRepository.RagCallback() {
-                @Override
-                public void onAnswer(String answer, String sourceDocumentName) {
-                    repository.updateSummary(currentDocumentId, answer);
-                    summaryLoading.postValue(false);
-                    aiSummary.postValue(answer);
-                }
-
-                @Override
-                public void onError(String message) {
-                    summaryLoading.postValue(false);
-                    errorMessage.postValue(
-                        "Could not generate summary: " + message
-                    );
-                }
+        repository.getById(currentDocumentId, doc -> {
+            if (doc == null) {
+                summaryLoading.postValue(false);
+                errorMessage.postValue("Document not found.");
+                return;
             }
-        );
+
+            String localSummary = buildLocalSummary(doc);
+            if (localSummary != null && !localSummary.isEmpty()) {
+                repository.updateSummary(currentDocumentId, localSummary);
+                summaryLoading.postValue(false);
+                aiSummary.postValue(localSummary);
+                return;
+            }
+
+            if (ragRepository == null) {
+                summaryLoading.postValue(false);
+                errorMessage.postValue(
+                    "Could not generate summary: indexed content not available."
+                );
+                return;
+            }
+
+            ragRepository.queryForDocument(
+                "Provide a clear and concise summary of this document.",
+                currentDocumentId,
+                new RagRepository.RagCallback() {
+                    @Override
+                    public void onAnswer(
+                        String answer,
+                        String sourceDocumentName
+                    ) {
+                        repository.updateSummary(currentDocumentId, answer);
+                        summaryLoading.postValue(false);
+                        aiSummary.postValue(answer);
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        summaryLoading.postValue(false);
+                        errorMessage.postValue(
+                            "Could not generate summary: " + message
+                        );
+                    }
+                }
+            );
+        });
+    }
+
+    private String buildLocalSummary(DocumentEntity doc) {
+        if (textSummarizer == null || doc == null) return null;
+
+        String rawText = doc.rawText != null ? doc.rawText.trim() : "";
+        if (rawText.length() < 120) return null;
+
+        String cleaned = TextPreprocessor.clean(rawText);
+        if (cleaned.length() < 120) return null;
+
+        try {
+            return textSummarizer.summarize(cleaned);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public LiveData<DocumentEntity> getDocument() {
@@ -95,5 +145,11 @@ public class DetailViewModel extends AndroidViewModel {
 
     public LiveData<Boolean> getSummaryLoading() {
         return summaryLoading;
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        executor.shutdown();
     }
 }

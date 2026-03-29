@@ -42,6 +42,7 @@ public class DetailActivity extends AppCompatActivity {
     private View labelEntities;
     private View progressEnhanceSummary;
     private View layoutSummaryLoading;
+    private TextView txtSummaryHint;
     private Markwon markwon;
 
     @Override
@@ -79,6 +80,7 @@ public class DetailActivity extends AppCompatActivity {
         labelEntities = findViewById(R.id.labelEntities);
         progressEnhanceSummary = findViewById(R.id.progressEnhanceSummary);
         layoutSummaryLoading = findViewById(R.id.layoutSummaryLoading);
+        txtSummaryHint = findViewById(R.id.txtSummaryHint);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
@@ -111,6 +113,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (summary != null && !summary.isEmpty()) {
                     if (currentDoc != null) currentDoc.summary = summary;
                     txtSummary.setVisibility(View.VISIBLE);
+                    txtSummaryHint.setText("Generated from indexed document text");
                     renderMarkdownSummary(summary);
                     btnEnhanceSummary.setText("Regenerate");
                     btnEnhanceSummary.setEnabled(true);
@@ -132,6 +135,7 @@ public class DetailActivity extends AppCompatActivity {
                     loading ? "Generating..." : getSummaryActionText()
                 );
                 if (loading) {
+                    txtSummaryHint.setText("Reading indexed content and drafting a concise summary");
                     renderMarkdownSummary(
                         "Generating AI summary. This can take a few seconds."
                     );
@@ -155,10 +159,12 @@ public class DetailActivity extends AppCompatActivity {
 
         if (doc.summary != null && !doc.summary.isEmpty()) {
             txtSummary.setVisibility(View.VISIBLE);
+            txtSummaryHint.setText("Saved AI summary");
             renderMarkdownSummary(doc.summary);
             btnEnhanceSummary.setText("Regenerate");
         } else {
             txtSummary.setVisibility(View.VISIBLE);
+            txtSummaryHint.setText("Uses the indexed text already stored on-device");
             renderMarkdownSummary(
                 "No AI summary yet. Tap the button to generate."
             );
