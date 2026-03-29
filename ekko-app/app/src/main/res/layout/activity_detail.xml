@@ -258,26 +258,23 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnOpenFile"
+                            style="@style/Widget.Ekko.Button.Primary"
                             android:layout_width="0dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:layout_weight="1"
-                            android:fontFamily="@font/bricolage_grotesque"
                             android:text="Open file"
                             android:textSize="14sp"
-                            app:cornerRadius="18dp"
                         />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnChatWithFile"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            style="@style/Widget.Ekko.Button.Outlined"
                             android:layout_width="0dp"
-                            android:layout_height="46dp"
+                            android:layout_height="48dp"
                             android:layout_weight="1"
                             android:layout_marginStart="8dp"
-                            android:fontFamily="@font/bricolage_grotesque"
                             android:text="Ask Ekko Bot"
                             android:textSize="14sp"
-                            app:cornerRadius="18dp"
                         />
                     </LinearLayout>
                 </LinearLayout>
@@ -322,21 +319,15 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnEnhanceSummary"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Ekko.Button.Outlined"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="16dp"
-                    android:fontFamily="@font/bricolage_grotesque"
                     android:text="Create summary"
-                    android:textAllCaps="false"
                     android:textSize="14sp"
-                    android:textStyle="bold"
-                    app:cornerRadius="16dp"
                     app:icon="@drawable/ic_refresh"
                     app:iconGravity="textStart"
-                    app:iconPadding="8dp"
                     app:iconTint="?attr/colorPrimary"
-                    app:strokeColor="?attr/colorOutline"
                 />
 
                 <LinearLayout

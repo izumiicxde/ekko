@@ -265,13 +265,11 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReset"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Ekko.Button.Outlined"
             android:layout_width="match_parent"
             android:layout_height="46dp"
-            android:fontFamily="@font/bricolage_grotesque"
             android:text="Reset to previous values"
             android:textSize="14sp"
-            app:cornerRadius="18dp"
         />
     </LinearLayout>
 
