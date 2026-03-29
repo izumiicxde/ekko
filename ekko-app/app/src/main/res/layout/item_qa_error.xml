@@ -4,29 +4,38 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingTop="8dp"
+    android:paddingTop="10dp"
     android:paddingBottom="12dp"
 >
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Ekko"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        android:textColor="?attr/colorPrimary"
-        android:fontFamily="@font/bricolage_grotesque"
-        android:layout_marginBottom="4dp"
-    />
-
-    <TextView
-        android:id="@+id/txtError"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="13sp"
-        android:textColor="@color/design_default_color_error"
-        android:fontFamily="@font/bricolage_grotesque"
-        android:lineSpacingMultiplier="1.5"
-    />
+        android:background="@drawable/bg_message_error"
+        android:orientation="vertical"
+        android:padding="16dp"
+    >
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:text="Ekko"
+            android:textColor="?attr/colorOnErrorContainer"
+            android:textSize="11sp"
+            android:textStyle="bold"
+        />
+
+        <TextView
+            android:id="@+id/txtError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:lineSpacingMultiplier="1.5"
+            android:textColor="?attr/colorOnErrorContainer"
+            android:textSize="13sp"
+        />
+    </LinearLayout>
 
 </LinearLayout>

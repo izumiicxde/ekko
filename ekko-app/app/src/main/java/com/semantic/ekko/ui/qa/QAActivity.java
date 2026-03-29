@@ -12,6 +12,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -224,6 +225,14 @@ public class QAActivity extends AppCompatActivity {
             Chip chip = new Chip(this);
             chip.setText(suggestion);
             chip.setCheckable(false);
+            chip.setEnsureMinTouchTargetSize(false);
+            chip.setChipMinHeight(34f);
+            chip.setChipCornerRadius(16f);
+            chip.setChipStrokeWidth(0f);
+            chip.setTextSize(12f);
+            chip.setTypeface(
+                ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
+            );
             chip.setOnClickListener(v -> {
                 editQuestion.setText(suggestion);
                 editQuestion.setSelection(suggestion.length());
