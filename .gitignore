@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+# Local reference assets kept out of source control
+*.jpg
+*.webp
+prompt.md
