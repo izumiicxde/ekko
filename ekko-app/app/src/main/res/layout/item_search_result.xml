@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -6,36 +6,40 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="1dp"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="0dp"
     app:strokeWidth="1dp"
     app:strokeColor="?attr/colorOutlineVariant"
-    app:cardBackgroundColor="?attr/colorSurface">
+    app:cardBackgroundColor="?attr/colorSurface"
+>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="14dp">
+        android:padding="16dp"
+    >
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+        >
 
             <TextView
                 android:id="@+id/txtDocName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="15sp"
+                android:textSize="16sp"
                 android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
                 android:maxLines="1"
                 android:ellipsize="end"
-                tools:text="hurricane-claim-checklist.pdf" />
+                tools:text="hurricane-claim-checklist.pdf"
+            />
 
             <TextView
                 android:id="@+id/txtFileType"
@@ -43,14 +47,15 @@
                 android:layout_height="wrap_content"
                 android:paddingStart="9dp"
                 android:paddingEnd="9dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
                 android:textSize="10sp"
-                android:textColor="?attr/colorPrimary"
+                android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
                 android:background="@drawable/bg_file_type_pill"
-                tools:text="PDF" />
+                tools:text="PDF"
+            />
 
         </LinearLayout>
 
@@ -62,7 +67,8 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/bricolage_grotesque"
             android:layout_marginTop="3dp"
-            tools:text="Insurance" />
+            tools:text="Insurance"
+        />
 
         <TextView
             android:id="@+id/txtSummary"
@@ -74,15 +80,17 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:lineSpacingExtra="2dp"
-            android:layout_marginTop="8dp"
-            tools:text="Checklist for claim filing with required documentation and timing constraints after storms." />
+            android:layout_marginTop="10dp"
+            tools:text="Checklist for claim filing with required documentation and timing constraints after storms."
+        />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="10dp">
+            android:layout_marginTop="12dp"
+        >
 
             <TextView
                 android:id="@+id/txtWordCount"
@@ -92,7 +100,8 @@
                 android:textSize="11sp"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/bricolage_grotesque"
-                tools:text="1.4k words" />
+                tools:text="1.4k words"
+            />
 
             <TextView
                 android:id="@+id/txtRelevanceChip"
@@ -105,7 +114,8 @@
                 android:textSize="10sp"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
-                tools:text="89% · High" />
+                tools:text="89% · High"
+            />
 
         </LinearLayout>
 

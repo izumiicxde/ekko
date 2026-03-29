@@ -4,9 +4,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
+    android:layout_marginBottom="10dp"
     app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="22dp"
     app:cardElevation="0dp"
     app:strokeWidth="1dp"
     app:strokeColor="?attr/colorOutlineVariant"
@@ -17,7 +17,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="12dp"
+        android:padding="14dp"
     >
 
         <LinearLayout
@@ -32,7 +32,7 @@
                 android:id="@+id/txtFolderName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="14sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface"
                 android:fontFamily="@font/bricolage_grotesque"
@@ -44,7 +44,7 @@
                 android:id="@+id/txtFolderUri"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:textSize="11sp"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:fontFamily="@font/bricolage_grotesque"
@@ -66,12 +66,12 @@
 
         <ImageButton
             android:id="@+id/btnRemoveFolder"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="6dp"
-            android:padding="8dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_surface_pill"
+            android:padding="10dp"
             android:src="@drawable/ic_close"
-            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Remove folder"
             app:tint="?attr/colorOnSurfaceVariant"
         />

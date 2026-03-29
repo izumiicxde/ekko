@@ -1,30 +1,30 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.Ekko" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">#0B67D0</item>
+        <item name="colorPrimary">#4B57F5</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorPrimaryContainer">#DDEBFF</item>
-        <item name="colorOnPrimaryContainer">#083D7A</item>
+        <item name="colorPrimaryContainer">#E8E7FF</item>
+        <item name="colorOnPrimaryContainer">#23277F</item>
 
-        <item name="colorSecondary">#0F79E6</item>
+        <item name="colorSecondary">#FF7A59</item>
         <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSecondaryContainer">#E5F1FF</item>
-        <item name="colorOnSecondaryContainer">#073A73</item>
+        <item name="colorSecondaryContainer">#FFE4DA</item>
+        <item name="colorOnSecondaryContainer">#7A2816</item>
 
-        <item name="colorTertiary">#255A9C</item>
+        <item name="colorTertiary">#2FAE9C</item>
         <item name="colorOnTertiary">#FFFFFF</item>
-        <item name="colorTertiaryContainer">#DFEAFE</item>
-        <item name="colorOnTertiaryContainer">#122C4A</item>
+        <item name="colorTertiaryContainer">#DDF8F1</item>
+        <item name="colorOnTertiaryContainer">#0E5B4F</item>
 
-        <item name="colorSurface">#FFFFFF</item>
-        <item name="colorOnSurface">#0F172A</item>
-        <item name="colorSurfaceVariant">#E9F0FA</item>
-        <item name="colorOnSurfaceVariant">#334155</item>
+        <item name="colorSurface">#FFFDFC</item>
+        <item name="colorOnSurface">#16142B</item>
+        <item name="colorSurfaceVariant">#F2ECFF</item>
+        <item name="colorOnSurfaceVariant">#655D78</item>
 
-        <item name="android:colorBackground">#F2F6FC</item>
-        <item name="colorOnBackground">#0F172A</item>
+        <item name="android:colorBackground">#F7F2FF</item>
+        <item name="colorOnBackground">#16142B</item>
 
-        <item name="colorOutline">#B9CCE4</item>
-        <item name="colorOutlineVariant">#D0DEEF</item>
+        <item name="colorOutline">#C5BADB</item>
+        <item name="colorOutlineVariant">#E6DCF3</item>
 
         <item name="colorError">#B42318</item>
         <item name="colorOnError">#FFFFFF</item>
@@ -32,7 +32,11 @@
         <item name="colorOnErrorContainer">#7A271A</item>
 
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item
+            name="android:windowLightStatusBar"
+            tools:targetApi="m"
+        >true</item>
+        <item name="android:navigationBarColor">#00FFFFFF</item>
     </style>
 
     <style name="Theme.Ekko" parent="Base.Theme.Ekko" />

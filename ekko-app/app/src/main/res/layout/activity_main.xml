@@ -8,8 +8,8 @@
     android:background="@drawable/bg_main_gradient"
     android:paddingStart="0dp"
     android:paddingEnd="0dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="10dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="14dp"
 >
 
     <androidx.fragment.app.FragmentContainerView
@@ -24,10 +24,10 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         app:cardBackgroundColor="?attr/colorSurface"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="8dp"
+        app:cardCornerRadius="30dp"
+        app:cardElevation="0dp"
         app:strokeWidth="1dp"
         app:strokeColor="?attr/colorOutlineVariant"
     >
@@ -35,7 +35,7 @@
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNav"
             android:layout_width="match_parent"
-            android:layout_height="70dp"
+            android:layout_height="74dp"
             android:background="@android:color/transparent"
             app:menu="@menu/bottom_nav_menu"
             app:labelVisibilityMode="labeled"
