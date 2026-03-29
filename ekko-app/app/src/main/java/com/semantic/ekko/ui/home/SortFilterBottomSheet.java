@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,6 +23,7 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
     private final String currentFileType;
     private final String currentViewMode;
     private final OnApplyListener listener;
+    private boolean suppressApply = false;
 
     public SortFilterBottomSheet(
         String currentSortOrder,
@@ -61,10 +61,9 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
         RadioGroup radioSort = view.findViewById(R.id.radioGroupSort);
         RadioGroup radioView = view.findViewById(R.id.radioGroupView);
         ChipGroup chipGroupFileType = view.findViewById(R.id.chipGroupFileType);
-        MaterialButton btnApply = view.findViewById(R.id.btnApply);
         MaterialButton btnReset = view.findViewById(R.id.btnReset);
 
-        // Preselect sort order
+        suppressApply = true;
         switch (currentSortOrder) {
             case "name":
                 radioSort.check(R.id.radioSortName);
@@ -80,7 +79,6 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
                 break;
         }
 
-        // Preselect file type
         switch (currentFileType) {
             case "pdf":
                 checkChip(chipGroupFileType, R.id.chipPdf);
@@ -103,23 +101,83 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
         } else {
             radioView.check(R.id.radioViewGrouped);
         }
+        suppressApply = false;
 
-        btnApply.setOnClickListener(v -> {
-            String sortOrder = getSortOrder(
-                radioSort.getCheckedRadioButtonId()
-            );
-            String fileType = getFileType(chipGroupFileType);
-            String viewMode = getViewMode(radioView.getCheckedRadioButtonId());
-            if (listener != null) {
-                listener.onApply(sortOrder, fileType, viewMode);
-            }
-            dismiss();
-        });
+        radioSort.setOnCheckedChangeListener((group, checkedId) ->
+            dispatchSelection(radioSort, radioView, chipGroupFileType)
+        );
+        radioView.setOnCheckedChangeListener((group, checkedId) ->
+            dispatchSelection(radioSort, radioView, chipGroupFileType)
+        );
+        chipGroupFileType.setOnCheckedStateChangeListener((group, checkedIds) ->
+            dispatchSelection(radioSort, radioView, chipGroupFileType)
+        );
 
         btnReset.setOnClickListener(v -> {
-            if (listener != null) listener.onApply("recent", "all", "grouped");
-            dismiss();
+            suppressApply = true;
+            restoreInitialState(radioSort, radioView, chipGroupFileType);
+            suppressApply = false;
+            dispatchSelection(radioSort, radioView, chipGroupFileType);
         });
+    }
+
+    private void restoreInitialState(
+        RadioGroup radioSort,
+        RadioGroup radioView,
+        ChipGroup chipGroupFileType
+    ) {
+        switch (currentSortOrder) {
+            case "name":
+                radioSort.check(R.id.radioSortName);
+                break;
+            case "word_count":
+                radioSort.check(R.id.radioSortWordCount);
+                break;
+            case "read_time":
+                radioSort.check(R.id.radioSortReadTime);
+                break;
+            default:
+                radioSort.check(R.id.radioSortRecent);
+                break;
+        }
+
+        chipGroupFileType.clearCheck();
+        switch (currentFileType) {
+            case "pdf":
+                checkChip(chipGroupFileType, R.id.chipPdf);
+                break;
+            case "docx":
+                checkChip(chipGroupFileType, R.id.chipDocx);
+                break;
+            case "pptx":
+                checkChip(chipGroupFileType, R.id.chipPptx);
+                break;
+            case "txt":
+                checkChip(chipGroupFileType, R.id.chipTxt);
+                break;
+            default:
+                break;
+        }
+
+        if ("list".equals(currentViewMode)) {
+            radioView.check(R.id.radioViewList);
+        } else if ("folders".equals(currentViewMode)) {
+            radioView.check(R.id.radioViewFolders);
+        } else {
+            radioView.check(R.id.radioViewGrouped);
+        }
+    }
+
+    private void dispatchSelection(
+        RadioGroup radioSort,
+        RadioGroup radioView,
+        ChipGroup chipGroupFileType
+    ) {
+        if (suppressApply || listener == null) return;
+        String sortOrder = getSortOrder(radioSort.getCheckedRadioButtonId());
+        String fileType = getFileType(chipGroupFileType);
+        String viewMode = getViewMode(radioView.getCheckedRadioButtonId());
+        listener.onApply(sortOrder, fileType, viewMode);
     }
 
     private void checkChip(ChipGroup group, int chipId) {
