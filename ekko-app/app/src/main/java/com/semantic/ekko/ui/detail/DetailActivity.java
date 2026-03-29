@@ -113,9 +113,9 @@ public class DetailActivity extends AppCompatActivity {
                 if (summary != null && !summary.isEmpty()) {
                     if (currentDoc != null) currentDoc.summary = summary;
                     txtSummary.setVisibility(View.VISIBLE);
-                    txtSummaryHint.setText("Generated from indexed document text");
+                    txtSummaryHint.setText("Freshly generated from your indexed document text");
                     renderMarkdownSummary(summary);
-                    btnEnhanceSummary.setText("Regenerate");
+                    btnEnhanceSummary.setText("Refresh summary");
                     btnEnhanceSummary.setEnabled(true);
                 }
             });
@@ -132,12 +132,12 @@ public class DetailActivity extends AppCompatActivity {
                 );
                 btnEnhanceSummary.setEnabled(!loading);
                 btnEnhanceSummary.setText(
-                    loading ? "Generating..." : getSummaryActionText()
+                    loading ? "Creating summary..." : getSummaryActionText()
                 );
                 if (loading) {
-                    txtSummaryHint.setText("Reading indexed content and drafting a concise summary");
+                    txtSummaryHint.setText("Reading indexed content and drafting a tighter overview");
                     renderMarkdownSummary(
-                        "Generating AI summary. This can take a few seconds."
+                        "Building a concise summary. This usually takes a few seconds."
                     );
                 }
             });
@@ -159,16 +159,16 @@ public class DetailActivity extends AppCompatActivity {
 
         if (doc.summary != null && !doc.summary.isEmpty()) {
             txtSummary.setVisibility(View.VISIBLE);
-            txtSummaryHint.setText("Saved AI summary");
+            txtSummaryHint.setText("Saved summary from the indexed document");
             renderMarkdownSummary(doc.summary);
-            btnEnhanceSummary.setText("Regenerate");
+            btnEnhanceSummary.setText("Refresh summary");
         } else {
             txtSummary.setVisibility(View.VISIBLE);
-            txtSummaryHint.setText("Uses the indexed text already stored on-device");
+            txtSummaryHint.setText("Create a quick overview from the indexed text already stored on-device");
             renderMarkdownSummary(
-                "No AI summary yet. Tap the button to generate."
+                "No summary yet. Use the action above to create one."
             );
-            btnEnhanceSummary.setText("Generate AI summary");
+            btnEnhanceSummary.setText("Create summary");
         }
 
         chipGroupKeywords.removeAllViews();
@@ -299,9 +299,9 @@ public class DetailActivity extends AppCompatActivity {
             currentDoc.summary != null &&
             !currentDoc.summary.isEmpty()
         ) {
-            return "Regenerate";
+            return "Refresh summary";
         }
-        return "Generate AI summary";
+        return "Create summary";
     }
 
     private void renderMarkdownSummary(String text) {

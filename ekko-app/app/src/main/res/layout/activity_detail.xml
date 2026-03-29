@@ -21,7 +21,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="14dp"
-            android:paddingTop="14dp"
+            android:paddingTop="18dp"
             android:paddingEnd="14dp"
             android:paddingBottom="24dp"
         >
@@ -44,21 +44,33 @@
                     app:tint="?attr/colorOnSurface"
                 />
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_surface_pill"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:paddingStart="12dp"
-                    android:paddingTop="7dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="7dp"
-                    android:text="Document detail"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                />
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical"
+                >
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:text="Detail"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                    />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:text="Document overview"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                    />
+                </LinearLayout>
             </LinearLayout>
 
             <com.google.android.material.card.MaterialCardView
@@ -66,7 +78,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 app:cardBackgroundColor="@android:color/transparent"
-                app:cardCornerRadius="32dp"
+                app:cardCornerRadius="34dp"
                 app:cardElevation="0dp"
                 app:strokeColor="?attr/colorOutlineVariant"
                 app:strokeWidth="1dp"
@@ -139,7 +151,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:background="@drawable/bg_surface_pill"
+                            android:background="@drawable/bg_stats_row"
                             android:gravity="center"
                             android:orientation="vertical"
                             android:paddingTop="14dp"
@@ -174,7 +186,7 @@
                             android:layout_marginStart="8dp"
                             android:layout_marginEnd="8dp"
                             android:layout_weight="1"
-                            android:background="@drawable/bg_surface_pill"
+                            android:background="@drawable/bg_stats_row"
                             android:gravity="center"
                             android:orientation="vertical"
                             android:paddingTop="14dp"
@@ -207,7 +219,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:background="@drawable/bg_surface_pill"
+                            android:background="@drawable/bg_stats_row"
                             android:gravity="center"
                             android:orientation="vertical"
                             android:paddingTop="14dp"
@@ -277,102 +289,87 @@
                 android:layout_marginTop="14dp"
                 android:background="@drawable/bg_soft_panel"
                 android:orientation="vertical"
-                android:padding="18dp"
+                android:padding="20dp"
             >
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                >
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                    >
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:letterSpacing="0.08"
-                            android:text="AI SUMMARY"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                        />
-
-                        <TextView
-                            android:id="@+id/txtSummaryHint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Uses the indexed text already stored on-device"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="12sp"
-                        />
-                    </LinearLayout>
-
-                    <com.google.android.material.progressindicator.CircularProgressIndicator
-                        android:id="@+id/progressEnhanceSummary"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_marginEnd="8dp"
-                        android:visibility="gone"
-                        app:indicatorInset="0dp"
-                        app:indicatorSize="18dp"
-                        app:trackThickness="2dp"
-                    />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnEnhanceSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:minWidth="0dp"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:text="Generate AI summary"
-                        android:textAllCaps="false"
-                        android:textColor="?attr/colorOnPrimary"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        app:backgroundTint="?attr/colorPrimary"
-                        app:cornerRadius="18dp"
-                    />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/layoutSummaryLoading"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="@drawable/bg_surface_pill"
                     android:orientation="vertical"
-                    android:padding="12dp"
-                    android:visibility="gone"
                 >
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Generating AI summary..."
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp"
+                        android:text="Summary"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
                     />
 
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:id="@+id/txtSummaryHint"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:indeterminate="true"
-                        app:trackCornerRadius="10dp"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:text="Generated from the indexed text already stored on-device"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                    />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEnhanceSummary"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="16dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Create summary"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="16dp"
+                    app:icon="@drawable/ic_refresh"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:iconTint="?attr/colorPrimary"
+                    app:strokeColor="?attr/colorOutline"
+                />
+
+                <LinearLayout
+                    android:id="@+id/layoutSummaryLoading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="6dp"
+                    android:background="@drawable/bg_quick_action_card"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="14dp"
+                    android:visibility="gone"
+                >
+
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/progressEnhanceSummary"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginEnd="10dp"
+                        android:visibility="gone"
+                        app:indicatorInset="0dp"
+                        app:indicatorSize="20dp"
+                        app:trackThickness="2dp"
+                    />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:text="Building a clean summary from indexed content"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
                     />
                 </LinearLayout>
 
@@ -380,8 +377,9 @@
                     android:id="@+id/txtSummary"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="14dp"
                     android:fontFamily="@font/bricolage_grotesque"
+                    android:lineSpacingExtra="3dp"
                     android:lineSpacingMultiplier="1.6"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="15sp"
