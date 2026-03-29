@@ -6,9 +6,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
-    app:cardCornerRadius="28dp"
+    app:cardCornerRadius="24dp"
     app:cardElevation="0dp"
-    app:strokeWidth="0dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp"
     app:cardBackgroundColor="?attr/colorSurface"
 >
 
@@ -30,15 +31,15 @@
         >
 
             <FrameLayout
-                android:layout_width="42dp"
-                android:layout_height="42dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_icon_pill"
             >
 
                 <ImageView
                     android:id="@+id/imgFileIcon"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_description"
                     app:tint="?attr/colorPrimary"
@@ -104,7 +105,7 @@
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
                 android:textSize="9sp"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="?attr/colorOnPrimaryContainer"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
                 android:background="@drawable/bg_file_type_pill"

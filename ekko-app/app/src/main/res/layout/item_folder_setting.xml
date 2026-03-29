@@ -8,7 +8,8 @@
     app:cardBackgroundColor="?attr/colorSurface"
     app:cardCornerRadius="26dp"
     app:cardElevation="0dp"
-    app:strokeWidth="0dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp"
 >
 
     <LinearLayout
@@ -52,28 +53,33 @@
             />
         </LinearLayout>
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switchInclude"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Include"
-            android:textSize="12sp"
-            android:textColor="?attr/colorOnSurface"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:checked="true"
-        />
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+        >
 
-        <ImageButton
-            android:id="@+id/btnRemoveFolder"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/bg_surface_pill"
-            android:padding="10dp"
-            android:src="@drawable/ic_close"
-            android:contentDescription="Remove folder"
-            app:tint="?attr/colorOnSurfaceVariant"
-        />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchInclude"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text=""
+            />
+
+            <ImageButton
+                android:id="@+id/btnRemoveFolder"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_surface_pill"
+                android:padding="10dp"
+                android:src="@drawable/ic_close"
+                android:contentDescription="Remove folder"
+                app:tint="?attr/colorOnSurfaceVariant"
+            />
+        </LinearLayout>
 
     </LinearLayout>
 

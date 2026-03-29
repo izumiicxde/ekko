@@ -1,30 +1,30 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.Ekko" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">#3156C8</item>
+        <item name="colorPrimary">#6B5AE0</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorPrimaryContainer">#DCE6FF</item>
-        <item name="colorOnPrimaryContainer">#112D73</item>
+        <item name="colorPrimaryContainer">#E7E0FF</item>
+        <item name="colorOnPrimaryContainer">#2A1971</item>
 
-        <item name="colorSecondary">#D07B2E</item>
+        <item name="colorSecondary">#8B7AD9</item>
         <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSecondaryContainer">#F5E1CA</item>
-        <item name="colorOnSecondaryContainer">#633800</item>
+        <item name="colorSecondaryContainer">#EFEAFF</item>
+        <item name="colorOnSecondaryContainer">#32245F</item>
 
-        <item name="colorTertiary">#277D6D</item>
+        <item name="colorTertiary">#5F8A73</item>
         <item name="colorOnTertiary">#FFFFFF</item>
-        <item name="colorTertiaryContainer">#D4EEE8</item>
-        <item name="colorOnTertiaryContainer">#0B5146</item>
+        <item name="colorTertiaryContainer">#DCECDD</item>
+        <item name="colorOnTertiaryContainer">#173A26</item>
 
-        <item name="colorSurface">#FBFAF7</item>
-        <item name="colorOnSurface">#191B22</item>
-        <item name="colorSurfaceVariant">#EAEFF7</item>
-        <item name="colorOnSurfaceVariant">#5E6675</item>
+        <item name="colorSurface">#FFFCFF</item>
+        <item name="colorOnSurface">#181524</item>
+        <item name="colorSurfaceVariant">#F2EEF9</item>
+        <item name="colorOnSurfaceVariant">#655F74</item>
 
-        <item name="android:colorBackground">#EEF2F8</item>
-        <item name="colorOnBackground">#191B22</item>
+        <item name="android:colorBackground">#F5F2F8</item>
+        <item name="colorOnBackground">#181524</item>
 
-        <item name="colorOutline">#BCC5D5</item>
-        <item name="colorOutlineVariant">#D8DFEB</item>
+        <item name="colorOutline">#C4BCD6</item>
+        <item name="colorOutlineVariant">#E4DDF0</item>
 
         <item name="colorError">#B42318</item>
         <item name="colorOnError">#FFFFFF</item>

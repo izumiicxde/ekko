@@ -7,10 +7,10 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
     app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="28dp"
+    app:cardCornerRadius="24dp"
     app:cardElevation="0dp"
     app:strokeColor="?attr/colorOutlineVariant"
-    app:strokeWidth="0dp"
+    app:strokeWidth="1dp"
 >
 
     <LinearLayout
@@ -25,14 +25,14 @@
     >
 
         <FrameLayout
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="@drawable/bg_icon_pill"
         >
 
             <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:contentDescription="Folder icon"
                 android:src="@drawable/ic_folder_open"
@@ -73,15 +73,21 @@
             />
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:text="Browse"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="11sp"
-            android:textStyle="bold"
-        />
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_surface_pill"
+        >
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:contentDescription="Open folder"
+                android:src="@drawable/ic_arrow_forward_small"
+                app:tint="?attr/colorOnSurface"
+            />
+        </FrameLayout>
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
