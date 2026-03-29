@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:background="@drawable/bg_message_answer"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="18dp"
     >
 
         <TextView
@@ -21,8 +21,8 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
             android:fontFamily="@font/bricolage_grotesque"
-            android:text="Ekko Bot"
-            android:textColor="?attr/colorPrimary"
+            android:text="Ekko"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="11sp"
             android:textStyle="bold"
         />
@@ -49,7 +49,7 @@
             android:paddingEnd="10dp"
             android:paddingBottom="5dp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:visibility="gone"
         />
     </LinearLayout>

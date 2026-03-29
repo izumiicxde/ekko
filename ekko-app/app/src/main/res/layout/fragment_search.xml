@@ -21,15 +21,25 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="14dp"
-            android:paddingTop="12dp"
+            android:paddingTop="16dp"
             android:paddingEnd="14dp"
         >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:text="Explore"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+            />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 app:cardBackgroundColor="@android:color/transparent"
-                app:cardCornerRadius="32dp"
+                app:cardCornerRadius="34dp"
                 app:cardElevation="0dp"
                 app:strokeColor="?attr/colorOutlineVariant"
                 app:strokeWidth="1dp"
@@ -52,7 +62,7 @@
                         android:paddingTop="6dp"
                         android:paddingEnd="12dp"
                         android:paddingBottom="6dp"
-                        android:text="Semantic search"
+                        android:text="Search studio"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="12sp"
                         android:textStyle="bold"
@@ -63,7 +73,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Find the right note,\nnot just the right filename."
+                        android:text="Find the right idea,\nnot just the right file."
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="28sp"
                         android:textStyle="bold"
@@ -74,7 +84,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Search summaries, meaning, and extracted keywords across your vault."
+                        android:text="Search summaries, meaning, and keywords across your indexed study material."
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp"
                     />
@@ -84,7 +94,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
                         app:cardBackgroundColor="?attr/colorSurface"
-                        app:cardCornerRadius="22dp"
+                        app:cardCornerRadius="24dp"
                         app:cardElevation="0dp"
                         app:strokeColor="?attr/colorOutlineVariant"
                         app:strokeWidth="1dp"
@@ -92,11 +102,11 @@
 
                         <LinearLayout
                             android:layout_width="match_parent"
-                            android:layout_height="54dp"
+                            android:layout_height="56dp"
                             android:gravity="center_vertical"
                             android:orientation="horizontal"
                             android:paddingStart="16dp"
-                            android:paddingEnd="8dp"
+                            android:paddingEnd="10dp"
                         >
 
                             <EditText
@@ -106,7 +116,7 @@
                                 android:layout_weight="1"
                                 android:background="@null"
                                 android:fontFamily="@font/bricolage_grotesque"
-                                android:hint="Search your vault"
+                                android:hint="Search your notes"
                                 android:imeOptions="actionSearch"
                                 android:inputType="text"
                                 android:maxLines="1"
@@ -118,11 +128,11 @@
 
                             <ImageView
                                 android:id="@+id/btnSearch"
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
+                                android:layout_width="42dp"
+                                android:layout_height="42dp"
                                 android:background="@drawable/bg_icon_pill"
                                 android:contentDescription="Search"
-                                android:padding="10dp"
+                                android:padding="11dp"
                                 android:src="@drawable/ic_search"
                                 app:tint="?attr/colorOnSurface"
                             />
@@ -156,7 +166,7 @@
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:visibility="gone"
-                tools:text="5 results"
+                tools:text="5 results found"
             />
 
             <androidx.recyclerview.widget.RecyclerView
@@ -202,7 +212,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:text="Search your documents"
+                    android:text="Search your library"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="20sp"
                     android:textStyle="bold"
@@ -216,7 +226,7 @@
                     android:fontFamily="@font/bricolage_grotesque"
                     android:gravity="center"
                     android:lineSpacingMultiplier="1.35"
-                    android:text="Type any query to find relevant files and chunks."
+                    android:text="Type any topic, phrase, or question to surface the most relevant notes."
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
                 />
