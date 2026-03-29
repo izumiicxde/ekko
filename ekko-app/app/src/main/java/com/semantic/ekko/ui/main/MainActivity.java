@@ -3,6 +3,7 @@ package com.semantic.ekko.ui.main;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
@@ -80,6 +81,33 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
+
+        getOnBackPressedDispatcher()
+            .addCallback(
+                this,
+                new OnBackPressedCallback(true) {
+                    @Override
+                    public void handleOnBackPressed() {
+                        Fragment currentFragment =
+                            getSupportFragmentManager().findFragmentByTag(currentTag);
+
+                        if (
+                            currentFragment instanceof HomeFragment &&
+                            ((HomeFragment) currentFragment).handleSystemBackPressed()
+                        ) {
+                            return;
+                        }
+
+                        if (!TAG_HOME.equals(currentTag)) {
+                            showFragment(TAG_HOME);
+                            syncNavToCurrentTag();
+                            return;
+                        }
+
+                        moveTaskToBack(true);
+                    }
+                }
+            );
     }
 
     @Override
