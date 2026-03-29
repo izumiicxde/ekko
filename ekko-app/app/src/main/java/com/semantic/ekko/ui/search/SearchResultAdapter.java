@@ -1,12 +1,12 @@
 package com.semantic.ekko.ui.search;
 
-import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import com.google.android.material.color.MaterialColors;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
@@ -133,16 +133,34 @@ public class SearchResultAdapter
 
             switch (tier) {
                 case "High":
-                    bgColor = Color.parseColor("#1F1A7F37");
-                    textColor = Color.parseColor("#1E7A34");
+                    bgColor = MaterialColors.getColor(
+                        chip,
+                        com.google.android.material.R.attr.colorTertiaryContainer
+                    );
+                    textColor = MaterialColors.getColor(
+                        chip,
+                        com.google.android.material.R.attr.colorOnTertiaryContainer
+                    );
                     break;
                 case "Medium":
-                    bgColor = Color.parseColor("#1FE0A43A");
-                    textColor = Color.parseColor("#9A650A");
+                    bgColor = MaterialColors.getColor(
+                        chip,
+                        com.google.android.material.R.attr.colorSecondaryContainer
+                    );
+                    textColor = MaterialColors.getColor(
+                        chip,
+                        com.google.android.material.R.attr.colorOnSecondaryContainer
+                    );
                     break;
                 default:
-                    bgColor = Color.parseColor("#1F57718E");
-                    textColor = Color.parseColor("#35516F");
+                    bgColor = MaterialColors.getColor(
+                        chip,
+                        com.google.android.material.R.attr.colorSurfaceVariant
+                    );
+                    textColor = MaterialColors.getColor(
+                        chip,
+                        com.google.android.material.R.attr.colorOnSurfaceVariant
+                    );
                     break;
             }
 

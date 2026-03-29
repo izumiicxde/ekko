@@ -308,6 +308,18 @@ public class HomeFragment extends Fragment {
         chip.setText(text);
         chip.setCheckable(false);
         chip.setCheckedIconVisible(false);
+        chip.setEnsureMinTouchTargetSize(false);
+        chip.setChipMinHeight(34f);
+        chip.setChipCornerRadius(16f);
+        chip.setChipStrokeWidth(0f);
+        chip.setCloseIconVisible(false);
+        chip.setTextSize(12f);
+        chip.setTypeface(
+            androidx.core.content.res.ResourcesCompat.getFont(
+                requireContext(),
+                R.font.bricolage_grotesque
+            )
+        );
         applyChipColor(chip, active);
         return chip;
     }

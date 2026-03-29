@@ -534,7 +534,7 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             chipGroupKeywords.removeAllViews();
             if (doc.keywords != null && !doc.keywords.isEmpty()) {
                 String[] keywords = doc.keywords.split(",");
-                int max = Math.min(keywords.length, 3);
+                int max = Math.min(keywords.length, 2);
                 for (int i = 0; i < max; i++) {
                     String kw = keywords[i].trim();
                     if (kw.isEmpty()) continue;
@@ -542,6 +542,11 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     chip.setText(kw);
                     chip.setClickable(false);
                     chip.setFocusable(false);
+                    chip.setEnsureMinTouchTargetSize(false);
+                    chip.setChipMinHeight(28f);
+                    chip.setChipCornerRadius(14f);
+                    chip.setChipStrokeWidth(0f);
+                    chip.setCloseIconVisible(false);
                     chip.setTypeface(
                         ResourcesCompat.getFont(ctx, R.font.bricolage_grotesque)
                     );
@@ -557,6 +562,7 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     );
                     chip.setChipBackgroundColor(ColorStateList.valueOf(chipBg));
                     chip.setTextColor(chipFg);
+                    chip.setTextSize(11f);
                     chipGroupKeywords.addView(chip);
                 }
             }

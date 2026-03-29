@@ -5,11 +5,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
-    app:cardCornerRadius="24dp"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="28dp"
     app:cardElevation="0dp"
-    app:strokeWidth="1dp"
-    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="0dp"
     app:cardBackgroundColor="?attr/colorSurface"
 >
 
@@ -17,7 +16,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:paddingStart="18dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="16dp"
     >
 
         <LinearLayout
@@ -63,10 +65,10 @@
             android:id="@+id/txtCategory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:fontFamily="@font/bricolage_grotesque"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="4dp"
             tools:text="Insurance"
         />
 
@@ -80,7 +82,7 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:lineSpacingExtra="2dp"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             tools:text="Checklist for claim filing with required documentation and timing constraints after storms."
         />
 
@@ -89,7 +91,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
         >
 
             <TextView
@@ -107,11 +109,11 @@
                 android:id="@+id/txtRelevanceChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingStart="9dp"
-                android:paddingEnd="9dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:textSize="10sp"
+                android:textSize="9sp"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textStyle="bold"
                 tools:text="89% · High"

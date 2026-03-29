@@ -5,12 +5,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
+    android:layout_marginBottom="12dp"
     app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="24dp"
+    app:cardCornerRadius="28dp"
     app:cardElevation="0dp"
     app:strokeColor="?attr/colorOutlineVariant"
-    app:strokeWidth="1dp"
+    app:strokeWidth="0dp"
 >
 
     <LinearLayout
@@ -18,18 +18,21 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:paddingStart="18dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="18dp"
     >
 
         <FrameLayout
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:background="@drawable/bg_icon_pill"
         >
 
             <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:layout_gravity="center"
                 android:contentDescription="Folder icon"
                 android:src="@drawable/ic_folder_open"
@@ -62,7 +65,7 @@
                 android:id="@+id/txtBrowserFolderMeta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="4dp"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="12sp"
@@ -73,15 +76,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_surface_pill"
             android:fontFamily="@font/bricolage_grotesque"
-            android:paddingStart="10dp"
-            android:paddingTop="6dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="6dp"
-            android:text="Open"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="12sp"
+            android:text="Browse"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="11sp"
             android:textStyle="bold"
         />
     </LinearLayout>

@@ -86,38 +86,32 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
+                        android:orientation="vertical"
                     >
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnHeroWiseBot"
-                            android:layout_width="wrap_content"
-                            android:layout_height="48dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="50dp"
                             android:text="Ask Ekko Bot"
                             android:textAllCaps="false"
                             android:textColor="?attr/colorOnPrimary"
                             android:textStyle="bold"
                             android:fontFamily="@font/bricolage_grotesque"
                             app:backgroundTint="?attr/colorPrimary"
-                            app:cornerRadius="16dp"
+                            app:cornerRadius="18dp"
                             app:icon="@drawable/ic_chat"
                             app:iconPadding="8dp"
                             app:iconTint="?attr/colorOnPrimary"
                         />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
-                            android:background="@drawable/bg_surface_pill"
+                            android:layout_marginTop="10dp"
                             android:fontFamily="@font/bricolage_grotesque"
-                            android:paddingStart="12dp"
-                            android:paddingTop="8dp"
-                            android:paddingEnd="12dp"
-                            android:paddingBottom="8dp"
-                            android:text="Smart summaries + folder explorer"
-                            android:textColor="?attr/colorOnSurface"
+                            android:text="Ask questions, generate summaries, and jump into your indexed files from one place."
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
                         />
                     </LinearLayout>
@@ -260,11 +254,11 @@
 
                 <ImageButton
                     android:id="@+id/btnSortFilter"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
                     android:background="@drawable/bg_surface_pill"
                     android:contentDescription="Sort and filter"
-                    android:padding="10dp"
+                    android:padding="11dp"
                     android:src="@drawable/ic_sort"
                     app:tint="?attr/colorOnSurface"
                 />
