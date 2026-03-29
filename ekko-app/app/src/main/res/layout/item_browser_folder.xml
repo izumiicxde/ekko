@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp"
+>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp"
+    >
+
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_icon_pill"
+        >
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="Folder icon"
+                android:src="@drawable/ic_folder_open"
+                app:tint="?attr/colorPrimary"
+            />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+        >
+
+            <TextView
+                android:id="@+id/txtBrowserFolderName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:maxLines="1"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Semester Notes"
+            />
+
+            <TextView
+                android:id="@+id/txtBrowserFolderMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                tools:text="3 folders  •  12 files"
+            />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_surface_pill"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:paddingStart="10dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="6dp"
+            android:text="Open"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="12sp"
+            android:textStyle="bold"
+        />
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

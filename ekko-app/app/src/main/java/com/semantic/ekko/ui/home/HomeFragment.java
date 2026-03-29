@@ -43,9 +43,11 @@ public class HomeFragment extends Fragment {
     private RecyclerView recyclerDocuments;
     private LinearLayout layoutIndexingProgress;
     private LinearLayout layoutEmptyState;
+    private LinearLayout layoutFolderNavigation;
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
     private TextView txtDocCount;
+    private TextView txtFolderPath;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
     private View btnHeroWiseBot;
@@ -122,9 +124,11 @@ public class HomeFragment extends Fragment {
         recyclerDocuments = view.findViewById(R.id.recyclerDocuments);
         layoutIndexingProgress = view.findViewById(R.id.layoutIndexingProgress);
         layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
+        layoutFolderNavigation = view.findViewById(R.id.layoutFolderNavigation);
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
         txtDocCount = view.findViewById(R.id.txtDocCount);
+        txtFolderPath = view.findViewById(R.id.txtFolderPath);
         progressIndexing = view.findViewById(R.id.progressIndexing);
         chipGroupFilters = view.findViewById(R.id.chipGroupFilters);
         btnHeroWiseBot = view.findViewById(R.id.btnHeroWiseBot);
@@ -134,29 +138,39 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupRecycler() {
-        adapter = new DocumentAdapter(doc -> {
-            Intent intent = new Intent(getActivity(), DetailActivity.class);
-            intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
-            startActivity(intent);
-        });
+        adapter =
+            new DocumentAdapter(
+                doc -> {
+                    Intent intent = new Intent(getActivity(), DetailActivity.class);
+                    intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
+                    startActivity(intent);
+                },
+                this::updateFolderNavigation
+            );
         recyclerDocuments.setLayoutManager(
             new LinearLayoutManager(getContext())
         );
         recyclerDocuments.setAdapter(adapter);
         recyclerDocuments.setNestedScrollingEnabled(false);
+        adapter.setDisplayMode(viewModel != null ? viewModel.getCurrentViewMode() : "grouped");
     }
 
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+        adapter.setDisplayMode(viewModel.getCurrentViewMode());
 
         viewModel
             .getDocuments()
             .observe(getViewLifecycleOwner(), docs -> {
-                adapter.submitList(docs);
+                adapter.submitDocuments(docs);
                 updateEmptyState(docs);
                 updateDocCount(docs.size());
                 buildFilterChips(docs);
             });
+
+        viewModel
+            .getFolderNames()
+            .observe(getViewLifecycleOwner(), adapter::submitFolderNames);
 
         viewModel
             .getIsIndexing()
@@ -207,6 +221,10 @@ public class HomeFragment extends Fragment {
             .setOnClickListener(v -> showSortFilterSheet());
 
         root
+            .findViewById(R.id.btnFolderBack)
+            .setOnClickListener(v -> adapter.navigateUp());
+
+        root
             .findViewById(R.id.btnHeroWiseBot)
             .setOnClickListener(v -> {
                 if (!hasIncludedFolders) {
@@ -233,6 +251,14 @@ public class HomeFragment extends Fragment {
                     ((MainActivity) getActivity()).navigateToSettings();
                 }
             });
+    }
+
+    public boolean handleSystemBackPressed() {
+        if (adapter != null && adapter.canNavigateUpInFolders()) {
+            adapter.navigateUp();
+            return true;
+        }
+        return false;
     }
 
     private String activeChipKeyword = null;
@@ -332,12 +358,24 @@ public class HomeFragment extends Fragment {
         SortFilterBottomSheet sheet = new SortFilterBottomSheet(
             viewModel.getCurrentSortOrder(),
             viewModel.getCurrentFileTypeFilter(),
-            (sortOrder, fileType) -> {
+            viewModel.getCurrentViewMode(),
+            (sortOrder, fileType, viewMode) -> {
                 viewModel.setSortOrder(sortOrder);
                 viewModel.setFileTypeFilter(fileType);
+                viewModel.setViewMode(viewMode);
+                adapter.setDisplayMode(viewMode);
             }
         );
         sheet.show(getChildFragmentManager(), "sort_filter");
+    }
+
+    private void updateFolderNavigation(DocumentAdapter.NavigationState state) {
+        if (state == null) return;
+        layoutFolderNavigation.setVisibility(state.visible ? View.VISIBLE : View.GONE);
+        txtFolderPath.setText(state.pathLabel);
+        View backButton = layoutFolderNavigation.findViewById(R.id.btnFolderBack);
+        backButton.setEnabled(state.canNavigateUp);
+        backButton.setAlpha(state.canNavigateUp ? 1f : 0.45f);
     }
 
     private void updateEmptyState(List<DocumentEntity> docs) {

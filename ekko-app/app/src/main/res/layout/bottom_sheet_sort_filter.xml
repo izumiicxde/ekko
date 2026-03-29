@@ -24,12 +24,66 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="View as"
+        android:textSize="13sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:fontFamily="@font/bricolage_grotesque"
+        android:textStyle="bold"
+        android:letterSpacing="0.06"
+        android:layout_marginBottom="10dp"
+    />
+
+    <RadioGroup
+        android:id="@+id/radioGroupView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+    >
+
+        <RadioButton
+            android:id="@+id/radioViewList"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="All files in one list"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:checked="true"
+        />
+
+        <RadioButton
+            android:id="@+id/radioViewGrouped"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Grouped by folder"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:checked="true"
+        />
+
+        <RadioButton
+            android:id="@+id/radioViewFolders"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Folder explorer"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:fontFamily="@font/bricolage_grotesque"
+        />
+
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="Sort by"
         android:textSize="13sp"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:fontFamily="@font/bricolage_grotesque"
         android:textStyle="bold"
         android:letterSpacing="0.06"
+        android:layout_marginTop="20dp"
         android:layout_marginBottom="10dp"
     />
 

@@ -17,20 +17,23 @@ import com.semantic.ekko.R;
 public class SortFilterBottomSheet extends BottomSheetDialogFragment {
 
     public interface OnApplyListener {
-        void onApply(String sortOrder, String fileType);
+        void onApply(String sortOrder, String fileType, String viewMode);
     }
 
     private final String currentSortOrder;
     private final String currentFileType;
+    private final String currentViewMode;
     private final OnApplyListener listener;
 
     public SortFilterBottomSheet(
         String currentSortOrder,
         String currentFileType,
+        String currentViewMode,
         OnApplyListener listener
     ) {
         this.currentSortOrder = currentSortOrder;
         this.currentFileType = currentFileType;
+        this.currentViewMode = currentViewMode;
         this.listener = listener;
     }
 
@@ -56,6 +59,7 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         RadioGroup radioSort = view.findViewById(R.id.radioGroupSort);
+        RadioGroup radioView = view.findViewById(R.id.radioGroupView);
         ChipGroup chipGroupFileType = view.findViewById(R.id.chipGroupFileType);
         MaterialButton btnApply = view.findViewById(R.id.btnApply);
         MaterialButton btnReset = view.findViewById(R.id.btnReset);
@@ -92,17 +96,28 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
                 break;
         }
 
+        if ("list".equals(currentViewMode)) {
+            radioView.check(R.id.radioViewList);
+        } else if ("folders".equals(currentViewMode)) {
+            radioView.check(R.id.radioViewFolders);
+        } else {
+            radioView.check(R.id.radioViewGrouped);
+        }
+
         btnApply.setOnClickListener(v -> {
             String sortOrder = getSortOrder(
                 radioSort.getCheckedRadioButtonId()
             );
             String fileType = getFileType(chipGroupFileType);
-            if (listener != null) listener.onApply(sortOrder, fileType);
+            String viewMode = getViewMode(radioView.getCheckedRadioButtonId());
+            if (listener != null) {
+                listener.onApply(sortOrder, fileType, viewMode);
+            }
             dismiss();
         });
 
         btnReset.setOnClickListener(v -> {
-            if (listener != null) listener.onApply("recent", "all");
+            if (listener != null) listener.onApply("recent", "all", "grouped");
             dismiss();
         });
     }
@@ -126,5 +141,11 @@ public class SortFilterBottomSheet extends BottomSheetDialogFragment {
         if (checkedId == R.id.chipPptx) return "pptx";
         if (checkedId == R.id.chipTxt) return "txt";
         return "all";
+    }
+
+    private String getViewMode(int checkedId) {
+        if (checkedId == R.id.radioViewGrouped) return "grouped";
+        if (checkedId == R.id.radioViewFolders) return "folders";
+        return "list";
     }
 }

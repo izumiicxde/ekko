@@ -18,8 +18,10 @@ import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class HomeViewModel extends AndroidViewModel {
@@ -36,6 +38,8 @@ public class HomeViewModel extends AndroidViewModel {
     );
     private final MutableLiveData<String> errorMessage =
         new MutableLiveData<>();
+    private final MutableLiveData<Map<Long, String>> folderNames =
+        new MutableLiveData<>(new HashMap<>());
 
     private final DocumentRepository documentRepository;
     private final FolderRepository folderRepository;
@@ -47,6 +51,7 @@ public class HomeViewModel extends AndroidViewModel {
     private String activeKeywordFilter = null;
     private String activeSortOrder = "recent";
     private String activeFileTypeFilter = "all";
+    private String activeViewMode = "grouped";
 
     // =========================
     // INIT
@@ -95,11 +100,15 @@ public class HomeViewModel extends AndroidViewModel {
         folderRepository.getAll(folders -> {
             Set<String> excludedUris = prefsManager.getExcludedFolderUris();
             Set<Long> excludedFolderIds = new HashSet<>();
+            Map<Long, String> visibleFolderNames = new HashMap<>();
             for (FolderEntity folder : folders) {
                 if (excludedUris.contains(folder.uri)) {
                     excludedFolderIds.add(folder.id);
+                } else {
+                    visibleFolderNames.put(folder.id, folder.name);
                 }
             }
+            folderNames.postValue(visibleFolderNames);
 
             documentRepository.getAll(docs -> {
                 List<DocumentEntity> visibleDocs = new ArrayList<>();
@@ -116,6 +125,10 @@ public class HomeViewModel extends AndroidViewModel {
 
     public LiveData<List<DocumentEntity>> getDocuments() {
         return documents;
+    }
+
+    public LiveData<Map<Long, String>> getFolderNames() {
+        return folderNames;
     }
 
     // =========================
@@ -265,6 +278,10 @@ public class HomeViewModel extends AndroidViewModel {
         loadDocuments();
     }
 
+    public void setViewMode(String viewMode) {
+        this.activeViewMode = viewMode;
+    }
+
     private List<DocumentEntity> applyFilterAndSort(List<DocumentEntity> docs) {
         List<DocumentEntity> result = new ArrayList<>(docs);
 
@@ -345,6 +362,10 @@ public class HomeViewModel extends AndroidViewModel {
 
     public String getCurrentFileTypeFilter() {
         return activeFileTypeFilter;
+    }
+
+    public String getCurrentViewMode() {
+        return activeViewMode;
     }
 
     private void startIndexing(List<DocumentEntity> docs) {

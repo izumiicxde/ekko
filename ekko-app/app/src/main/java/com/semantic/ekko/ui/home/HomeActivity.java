@@ -26,8 +26,10 @@ import com.semantic.ekko.ui.search.SearchActivity;
 import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
@@ -45,6 +47,7 @@ public class HomeActivity extends AppCompatActivity {
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
     private View searchBar;
+    private Map<Long, String> currentFolderNames = new HashMap<>();
 
     // =========================
     // FOLDER PICKER
@@ -107,11 +110,15 @@ public class HomeActivity extends AppCompatActivity {
     // =========================
 
     private void setupRecycler() {
-        adapter = new DocumentAdapter(doc -> {
-            Intent intent = new Intent(this, DetailActivity.class);
-            intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
-            startActivity(intent);
-        });
+        adapter =
+            new DocumentAdapter(
+                doc -> {
+                    Intent intent = new Intent(this, DetailActivity.class);
+                    intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
+                    startActivity(intent);
+                },
+                state -> {}
+            );
 
         recyclerDocuments.setLayoutManager(new LinearLayoutManager(this));
         recyclerDocuments.setAdapter(adapter);
@@ -124,14 +131,23 @@ public class HomeActivity extends AppCompatActivity {
 
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+        adapter.setDisplayMode(viewModel.getCurrentViewMode());
 
         viewModel
             .getDocuments()
             .observe(this, docs -> {
-                adapter.submitList(docs);
+                adapter.submitDocuments(docs);
                 updateEmptyState(docs);
                 updateDocCount(docs.size());
                 buildFilterChips(docs);
+            });
+
+        viewModel
+            .getFolderNames()
+            .observe(this, folderNames -> {
+                currentFolderNames =
+                    folderNames != null ? folderNames : new HashMap<>();
+                adapter.submitFolderNames(currentFolderNames);
             });
 
         viewModel
@@ -320,9 +336,12 @@ public class HomeActivity extends AppCompatActivity {
         SortFilterBottomSheet sheet = new SortFilterBottomSheet(
             viewModel.getCurrentSortOrder(),
             viewModel.getCurrentFileTypeFilter(),
-            (sortOrder, fileType) -> {
+            viewModel.getCurrentViewMode(),
+            (sortOrder, fileType, viewMode) -> {
                 viewModel.setSortOrder(sortOrder);
                 viewModel.setFileTypeFilter(fileType);
+                viewModel.setViewMode(viewMode);
+                adapter.setDisplayMode(viewMode);
             }
         );
         sheet.show(getSupportFragmentManager(), "sort_filter");
