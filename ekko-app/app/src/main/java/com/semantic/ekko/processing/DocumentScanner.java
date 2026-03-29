@@ -4,9 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
-
 import com.semantic.ekko.data.model.DocumentEntity;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,35 +37,76 @@ public class DocumentScanner {
 
     /**
      * Scans a folder URI obtained from ACTION_OPEN_DOCUMENT_TREE.
-     * Returns all supported documents found in the folder.
-     * Does not recurse into subfolders.
+     * Returns all supported documents found in the folder and nested subfolders.
      */
-    public static ScanResult scanFolder(Context context, Uri folderUri, long folderId) {
+    public static ScanResult scanFolder(
+        Context context,
+        Uri folderUri,
+        long folderId
+    ) {
         List<DocumentEntity> found = new ArrayList<>();
-        int skipped = 0;
+        int skipped = scanFolderRecursive(
+            context,
+            folderUri,
+            folderUri,
+            folderId,
+            "",
+            found
+        );
+        return new ScanResult(found, skipped);
+    }
 
+    private static int scanFolderRecursive(
+        Context context,
+        Uri treeUri,
+        Uri parentUri,
+        long folderId,
+        String relativeDir,
+        List<DocumentEntity> found
+    ) {
+        int skipped = 0;
+        String parentDocumentId = DocumentsContract.getDocumentId(parentUri);
         Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-                folderUri,
-                DocumentsContract.getTreeDocumentId(folderUri)
+            treeUri,
+            parentDocumentId
         );
 
         String[] projection = {
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE,
-                DocumentsContract.Document.COLUMN_SIZE
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE
         };
 
-        try (Cursor cursor = context.getContentResolver().query(
-                childrenUri, projection, null, null, null)) {
-
-            if (cursor == null) return new ScanResult(found, skipped);
+        try (
+            Cursor cursor = context
+                .getContentResolver()
+                .query(childrenUri, projection, null, null, null)
+        ) {
+            if (cursor == null) return skipped;
 
             while (cursor.moveToNext()) {
-                String docId   = cursor.getString(0);
-                String name    = cursor.getString(1);
-                String mime    = cursor.getString(2);
-                long size      = cursor.getLong(3);
+                String docId = cursor.getString(0);
+                String name = cursor.getString(1);
+                String mime = cursor.getString(2);
+                long size = cursor.getLong(3);
+                Uri docUri = DocumentsContract.buildDocumentUriUsingTree(
+                    treeUri,
+                    docId
+                );
+
+                if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                    String childRelativeDir = appendSegment(relativeDir, name);
+                    skipped += scanFolderRecursive(
+                        context,
+                        treeUri,
+                        docUri,
+                        folderId,
+                        childRelativeDir,
+                        found
+                    );
+                    continue;
+                }
 
                 if (!isSupportedMime(mime)) {
                     skipped++;
@@ -80,26 +119,32 @@ public class DocumentScanner {
                     continue;
                 }
 
-                Uri docUri = DocumentsContract.buildDocumentUriUsingTree(folderUri, docId);
                 String fileType = mimeToFileType(mime);
-
-                DocumentEntity doc = new DocumentEntity(name, docUri.toString(), folderId, fileType);
+                String relativePath = appendSegment(relativeDir, name);
+                DocumentEntity doc = new DocumentEntity(
+                    name,
+                    docUri.toString(),
+                    relativePath,
+                    folderId,
+                    fileType
+                );
                 found.add(doc);
             }
-
         } catch (Exception e) {
             // Return whatever was found before the error
         }
 
-        return new ScanResult(found, skipped);
+        return skipped;
     }
 
     /**
      * Scans multiple folder URIs and merges results.
      */
-    public static ScanResult scanFolders(Context context,
-                                         List<Uri> folderUris,
-                                         List<Long> folderIds) {
+    public static ScanResult scanFolders(
+        Context context,
+        List<Uri> folderUris,
+        List<Long> folderIds
+    ) {
         List<DocumentEntity> allDocs = new ArrayList<>();
         int totalSkipped = 0;
 
@@ -110,6 +155,12 @@ public class DocumentScanner {
         }
 
         return new ScanResult(allDocs, totalSkipped);
+    }
+
+    private static String appendSegment(String base, String segment) {
+        if (segment == null || segment.trim().isEmpty()) return base;
+        if (base == null || base.isEmpty()) return segment;
+        return base + "/" + segment;
     }
 
     // =========================

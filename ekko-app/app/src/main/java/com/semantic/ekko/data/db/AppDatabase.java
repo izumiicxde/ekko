@@ -12,7 +12,7 @@ import com.semantic.ekko.data.model.FolderEntity;
 
 @Database(
     entities = { DocumentEntity.class, FolderEntity.class, ChunkEntity.class },
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -51,6 +51,15 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL(
+                "ALTER TABLE documents ADD COLUMN relative_path TEXT DEFAULT NULL"
+            );
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
@@ -60,7 +69,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         AppDatabase.class,
                         DB_NAME
                     )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build();
                 }
             }

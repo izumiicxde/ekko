@@ -28,6 +28,9 @@ public class DocumentEntity {
     @ColumnInfo(name = "uri")
     public String uri;
 
+    @ColumnInfo(name = "relative_path")
+    public String relativePath;
+
     @ColumnInfo(name = "folder_id")
     public long folderId;
 
@@ -73,11 +76,13 @@ public class DocumentEntity {
     public DocumentEntity(
         String name,
         String uri,
+        String relativePath,
         long folderId,
         String fileType
     ) {
         this.name = name;
         this.uri = uri;
+        this.relativePath = relativePath;
         this.folderId = folderId;
         this.fileType = fileType;
         this.indexedAt = System.currentTimeMillis();
