@@ -2,13 +2,17 @@ package com.semantic.ekko.ui.main;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
@@ -28,9 +32,11 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG_SEARCH = "search";
     private static final String TAG_SETTINGS = "settings";
 
-    private BottomNavigationView bottomNav;
+    private LinearLayout navHome;
+    private LinearLayout navSearch;
+    private LinearLayout navAsk;
+    private LinearLayout navSettings;
     private String currentTag = TAG_HOME;
-    private boolean ignoreNavSelection = false;
     private FolderRepository folderRepository;
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
@@ -41,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        bottomNav = findViewById(R.id.bottomNav);
+        bindNavViews();
         folderRepository = new FolderRepository(this);
         prefsManager = new PrefsManager(this);
 
@@ -49,37 +55,37 @@ public class MainActivity extends AppCompatActivity {
             showFragment(TAG_HOME);
         } else {
             currentTag = savedInstanceState.getString("currentTag", TAG_HOME);
+            syncNavToCurrentTag();
         }
 
-        bottomNav.setOnItemSelectedListener(item -> {
-            if (ignoreNavSelection) return true;
+        navHome.setOnClickListener(v -> {
+            showFragment(TAG_HOME);
+            syncNavToCurrentTag();
+        });
 
-            int id = item.getItemId();
-            if (id == R.id.nav_home) {
-                showFragment(TAG_HOME);
-            } else if (id == R.id.nav_search) {
-                if (!hasIncludedFolders) {
-                    showNoFoldersMessage();
-                    syncNavToCurrentTag();
-                    return true;
-                }
-                showFragment(TAG_SEARCH);
-            } else if (id == R.id.nav_ask) {
-                if (!hasIncludedFolders) {
-                    showNoFoldersMessage();
-                    syncNavToCurrentTag();
-                    return true;
-                }
-                Intent intent = new Intent(this, QAActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(intent);
-                // Immediately revert nav selection back without triggering listener
-                syncNavToCurrentTag();
-                return true;
-            } else if (id == R.id.nav_settings) {
-                showFragment(TAG_SETTINGS);
+        navSearch.setOnClickListener(v -> {
+            if (!hasIncludedFolders) {
+                showNoFoldersMessage();
+                return;
             }
-            return true;
+            showFragment(TAG_SEARCH);
+            syncNavToCurrentTag();
+        });
+
+        navAsk.setOnClickListener(v -> {
+            if (!hasIncludedFolders) {
+                showNoFoldersMessage();
+                return;
+            }
+            Intent intent = new Intent(this, QAActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
+            syncNavToCurrentTag();
+        });
+
+        navSettings.setOnClickListener(v -> {
+            showFragment(TAG_SETTINGS);
+            syncNavToCurrentTag();
         });
 
         getOnBackPressedDispatcher()
@@ -114,7 +120,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshFolderAvailability();
-        // Sync nav bar to current fragment when returning from QAActivity
         syncNavToCurrentTag();
     }
 
@@ -124,37 +129,54 @@ public class MainActivity extends AppCompatActivity {
         outState.putString("currentTag", currentTag);
     }
 
-    // =========================
-    // NAV SYNC
-    // =========================
+    private void bindNavViews() {
+        navHome = findViewById(R.id.navHome);
+        navSearch = findViewById(R.id.navSearch);
+        navAsk = findViewById(R.id.navAsk);
+        navSettings = findViewById(R.id.navSettings);
+    }
 
-    /**
-     * Updates the bottom nav selected item to match currentTag
-     * without triggering the OnItemSelectedListener.
-     */
     private void syncNavToCurrentTag() {
-        int expectedItem = tagToNavId(currentTag);
-        if (bottomNav.getSelectedItemId() != expectedItem) {
-            ignoreNavSelection = true;
-            bottomNav.setSelectedItemId(expectedItem);
-            ignoreNavSelection = false;
-        }
+        setNavSelected(navHome, TAG_HOME.equals(currentTag), true);
+        setNavSelected(navSearch, TAG_SEARCH.equals(currentTag), hasIncludedFolders);
+        setNavSelected(navAsk, false, hasIncludedFolders);
+        setNavSelected(navSettings, TAG_SETTINGS.equals(currentTag), true);
     }
 
-    private int tagToNavId(String tag) {
-        switch (tag) {
-            case TAG_SEARCH:
-                return R.id.nav_search;
-            case TAG_SETTINGS:
-                return R.id.nav_settings;
-            default:
-                return R.id.nav_home;
+    private void setNavSelected(LinearLayout item, boolean selected, boolean enabled) {
+        int activeColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnPrimary, 0);
+        int inactiveColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, 0);
+
+        item.setBackgroundResource(selected ? R.drawable.bg_bottom_nav_selected : android.R.color.transparent);
+        item.setAlpha(enabled ? 1f : 0.38f);
+        item.setEnabled(enabled);
+        item.animate()
+            .scaleX(selected ? 1f : 0.94f)
+            .scaleY(selected ? 1f : 0.94f)
+            .translationY(selected ? 0f : 1.5f)
+            .setDuration(180)
+            .start();
+
+        for (int i = 0; i < item.getChildCount(); i++) {
+            View child = item.getChildAt(i);
+            if (child instanceof ImageView) {
+                ((ImageView) child).setColorFilter(selected ? activeColor : inactiveColor);
+                child.animate()
+                    .alpha(enabled ? 1f : 0.38f)
+                    .scaleX(selected ? 1f : 0.92f)
+                    .scaleY(selected ? 1f : 0.92f)
+                    .setDuration(180)
+                    .start();
+            } else if (child instanceof TextView) {
+                ((TextView) child).setTextColor(selected ? activeColor : inactiveColor);
+                child.animate()
+                    .alpha(enabled ? 1f : 0.68f)
+                    .translationY(selected ? 0f : -1f)
+                    .setDuration(180)
+                    .start();
+            }
         }
     }
-
-    // =========================
-    // FRAGMENT SWITCHING
-    // =========================
 
     private void showFragment(String tag) {
         if (
@@ -212,9 +234,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void navigateToSettings() {
         showFragment(TAG_SETTINGS);
-        ignoreNavSelection = true;
-        bottomNav.setSelectedItemId(R.id.nav_settings);
-        ignoreNavSelection = false;
+        syncNavToCurrentTag();
     }
 
     private void refreshFolderAvailability() {
@@ -232,13 +252,10 @@ public class MainActivity extends AppCompatActivity {
             boolean finalIncluded = included;
             runOnUiThread(() -> {
                 hasIncludedFolders = finalIncluded;
-                Menu menu = bottomNav.getMenu();
-                menu.findItem(R.id.nav_search).setEnabled(finalIncluded);
-                menu.findItem(R.id.nav_ask).setEnabled(finalIncluded);
                 if (!finalIncluded && TAG_SEARCH.equals(currentTag)) {
                     showFragment(TAG_HOME);
-                    syncNavToCurrentTag();
                 }
+                syncNavToCurrentTag();
             });
         });
     }

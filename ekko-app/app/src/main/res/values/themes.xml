@@ -1,30 +1,30 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.Ekko" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">#4E7A6A</item>
+        <item name="colorPrimary">#0F8C78</item>
         <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorPrimaryContainer">#D8E8E0</item>
-        <item name="colorOnPrimaryContainer">#173228</item>
+        <item name="colorPrimaryContainer">#C7F1E8</item>
+        <item name="colorOnPrimaryContainer">#00382F</item>
 
-        <item name="colorSecondary">#C9836A</item>
+        <item name="colorSecondary">#EC6A47</item>
         <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSecondaryContainer">#F2DDD4</item>
-        <item name="colorOnSecondaryContainer">#562B1E</item>
+        <item name="colorSecondaryContainer">#FFD8CD</item>
+        <item name="colorOnSecondaryContainer">#57200F</item>
 
-        <item name="colorTertiary">#7E9270</item>
+        <item name="colorTertiary">#E3A72D</item>
         <item name="colorOnTertiary">#FFFFFF</item>
-        <item name="colorTertiaryContainer">#DFE7D9</item>
-        <item name="colorOnTertiaryContainer">#24301D</item>
+        <item name="colorTertiaryContainer">#FFE9B8</item>
+        <item name="colorOnTertiaryContainer">#4B3400</item>
 
         <item name="colorSurface">#FFFDFC</item>
         <item name="colorOnSurface">#1B1A18</item>
-        <item name="colorSurfaceVariant">#EEF1EC</item>
-        <item name="colorOnSurfaceVariant">#6E716B</item>
+        <item name="colorSurfaceVariant">#E8EFEC</item>
+        <item name="colorOnSurfaceVariant">#5D6662</item>
 
-        <item name="android:colorBackground">#EDF1EC</item>
+        <item name="android:colorBackground">#EDF4F1</item>
         <item name="colorOnBackground">#1B1A18</item>
 
-        <item name="colorOutline">#B9C3BB</item>
-        <item name="colorOutlineVariant">#DCE3DC</item>
+        <item name="colorOutline">#9FB2AB</item>
+        <item name="colorOutlineVariant">#D3E1DB</item>
 
         <item name="colorError">#B42318</item>
         <item name="colorOnError">#FFFFFF</item>
@@ -52,29 +52,46 @@
         <item name="android:fontFamily">@font/bricolage_grotesque</item>
     </style>
 
+    <style name="Widget.Ekko.BottomNav.ActiveIndicator" parent="">
+        <item name="android:width">56dp</item>
+        <item name="android:height">30dp</item>
+        <item
+            name="shapeAppearance"
+        >@style/ShapeAppearance.Material3.Corner.Full</item>
+        <item name="color">?attr/colorPrimary</item>
+    </style>
+
     <style name="Widget.Ekko.Button.Primary" parent="Widget.Material3.Button">
-        <item name="android:minHeight">48dp</item>
+        <item name="android:minHeight">46dp</item>
         <item name="android:fontFamily">@font/bricolage_grotesque</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
-        <item name="cornerRadius">16dp</item>
-        <item name="iconPadding">8dp</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="iconPadding">6dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
         <item name="backgroundTint">?attr/colorPrimary</item>
         <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <style
         name="Widget.Ekko.Button.Outlined"
         parent="Widget.Material3.Button.OutlinedButton"
     >
-        <item name="android:minHeight">48dp</item>
+        <item name="android:minHeight">46dp</item>
         <item name="android:fontFamily">@font/bricolage_grotesque</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">false</item>
-        <item name="cornerRadius">16dp</item>
-        <item name="iconPadding">8dp</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="iconPadding">6dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="backgroundTint">?attr/colorSurfaceVariant</item>
         <item name="strokeColor">?attr/colorOutline</item>
+        <item name="strokeWidth">1dp</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <style

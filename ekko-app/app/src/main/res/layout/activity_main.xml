@@ -24,32 +24,170 @@
         android:layout_marginTop="10dp"
         android:layout_marginEnd="12dp"
         app:cardBackgroundColor="?attr/colorSurface"
-        app:cardCornerRadius="32dp"
+        app:cardCornerRadius="30dp"
         app:cardElevation="0dp"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp"
     >
 
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottomNav"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:background="@android:color/transparent"
-            android:paddingStart="2dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="2dp"
-            android:paddingBottom="2dp"
-            app:itemBackground="@drawable/bottom_nav_item_bg"
-            app:itemIconSize="20dp"
-            app:itemIconTint="@color/bottom_nav_tint"
-            app:itemPaddingBottom="2dp"
-            app:itemPaddingTop="2dp"
-            app:itemTextAppearanceActive="@style/BottomNavTextActive"
-            app:itemTextAppearanceInactive="@style/BottomNavTextInactive"
-            app:itemTextColor="@color/bottom_nav_tint"
-            app:labelVisibilityMode="labeled"
-            app:menu="@menu/bottom_nav_menu"
-        />
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+        >
+
+            <LinearLayout
+                android:id="@+id/navHome"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_bottom_nav_selected"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp"
+            >
+
+                <ImageView
+                    android:id="@+id/iconNavHome"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Home"
+                    android:src="@drawable/ic_home"
+                    app:tint="?attr/colorOnPrimary"
+                />
+
+                <TextView
+                    android:id="@+id/textNavHome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Home"
+                    android:textColor="?attr/colorOnPrimary"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navSearch"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp"
+            >
+
+                <ImageView
+                    android:id="@+id/iconNavSearch"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Search"
+                    android:src="@drawable/ic_search"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                />
+
+                <TextView
+                    android:id="@+id/textNavSearch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Search"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navAsk"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp"
+            >
+
+                <ImageView
+                    android:id="@+id/iconNavAsk"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Ask"
+                    android:src="@drawable/ic_chat"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                />
+
+                <TextView
+                    android:id="@+id/textNavAsk"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Ask"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/navSettings"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp"
+            >
+
+                <ImageView
+                    android:id="@+id/iconNavSettings"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Settings"
+                    android:src="@drawable/ic_settings"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                />
+
+                <TextView
+                    android:id="@+id/textNavSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Settings"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                />
+            </LinearLayout>
+        </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>
 
