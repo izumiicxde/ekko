@@ -1,31 +1,31 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Base.Theme.Ekko" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">#C2B8FF</item>
-        <item name="colorOnPrimary">#2B236F</item>
-        <item name="colorPrimaryContainer">#3D378B</item>
-        <item name="colorOnPrimaryContainer">#EAE6FF</item>
+        <item name="colorPrimary">#AAC2FF</item>
+        <item name="colorOnPrimary">#0E2C74</item>
+        <item name="colorPrimaryContainer">#223E8F</item>
+        <item name="colorOnPrimaryContainer">#DCE6FF</item>
 
-        <item name="colorSecondary">#FFB69F</item>
-        <item name="colorOnSecondary">#5A2415</item>
-        <item name="colorSecondaryContainer">#7A3B2B</item>
-        <item name="colorOnSecondaryContainer">#FFE9E1</item>
+        <item name="colorSecondary">#E2B07B</item>
+        <item name="colorOnSecondary">#492900</item>
+        <item name="colorSecondaryContainer">#6A4A1B</item>
+        <item name="colorOnSecondaryContainer">#F8E3C7</item>
 
-        <item name="colorTertiary">#91E1D3</item>
-        <item name="colorOnTertiary">#083E37</item>
-        <item name="colorTertiaryContainer">#1E675C</item>
-        <item name="colorOnTertiaryContainer">#D6FAF2</item>
+        <item name="colorTertiary">#8DDBCD</item>
+        <item name="colorOnTertiary">#093F37</item>
+        <item name="colorTertiaryContainer">#1A6156</item>
+        <item name="colorOnTertiaryContainer">#D4EEE8</item>
 
-        <item name="colorSurface">#171424</item>
-        <item name="colorOnSurface">#F4F0FF</item>
-        <item name="colorSurfaceVariant">#26213A</item>
-        <item name="colorOnSurfaceVariant">#C3BCD7</item>
+        <item name="colorSurface">#14181F</item>
+        <item name="colorOnSurface">#EEF1F7</item>
+        <item name="colorSurfaceVariant">#212833</item>
+        <item name="colorOnSurfaceVariant">#B3BDCC</item>
 
-        <item name="android:colorBackground">#0F0D17</item>
-        <item name="colorOnBackground">#F4F0FF</item>
+        <item name="android:colorBackground">#0C1117</item>
+        <item name="colorOnBackground">#EEF1F7</item>
 
-        <item name="colorOutline">#5E5874</item>
-        <item name="colorOutlineVariant">#3B364D</item>
+        <item name="colorOutline">#4D5969</item>
+        <item name="colorOutlineVariant">#303844</item>
 
         <item name="colorError">#FFB4AB</item>
         <item name="colorOnError">#690005</item>
