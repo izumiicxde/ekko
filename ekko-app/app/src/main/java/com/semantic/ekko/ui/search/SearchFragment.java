@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
+import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
 import com.semantic.ekko.ui.detail.DetailActivity;
 
@@ -42,6 +43,7 @@ public class SearchFragment extends Fragment {
     private TextView txtResultCount;
     private TextView txtEmptyTitle;
     private TextView txtEmptySubtitle;
+    private boolean mlReady = false;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable debounceRunnable;
@@ -67,6 +69,13 @@ public class SearchFragment extends Fragment {
         setupRecycler();
         setupViewModel();
         setupSearchInput();
+        observeReadiness();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        EkkoApp.getInstance().refreshBackendHealthAsync();
     }
 
     // =========================
@@ -158,6 +167,38 @@ public class SearchFragment extends Fragment {
             });
     }
 
+    private void observeReadiness() {
+        EkkoApp app = EkkoApp.getInstance();
+        app
+            .getMlReadyState()
+            .observe(getViewLifecycleOwner(), ready -> {
+                mlReady = ready != null && ready;
+                updateReadinessUi();
+            });
+        updateReadinessUi();
+    }
+
+    private void updateReadinessUi() {
+        if (editSearch == null || btnSearch == null) {
+            return;
+        }
+        editSearch.setEnabled(mlReady);
+        btnSearch.setEnabled(mlReady);
+        editSearch.setHint(
+            mlReady
+                ? "Search across your indexed material"
+                : "Search becomes available when local models finish loading"
+        );
+        if (!mlReady) {
+            clearResults();
+            txtEmptyTitle.setText("Search is preparing");
+            txtEmptySubtitle.setText(
+                "Local search models are still loading. Try again in a moment."
+            );
+            txtEmptySubtitle.setVisibility(View.VISIBLE);
+        }
+    }
+
     // =========================
     // SEARCH INPUT
     // =========================
@@ -229,6 +270,7 @@ public class SearchFragment extends Fragment {
     }
 
     private void performSearch() {
+        if (!mlReady) return;
         String query = editSearch.getText().toString().trim();
         if (query.isEmpty()) return;
         if (debounceRunnable != null) debounceHandler.removeCallbacks(
@@ -252,8 +294,16 @@ public class SearchFragment extends Fragment {
         txtResultCount.setVisibility(View.GONE);
         recyclerResults.setVisibility(View.GONE);
         layoutEmptyState.setVisibility(View.VISIBLE);
-        txtEmptyTitle.setText("Search your notes");
-        txtEmptySubtitle.setVisibility(View.GONE);
+        if (mlReady) {
+            txtEmptyTitle.setText("Search your notes");
+            txtEmptySubtitle.setVisibility(View.GONE);
+        } else {
+            txtEmptyTitle.setText("Search is preparing");
+            txtEmptySubtitle.setText(
+                "Local search models are still loading. Try again in a moment."
+            );
+            txtEmptySubtitle.setVisibility(View.VISIBLE);
+        }
     }
 
     private void hideKeyboard() {

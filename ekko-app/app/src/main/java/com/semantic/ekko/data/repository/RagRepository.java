@@ -163,18 +163,24 @@ public class RagRepository {
 
     private SelectionResult selectChunks(float[] queryEmbedding) {
         List<ChunkEntity> allChunks = chunkDao.getAll();
-        if (allChunks.isEmpty()) return null;
+        if (allChunks == null || allChunks.isEmpty()) return null;
 
         Set<String> excludedUris = prefsManager.getExcludedFolderUris();
         Set<Long> excludedFolderIds = new HashSet<>();
-        for (FolderEntity folder : folderDao.getAll()) {
-            if (excludedUris.contains(folder.uri)) {
-                excludedFolderIds.add(folder.id);
+        List<FolderEntity> folders = folderDao.getAll();
+        if (folders != null) {
+            for (FolderEntity folder : folders) {
+                if (folder != null && excludedUris.contains(folder.uri)) {
+                    excludedFolderIds.add(folder.id);
+                }
             }
         }
 
         Map<Long, List<ChunkEntity>> chunksByDoc = new HashMap<>();
         for (ChunkEntity chunk : allChunks) {
+            if (chunk == null) {
+                continue;
+            }
             if (!chunksByDoc.containsKey(chunk.documentId)) chunksByDoc.put(
                 chunk.documentId,
                 new ArrayList<>()
@@ -184,7 +190,13 @@ public class RagRepository {
 
         List<DocumentEntity> allDocs = documentDao.getAll();
         Map<Long, String> docNames = new HashMap<>();
-        for (DocumentEntity doc : allDocs) docNames.put(doc.id, doc.name);
+        if (allDocs != null) {
+            for (DocumentEntity doc : allDocs) {
+                if (doc != null) {
+                    docNames.put(doc.id, doc.name);
+                }
+            }
+        }
 
         List<ScoredDoc> scoredDocs = new ArrayList<>();
         for (Map.Entry<
@@ -212,9 +224,15 @@ public class RagRepository {
                 if (
                     chunk.chunkEmbedding == null || chunk.chunkText == null
                 ) continue;
+                float[] chunkEmbedding = EmbeddingEngine.fromBytes(
+                    chunk.chunkEmbedding
+                );
+                if (chunkEmbedding == null) {
+                    continue;
+                }
                 float score = EmbeddingEngine.cosineSimilarity(
                     queryEmbedding,
-                    EmbeddingEngine.fromBytes(chunk.chunkEmbedding)
+                    chunkEmbedding
                 );
                 scored.add(new ScoredChunk(chunk, score));
             }
@@ -290,7 +308,7 @@ public class RagRepository {
         long documentId
     ) {
         List<ChunkEntity> docChunks = chunkDao.getByDocumentId(documentId);
-        if (docChunks.isEmpty()) return null;
+        if (docChunks == null || docChunks.isEmpty()) return null;
 
         DocumentEntity doc = documentDao.getById(documentId);
         String docName = doc != null ? doc.name : "Unknown";
@@ -300,9 +318,15 @@ public class RagRepository {
             if (
                 chunk.chunkEmbedding == null || chunk.chunkText == null
             ) continue;
+            float[] chunkEmbedding = EmbeddingEngine.fromBytes(
+                chunk.chunkEmbedding
+            );
+            if (chunkEmbedding == null) {
+                continue;
+            }
             float score = EmbeddingEngine.cosineSimilarity(
                 queryEmbedding,
-                EmbeddingEngine.fromBytes(chunk.chunkEmbedding)
+                chunkEmbedding
             );
             scored.add(new ScoredChunk(chunk, score));
         }
@@ -355,6 +379,17 @@ public class RagRepository {
     ) {
         if (question == null || question.trim().isEmpty()) {
             callback.onError("Question cannot be empty.");
+            return;
+        }
+        if (
+            embeddingEngine == null ||
+            streamingClient == null ||
+            baseUrl == null ||
+            baseUrl.isEmpty()
+        ) {
+            callback.onError(
+                "Q&A is not ready yet. Please try again in a moment."
+            );
             return;
         }
 
@@ -477,6 +512,12 @@ public class RagRepository {
             callback.onError("Question cannot be empty.");
             return;
         }
+        if (embeddingEngine == null || apiService == null) {
+            callback.onError(
+                "Q&A is not ready yet. Please try again in a moment."
+            );
+            return;
+        }
         new Thread(() -> {
             try {
                 float[] emb = embeddingEngine.embed(question.trim());
@@ -547,6 +588,10 @@ public class RagRepository {
             callback.onError("Document not loaded.");
             return;
         }
+        if (apiService == null) {
+            callback.onError("Summary service is not ready yet.");
+            return;
+        }
 
         new Thread(() -> {
             try {
@@ -558,7 +603,12 @@ public class RagRepository {
 
                 String context = doc.rawText != null ? doc.rawText.trim() : "";
                 if (context.isEmpty()) {
-                    List<ChunkEntity> chunks = chunkDao.getByDocumentId(documentId);
+                    List<ChunkEntity> chunks = chunkDao.getByDocumentId(
+                        documentId
+                    );
+                    if (chunks == null) {
+                        chunks = Collections.emptyList();
+                    }
                     StringBuilder builder = new StringBuilder();
                     for (ChunkEntity chunk : chunks) {
                         if (chunk == null || chunk.chunkText == null) continue;
@@ -576,7 +626,8 @@ public class RagRepository {
                 }
 
                 SummaryRequest request = new SummaryRequest(context, doc.name);
-                final String sourceName = doc.name != null ? doc.name : "Document";
+                final String sourceName =
+                    doc.name != null ? doc.name : "Document";
 
                 apiService
                     .summarize(request)
@@ -623,6 +674,12 @@ public class RagRepository {
     public void query(String question, RagCallback callback) {
         if (question == null || question.trim().isEmpty()) {
             callback.onError("Question cannot be empty.");
+            return;
+        }
+        if (embeddingEngine == null || apiService == null) {
+            callback.onError(
+                "Q&A is not ready yet. Please try again in a moment."
+            );
             return;
         }
         new Thread(() -> {

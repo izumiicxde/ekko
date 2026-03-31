@@ -567,6 +567,10 @@ public class QAViewModel extends AndroidViewModel {
 
     @Override
     protected void onCleared() {
+        cancelled = true;
+        if (ragRepository != null) {
+            ragRepository.cancelStream();
+        }
         super.onCleared();
         mainHandler.removeCallbacks(flushRunnable);
     }

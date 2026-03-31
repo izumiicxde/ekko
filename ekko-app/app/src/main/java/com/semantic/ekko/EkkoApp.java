@@ -2,11 +2,15 @@ package com.semantic.ekko;
 
 import android.app.Application;
 import android.util.Log;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 import com.semantic.ekko.ml.DocumentClassifier;
 import com.semantic.ekko.ml.EmbeddingEngine;
 import com.semantic.ekko.ml.TextSummarizer;
+import com.semantic.ekko.network.RagClient;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.qa.QAMessage;
+import com.semantic.ekko.util.CrashLogger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,6 +26,14 @@ public class EkkoApp extends Application {
     private DocumentClassifier documentClassifier;
     private TextSummarizer textSummarizer;
     private boolean mlReady = false;
+    private boolean backendReachable = false;
+    private volatile boolean backendCheckInFlight = false;
+    private long lastBackendCheckAt = 0L;
+    private final MutableLiveData<Boolean> mlReadyState = new MutableLiveData<>(
+        false
+    );
+    private final MutableLiveData<Boolean> backendReachableState =
+        new MutableLiveData<>(false);
 
     // =========================
     // CHAT STORE
@@ -110,8 +122,10 @@ public class EkkoApp extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        CrashLogger.install(this);
         PdfTextExtractor.init(this);
         initMlAsync();
+        refreshBackendHealthAsync(true);
     }
 
     // =========================
@@ -133,12 +147,48 @@ public class EkkoApp extends Application {
                 documentClassifier = new DocumentClassifier(embeddingEngine);
                 textSummarizer = new TextSummarizer(embeddingEngine);
                 mlReady = true;
+                mlReadyState.postValue(true);
                 Log.d(TAG, "ML components initialized successfully");
             } catch (Exception e) {
+                mlReady = false;
+                mlReadyState.postValue(false);
                 Log.e(
                     TAG,
                     "Failed to initialize ML components: " + e.getMessage()
                 );
+                CrashLogger.logHandled(this, "ML init failure", e);
+            }
+        })
+            .start();
+    }
+
+    public void refreshBackendHealthAsync() {
+        refreshBackendHealthAsync(false);
+    }
+
+    public void refreshBackendHealthAsync(boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && (now - lastBackendCheckAt) < 15_000L) {
+            return;
+        }
+        if (backendCheckInFlight) {
+            return;
+        }
+        backendCheckInFlight = true;
+        lastBackendCheckAt = now;
+        new Thread(() -> {
+            boolean healthy = false;
+            try {
+                retrofit2.Response<Void> response = RagClient.getInstance()
+                    .health()
+                    .execute();
+                healthy = response.isSuccessful();
+            } catch (Exception e) {
+                Log.d(TAG, "Backend health check failed: " + e.getMessage());
+            } finally {
+                backendReachable = healthy;
+                backendReachableState.postValue(healthy);
+                backendCheckInFlight = false;
             }
         })
             .start();
@@ -162,6 +212,18 @@ public class EkkoApp extends Application {
 
     public boolean isMlReady() {
         return mlReady;
+    }
+
+    public boolean isBackendReachable() {
+        return backendReachable;
+    }
+
+    public LiveData<Boolean> getMlReadyState() {
+        return mlReadyState;
+    }
+
+    public LiveData<Boolean> getBackendReachableState() {
+        return backendReachableState;
     }
 
     public ChatStore getChatStore() {

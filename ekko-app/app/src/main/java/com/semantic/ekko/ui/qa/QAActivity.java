@@ -20,6 +20,7 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +55,8 @@ public class QAActivity extends AppCompatActivity {
     private static final int MODE_AT_FILE = 1;
     private static final int MODE_FILE_COMMAND = 2;
     private static final int MODE_SLASH_COMMAND = 3;
+    private boolean mlReady = false;
+    private boolean backendReady = false;
 
     private final StringBuilder streamingBuffer = new StringBuilder();
 
@@ -66,6 +69,7 @@ public class QAActivity extends AppCompatActivity {
         setupRecycler();
         setupViewModel();
         setupInput();
+        observeReadiness();
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
@@ -73,6 +77,7 @@ public class QAActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        EkkoApp.getInstance().refreshBackendHealthAsync();
         streamingBuffer.setLength(0);
         streamingBuffer.append(viewModel.getStreamingBuffer());
         viewModel.restoreIfNeeded();
@@ -166,6 +171,9 @@ public class QAActivity extends AppCompatActivity {
                         updateEmptyState();
                         break;
                     case QAViewModel.UiEvent.ADD_MESSAGE:
+                        if (event.message == null) {
+                            break;
+                        }
                         if (
                             event.message.type == QAMessage.TYPE_USER ||
                             event.message.type == QAMessage.TYPE_ANSWER
@@ -190,8 +198,10 @@ public class QAActivity extends AppCompatActivity {
                         }
                         break;
                     case QAViewModel.UiEvent.REPLACE_LAST:
-                        adapter.replaceLastMessage(event.message);
-                        scrollToBottom();
+                        if (event.message != null) {
+                            adapter.replaceLastMessage(event.message);
+                            scrollToBottom();
+                        }
                         break;
                 }
             });
@@ -218,6 +228,52 @@ public class QAActivity extends AppCompatActivity {
             if (names != null) includedFileNames.addAll(names);
             updateInlineCompletions(editQuestion.getText().toString());
         });
+    }
+
+    private void observeReadiness() {
+        EkkoApp app = EkkoApp.getInstance();
+        app
+            .getMlReadyState()
+            .observe(this, ready -> {
+                mlReady = ready != null && ready;
+                updateReadinessUi();
+            });
+        app
+            .getBackendReachableState()
+            .observe(this, ready -> {
+                backendReady = ready != null && ready;
+                updateReadinessUi();
+            });
+        updateReadinessUi();
+    }
+
+    private void updateReadinessUi() {
+        boolean ready = mlReady && backendReady;
+        if (editQuestion == null || btnSend == null || btnStop == null) {
+            return;
+        }
+        boolean loading =
+            viewModel != null &&
+            Boolean.TRUE.equals(viewModel.getIsLoading().getValue());
+        editQuestion.setEnabled(ready && !loading);
+        btnSend.setEnabled(ready && !loading);
+        chipGroupSuggestions.setAlpha(ready ? 1f : 0.45f);
+        chipGroupSuggestions.setEnabled(ready);
+        if (!ready) {
+            btnStop.setVisibility(View.GONE);
+            btnSend.setVisibility(View.VISIBLE);
+            editQuestion.setHint(
+                !mlReady
+                    ? "Assistant becomes available when local models finish loading"
+                    : "Assistant is waiting for the backend connection"
+            );
+            txtEmptyTitle.setText("Assistant is preparing");
+            txtEmptySubtitle.setText(
+                !mlReady
+                    ? "Local models are still loading."
+                    : "Backend connection is unavailable right now."
+            );
+        }
     }
 
     private void setupSuggestions(String[] suggestions) {
@@ -300,6 +356,7 @@ public class QAActivity extends AppCompatActivity {
     }
 
     private void submitQuestion() {
+        if (!mlReady || !backendReady) return;
         String question = editQuestion.getText().toString().trim();
         if (question.isEmpty()) return;
         editQuestion.setText("");
@@ -309,6 +366,10 @@ public class QAActivity extends AppCompatActivity {
     }
 
     private void updateInlineCompletions(String input) {
+        if (!mlReady || !backendReady) {
+            hideInlineCompletions();
+            return;
+        }
         if (viewModel.isDocumentMode()) {
             hideInlineCompletions();
             return;

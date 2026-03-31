@@ -14,9 +14,11 @@ public class RagClient {
     // Standard client for non-streaming calls
     private static OkHttpClient buildStandardClient() {
         return new OkHttpClient.Builder()
+            .retryOnConnectionFailure(true)
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(60, TimeUnit.SECONDS)
             .build();
     }
 
@@ -27,9 +29,11 @@ public class RagClient {
             synchronized (RagClient.class) {
                 if (streamingClient == null) {
                     streamingClient = new OkHttpClient.Builder()
+                        .retryOnConnectionFailure(true)
                         .connectTimeout(30, TimeUnit.SECONDS)
                         .readTimeout(0, TimeUnit.SECONDS) // no timeout for streaming
                         .writeTimeout(30, TimeUnit.SECONDS)
+                        .callTimeout(180, TimeUnit.SECONDS)
                         .build();
                 }
             }

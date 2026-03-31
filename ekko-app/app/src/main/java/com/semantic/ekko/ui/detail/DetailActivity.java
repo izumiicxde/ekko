@@ -12,6 +12,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.snackbar.Snackbar;
+import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
@@ -44,6 +45,8 @@ public class DetailActivity extends AppCompatActivity {
     private View layoutSummaryLoading;
     private TextView txtSummaryHint;
     private Markwon markwon;
+    private boolean mlReady = false;
+    private boolean backendReady = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +56,7 @@ public class DetailActivity extends AppCompatActivity {
 
         bindViews();
         setupViewModel();
+        observeReadiness();
 
         long docId = getIntent().getLongExtra(EXTRA_DOCUMENT_ID, -1);
         if (docId == -1) {
@@ -113,7 +117,9 @@ public class DetailActivity extends AppCompatActivity {
                 if (summary != null && !summary.isEmpty()) {
                     if (currentDoc != null) currentDoc.summary = summary;
                     txtSummary.setVisibility(View.VISIBLE);
-                    txtSummaryHint.setText("Freshly generated from your indexed document text");
+                    txtSummaryHint.setText(
+                        "Freshly generated from your indexed document text"
+                    );
                     renderMarkdownSummary(summary);
                     btnEnhanceSummary.setText("Refresh summary");
                     btnEnhanceSummary.setEnabled(true);
@@ -130,17 +136,66 @@ public class DetailActivity extends AppCompatActivity {
                 layoutSummaryLoading.setVisibility(
                     loading ? View.VISIBLE : View.GONE
                 );
-                btnEnhanceSummary.setEnabled(!loading);
+                btnEnhanceSummary.setEnabled(
+                    mlReady && backendReady && !loading
+                );
                 btnEnhanceSummary.setText(
                     loading ? "Creating summary..." : getSummaryActionText()
                 );
                 if (loading) {
-                    txtSummaryHint.setText("Reading indexed content and drafting a tighter overview");
+                    txtSummaryHint.setText(
+                        "Reading indexed content and drafting a tighter overview"
+                    );
                     renderMarkdownSummary(
                         "Building a concise summary. This usually takes a few seconds."
                     );
                 }
             });
+    }
+
+    private void observeReadiness() {
+        EkkoApp app = EkkoApp.getInstance();
+        app
+            .getMlReadyState()
+            .observe(this, ready -> {
+                mlReady = ready != null && ready;
+                updateActionReadiness();
+            });
+        app
+            .getBackendReachableState()
+            .observe(this, ready -> {
+                backendReady = ready != null && ready;
+                updateActionReadiness();
+            });
+        app.refreshBackendHealthAsync();
+        updateActionReadiness();
+    }
+
+    private void updateActionReadiness() {
+        boolean ready = mlReady && backendReady;
+        boolean loading =
+            viewModel != null &&
+            Boolean.TRUE.equals(viewModel.getSummaryLoading().getValue());
+        if (btnEnhanceSummary != null) {
+            btnEnhanceSummary.setEnabled(ready && !loading);
+        }
+        if (btnChatWithFile != null) {
+            btnChatWithFile.setEnabled(ready);
+            btnChatWithFile.setAlpha(ready ? 1f : 0.55f);
+        }
+        if (
+            !ready &&
+            txtSummaryHint != null &&
+            (currentDoc == null ||
+                currentDoc.summary == null ||
+                currentDoc.summary.isEmpty())
+        ) {
+            txtSummaryHint.setText(
+                !mlReady
+                    ? "Summary tools will unlock after local models finish loading"
+                    : "Summary tools are waiting for the backend connection"
+            );
+        }
     }
 
     private void bindDocument(DocumentEntity doc) {
@@ -164,7 +219,9 @@ public class DetailActivity extends AppCompatActivity {
             btnEnhanceSummary.setText("Refresh summary");
         } else {
             txtSummary.setVisibility(View.VISIBLE);
-            txtSummaryHint.setText("Create a quick overview from the indexed text already stored on-device");
+            txtSummaryHint.setText(
+                "Create a quick overview from the indexed text already stored on-device"
+            );
             renderMarkdownSummary(
                 "No summary yet. Use the action above to create one."
             );
@@ -247,9 +304,13 @@ public class DetailActivity extends AppCompatActivity {
     private void openFile(DocumentEntity doc) {
         try {
             Uri uri = Uri.parse(doc.uri);
+            String mimeType = getContentResolver().getType(uri);
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, getContentResolver().getType(uri));
+            intent.setDataAndType(uri, mimeType != null ? mimeType : "*/*");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            if (intent.resolveActivity(getPackageManager()) == null) {
+                throw new IllegalStateException("No viewer available");
+            }
             startActivity(Intent.createChooser(intent, "Open with"));
         } catch (Exception e) {
             Snackbar.make(
