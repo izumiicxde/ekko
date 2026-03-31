@@ -27,7 +27,6 @@ import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.main.MainActivity;
-import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.util.PrefsManager;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -47,11 +46,9 @@ public class HomeFragment extends Fragment {
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
     private TextView txtDocCount;
-    private TextView txtHeroDetail;
     private TextView txtFolderPath;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
-    private View btnHeroWiseBot;
     private View btnEmptyAddFolder;
     private View btnEmptyOpenSettings;
     private TextView txtEmptySubtitle;
@@ -134,11 +131,9 @@ public class HomeFragment extends Fragment {
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
         txtDocCount = view.findViewById(R.id.txtDocCount);
-        txtHeroDetail = view.findViewById(R.id.txtHeroDetail);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
         progressIndexing = view.findViewById(R.id.progressIndexing);
         chipGroupFilters = view.findViewById(R.id.chipGroupFilters);
-        btnHeroWiseBot = view.findViewById(R.id.btnHeroWiseBot);
         btnEmptyAddFolder = view.findViewById(R.id.btnEmptyAddFolder);
         btnEmptyOpenSettings = view.findViewById(R.id.btnEmptyOpenSettings);
         txtEmptySubtitle = view.findViewById(R.id.txtEmptySubtitle);
@@ -176,7 +171,6 @@ public class HomeFragment extends Fragment {
                 updateEmptyState(docs);
                 updateDocCount(docs.size());
                 buildFilterChips(docs);
-                updateHeroDetail(docs == null ? 0 : docs.size());
             });
 
         viewModel
@@ -232,22 +226,6 @@ public class HomeFragment extends Fragment {
         root
             .findViewById(R.id.btnFolderBack)
             .setOnClickListener(v -> adapter.navigateUp());
-
-        root
-            .findViewById(R.id.btnHeroWiseBot)
-            .setOnClickListener(v -> {
-                if (!hasIncludedFolders) {
-                    Snackbar.make(
-                        root,
-                        "Add at least one folder in Settings first.",
-                        Snackbar.LENGTH_SHORT
-                    ).show();
-                    return;
-                }
-                Intent intent = new Intent(getActivity(), QAActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(intent);
-            });
 
         root
             .findViewById(R.id.btnEmptyAddFolder)
@@ -431,22 +409,6 @@ public class HomeFragment extends Fragment {
         );
     }
 
-    private void updateHeroDetail(int documentCount) {
-        if (!hasIncludedFolders) {
-            txtHeroDetail.setText(
-                "Add a source folder to start building your study space."
-            );
-            return;
-        }
-
-        txtHeroDetail.setText(
-            documentCount +
-                (documentCount == 1
-                    ? " indexed file ready for search and chat."
-                    : " indexed files ready for search and chat.")
-        );
-    }
-
     private void refreshFolderAvailabilityState() {
         if (
             folderRepository == null ||
@@ -464,12 +426,9 @@ public class HomeFragment extends Fragment {
             boolean hasAnyIncluded = includedCount > 0;
             getActivity().runOnUiThread(() -> {
                 hasIncludedFolders = hasAnyIncluded;
-                btnHeroWiseBot.setEnabled(hasAnyIncluded);
-                btnHeroWiseBot.setAlpha(hasAnyIncluded ? 1f : 0.5f);
                 List<DocumentEntity> currentDocs = viewModel
                     .getDocuments()
                     .getValue();
-                updateHeroDetail(currentDocs == null ? 0 : currentDocs.size());
                 updateEmptyState(
                     currentDocs == null ? new ArrayList<>() : currentDocs
                 );
