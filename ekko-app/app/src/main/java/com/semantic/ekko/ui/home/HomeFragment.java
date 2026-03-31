@@ -46,6 +46,7 @@ public class HomeFragment extends Fragment {
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
     private TextView txtDocCount;
+    private TextView txtDocMeta;
     private TextView txtFolderPath;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
@@ -147,6 +148,7 @@ public class HomeFragment extends Fragment {
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
         txtDocCount = view.findViewById(R.id.txtDocCount);
+        txtDocMeta = view.findViewById(R.id.txtDocMeta);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
         progressIndexing = view.findViewById(R.id.progressIndexing);
         chipGroupFilters = view.findViewById(R.id.chipGroupFilters);
@@ -422,8 +424,19 @@ public class HomeFragment extends Fragment {
     }
 
     private void updateDocCount(int count) {
-        txtDocCount.setText(
-            count + (count == 1 ? " upload in vault" : " uploads in vault")
+        if (count <= 0) {
+            txtDocCount.setText("Your vault is empty");
+            txtDocMeta.setText(
+                hasIncludedFolders
+                    ? "Included folders are ready. Add files or re-index to fill it."
+                    : "Add a source folder to start building your library."
+            );
+            return;
+        }
+
+        txtDocCount.setText("Vault");
+        txtDocMeta.setText(
+            count + (count == 1 ? " upload indexed" : " uploads indexed")
         );
     }
 
