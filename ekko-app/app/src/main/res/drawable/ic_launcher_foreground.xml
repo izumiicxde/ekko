@@ -7,18 +7,18 @@
 >
     <path
         android:fillColor="#F5F5F5"
-        android:pathData="M54,18 76,34 69,71 54,90 39,71 32,34z"
+        android:pathData="M54,24 72,38 66,68 54,84 42,68 36,38z"
     />
     <path
         android:fillColor="#0A0A0A"
-        android:pathData="M54,25 68,36 63,64 54,76 45,64 40,36z"
+        android:pathData="M54,30 66,39 61,62 54,74 47,62 42,39z"
     />
     <path
         android:fillColor="#F5F5F5"
-        android:pathData="M54,31 61,38 58,58 54,64 50,58 47,38z"
+        android:pathData="M54,35 60,40 57,57 54,62 51,57 48,40z"
     />
     <path
         android:fillColor="#BDBDBD"
-        android:pathData="M54,37 58,41 57,54 54,58 51,54 50,41z"
+        android:pathData="M54,40 57,43 56,52 54,55 52,52 51,43z"
     />
 </vector>
