@@ -70,19 +70,30 @@ public class SearchViewModel extends AndroidViewModel {
                     MIN_SCORE,
                     searchResults -> {
                         folderRepository.getAll(folders -> {
+                            List<FolderEntity> safeFolders =
+                                folders == null ? new ArrayList<>() : folders;
                             Set<String> excludedUris =
                                 prefsManager.getExcludedFolderUris();
                             Set<Long> excludedFolderIds = new HashSet<>();
-                            for (FolderEntity folder : folders) {
-                                if (excludedUris.contains(folder.uri)) {
+                            for (FolderEntity folder : safeFolders) {
+                                if (
+                                    folder != null &&
+                                    excludedUris.contains(folder.uri)
+                                ) {
                                     excludedFolderIds.add(folder.id);
                                 }
                             }
 
+                            List<SearchResult> safeSearchResults =
+                                searchResults == null
+                                    ? new ArrayList<>()
+                                    : searchResults;
                             List<SearchResult> visibleResults =
                                 new ArrayList<>();
-                            for (SearchResult result : searchResults) {
+                            for (SearchResult result : safeSearchResults) {
                                 if (
+                                    result != null &&
+                                    result.getDocument() != null &&
                                     !excludedFolderIds.contains(
                                         result.getDocument().folderId
                                     )

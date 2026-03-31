@@ -62,12 +62,24 @@ public class HomeFragment extends Fragment {
             new ActivityResultContracts.OpenDocumentTree(),
             uri -> {
                 if (uri == null || getActivity() == null) return;
-                getActivity()
-                    .getContentResolver()
-                    .takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    );
+                try {
+                    getActivity()
+                        .getContentResolver()
+                        .takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+                } catch (SecurityException | IllegalArgumentException e) {
+                    View root = getView();
+                    if (root != null) {
+                        Snackbar.make(
+                            root,
+                            "Could not access that folder. Please try selecting it again.",
+                            Snackbar.LENGTH_LONG
+                        ).show();
+                    }
+                    return;
+                }
                 viewModel.addFolderAndIndex(uri);
             }
         );
@@ -108,8 +120,12 @@ public class HomeFragment extends Fragment {
 
         Executors.newSingleThreadExecutor().execute(() -> {
             viewModel.initMl();
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> viewModel.loadDocuments());
+            if (isAdded() && getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (isAdded()) {
+                        viewModel.loadDocuments();
+                    }
+                });
             }
         });
     }
@@ -167,10 +183,12 @@ public class HomeFragment extends Fragment {
         viewModel
             .getDocuments()
             .observe(getViewLifecycleOwner(), docs -> {
-                adapter.submitDocuments(docs);
-                updateEmptyState(docs);
-                updateDocCount(docs.size());
-                buildFilterChips(docs);
+                List<DocumentEntity> safeDocs =
+                    docs == null ? new ArrayList<>() : docs;
+                adapter.submitDocuments(safeDocs);
+                updateEmptyState(safeDocs);
+                updateDocCount(safeDocs.size());
+                buildFilterChips(safeDocs);
             });
 
         viewModel
@@ -424,7 +442,13 @@ public class HomeFragment extends Fragment {
                 if (!excluded.contains(folder.uri)) includedCount++;
             }
             boolean hasAnyIncluded = includedCount > 0;
+            if (!isAdded() || getActivity() == null) {
+                return;
+            }
             getActivity().runOnUiThread(() -> {
+                if (!isAdded()) {
+                    return;
+                }
                 hasIncludedFolders = hasAnyIncluded;
                 List<DocumentEntity> currentDocs = viewModel
                     .getDocuments()

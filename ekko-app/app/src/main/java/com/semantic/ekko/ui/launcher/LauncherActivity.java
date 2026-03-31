@@ -23,6 +23,9 @@ import com.semantic.ekko.util.PrefsManager;
 public class LauncherActivity extends AppCompatActivity {
 
     private static final long ROUTE_DELAY_MS = 1050L;
+    private final Handler routeHandler = new Handler(Looper.getMainLooper());
+    private Runnable routeRunnable;
+    private ObjectAnimator floatMarkAnimator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,14 +42,15 @@ public class LauncherActivity extends AppCompatActivity {
             ? MainActivity.class
             : OnboardingActivity.class;
 
-        new Handler(Looper.getMainLooper()).postDelayed(
-            () -> {
-                Intent intent = new Intent(this, target);
-                startActivity(intent);
-                finish();
-            },
-            ROUTE_DELAY_MS
-        );
+        routeRunnable = () -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            Intent intent = new Intent(this, target);
+            startActivity(intent);
+            finish();
+        };
+        routeHandler.postDelayed(routeRunnable, ROUTE_DELAY_MS);
     }
 
     private void applyInsets() {
@@ -98,16 +102,27 @@ public class LauncherActivity extends AppCompatActivity {
         intro.setInterpolator(new AccelerateDecelerateInterpolator());
         intro.start();
 
-        ObjectAnimator floatMark = ObjectAnimator.ofFloat(
+        floatMarkAnimator = ObjectAnimator.ofFloat(
             markWrap,
             View.TRANSLATION_Y,
             0f,
             -10f,
             0f
         );
-        floatMark.setDuration(1800L);
-        floatMark.setRepeatCount(ObjectAnimator.INFINITE);
-        floatMark.setInterpolator(new AccelerateDecelerateInterpolator());
-        floatMark.start();
+        floatMarkAnimator.setDuration(1800L);
+        floatMarkAnimator.setRepeatCount(ObjectAnimator.INFINITE);
+        floatMarkAnimator.setInterpolator(
+            new AccelerateDecelerateInterpolator()
+        );
+        floatMarkAnimator.start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        routeHandler.removeCallbacksAndMessages(null);
+        if (floatMarkAnimator != null) {
+            floatMarkAnimator.cancel();
+        }
+        super.onDestroy();
     }
 }

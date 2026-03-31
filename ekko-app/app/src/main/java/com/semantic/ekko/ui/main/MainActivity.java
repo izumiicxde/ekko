@@ -250,6 +250,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showFragment(String tag) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (getSupportFragmentManager().isStateSaved()) {
+            return;
+        }
         if (
             tag.equals(currentTag) &&
             getSupportFragmentManager().findFragmentByTag(tag) != null
@@ -323,6 +329,9 @@ public class MainActivity extends AppCompatActivity {
             }
             boolean finalIncluded = included;
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
                 hasIncludedFolders = finalIncluded;
                 if (!finalIncluded && TAG_SEARCH.equals(currentTag)) {
                     showFragment(TAG_HOME);

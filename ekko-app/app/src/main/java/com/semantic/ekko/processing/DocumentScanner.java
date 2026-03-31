@@ -151,8 +151,21 @@ public class DocumentScanner {
     ) {
         List<DocumentEntity> allDocs = new ArrayList<>();
         int totalSkipped = 0;
+        if (
+            folderUris == null ||
+            folderIds == null ||
+            folderUris.isEmpty() ||
+            folderIds.isEmpty()
+        ) {
+            return new ScanResult(allDocs, totalSkipped);
+        }
 
-        for (int i = 0; i < folderUris.size(); i++) {
+        int limit = Math.min(folderUris.size(), folderIds.size());
+        for (int i = 0; i < limit; i++) {
+            if (folderUris.get(i) == null || folderIds.get(i) == null) {
+                totalSkipped++;
+                continue;
+            }
             ScanResult result = scanFolder(
                 context,
                 folderUris.get(i),

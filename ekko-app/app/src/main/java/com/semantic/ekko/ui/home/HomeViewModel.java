@@ -98,10 +98,13 @@ public class HomeViewModel extends AndroidViewModel {
 
     public void loadDocuments() {
         folderRepository.getAll(folders -> {
+            List<FolderEntity> safeFolders =
+                folders == null ? Collections.emptyList() : folders;
             Set<String> excludedUris = prefsManager.getExcludedFolderUris();
             Set<Long> excludedFolderIds = new HashSet<>();
             Map<Long, String> visibleFolderNames = new HashMap<>();
-            for (FolderEntity folder : folders) {
+            for (FolderEntity folder : safeFolders) {
+                if (folder == null) continue;
                 if (excludedUris.contains(folder.uri)) {
                     excludedFolderIds.add(folder.id);
                 } else {
@@ -111,9 +114,13 @@ public class HomeViewModel extends AndroidViewModel {
             folderNames.postValue(visibleFolderNames);
 
             documentRepository.getAll(docs -> {
+                List<DocumentEntity> safeDocs =
+                    docs == null ? Collections.emptyList() : docs;
                 List<DocumentEntity> visibleDocs = new ArrayList<>();
-                for (DocumentEntity doc : docs) {
-                    if (!excludedFolderIds.contains(doc.folderId)) {
+                for (DocumentEntity doc : safeDocs) {
+                    if (
+                        doc != null && !excludedFolderIds.contains(doc.folderId)
+                    ) {
                         visibleDocs.add(doc);
                     }
                 }
