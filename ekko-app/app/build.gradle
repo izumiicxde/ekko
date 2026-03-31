@@ -6,6 +6,12 @@ android {
     namespace 'com.semantic.ekko'
     compileSdkVersion 35
 
+    signingConfigs {
+        release {
+            initWith signingConfigs.debug
+        }
+    }
+
     defaultConfig {
         applicationId "com.semantic.ekko"
         minSdk 26
@@ -30,6 +36,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
