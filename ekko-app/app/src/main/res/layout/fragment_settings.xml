@@ -19,158 +19,60 @@
         android:paddingBottom="20dp"
     >
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:text="Settings"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+        />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:text="Keep the workspace light and simple."
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="28sp"
+            android:textStyle="bold"
+        />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:text="Folders update instantly, appearance stays minimal, and Ekko Bot is one tap away."
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+        />
+
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@android:color/transparent"
-            app:cardCornerRadius="34dp"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="30dp"
             app:cardElevation="0dp"
-            app:strokeColor="?attr/colorOutlineVariant"
-            app:strokeWidth="1dp"
-        >
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_settings_banner"
-                android:orientation="vertical"
-                android:padding="20dp"
-            >
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                >
-
-                    <FrameLayout
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:background="@drawable/bg_icon_pill"
-                    >
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="Settings"
-                            android:src="@drawable/ic_settings"
-                            app:tint="?attr/colorPrimary"
-                        />
-                    </FrameLayout>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Settings"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp"
-                    />
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:text="Simple controls for folders and appearance."
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="28sp"
-                    android:textStyle="bold"
-                />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:lineSpacingExtra="2dp"
-                    android:text="Add folders, refresh the index, and choose the look you want without extra clutter."
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="14sp"
-                />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:gravity="center_vertical"
-                    android:orientation="vertical"
-                >
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                    >
-
-                        <View
-                            android:layout_width="8dp"
-                            android:layout_height="8dp"
-                            android:background="@drawable/bg_surface_pill"
-                        />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Folder changes apply across the app right away"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="13sp"
-                        />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                    >
-
-                        <View
-                            android:layout_width="8dp"
-                            android:layout_height="8dp"
-                            android:background="@drawable/bg_surface_pill"
-                        />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="10dp"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Pick a clean light or dark appearance"
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="13sp"
-                        />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="vertical"
+            app:strokeWidth="0dp"
         >
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
+                android:padding="18dp"
             >
 
                 <LinearLayout
+                    android:id="@+id/layoutFolderSectionHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                 >
@@ -215,12 +117,29 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:fontFamily="@font/bricolage_grotesque"
-                            android:lineSpacingExtra="2dp"
-                            android:text="Included folders appear across Home, Search, and Ekko Bot. Removing a folder only detaches it from Ekko."
+                            android:text="Tap to show or hide the folder list. Included folders appear across Home and Search."
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="13sp"
                         />
                     </LinearLayout>
+
+                    <FrameLayout
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_surface_pill"
+                    >
+
+                        <ImageView
+                            android:id="@+id/imgFolderSectionToggle"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="Toggle folders"
+                            android:rotation="90"
+                            android:src="@drawable/ic_arrow_forward_small"
+                            app:tint="?attr/colorOnSurface"
+                        />
+                    </FrameLayout>
                 </LinearLayout>
 
                 <TextView
@@ -249,36 +168,48 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAddFolder"
-                        style="@style/Widget.Ekko.Button.Primary"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="Add folder"
-                        app:icon="@drawable/ic_upload"
-                        app:iconTint="?attr/colorOnPrimary"
-                    />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnReindexIncluded"
                         style="@style/Widget.Ekko.Button.Secondary"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:layout_marginTop="8dp"
-                        android:text="Refresh index"
-                        app:icon="@drawable/ic_refresh"
-                        app:iconTint="?attr/colorOnSurface"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:text="Add folder"
+                        app:backgroundTint="?attr/colorPrimaryContainer"
+                        app:icon="@drawable/ic_upload"
+                        app:iconTint="?attr/colorOnPrimaryContainer"
                     />
-                </LinearLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnResetExcluded"
-                    style="@style/Widget.Ekko.Button.Outlined"
-                    android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="8dp"
-                    android:text="Show hidden folders"
-                    app:icon="@drawable/ic_refresh"
-                    app:iconTint="?attr/colorOnSurface"
-                />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                    >
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReindexIncluded"
+                            style="@style/Widget.Ekko.Button.Secondary"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="Refresh"
+                            app:icon="@drawable/ic_refresh"
+                            app:iconTint="?attr/colorOnSurface"
+                        />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnResetExcluded"
+                            style="@style/Widget.Ekko.Button.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:text="Show hidden"
+                            app:icon="@drawable/ic_refresh"
+                            app:iconTint="?attr/colorOnSurface"
+                        />
+                    </LinearLayout>
+                </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/layoutReindexProgress"
@@ -312,194 +243,62 @@
                     />
                 </LinearLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recyclerFolders"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:listitem="@layout/item_folder_setting"
-                />
-
-                <TextView
-                    android:id="@+id/txtNoFolders"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:text="No folders added yet."
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="13sp"
-                    android:visibility="gone"
-                />
-            </LinearLayout>
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_divider"
-        />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="vertical"
-        >
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-            >
-
                 <LinearLayout
+                    android:id="@+id/layoutFolderListContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                >
-
-                    <FrameLayout
-                        android:layout_width="46dp"
-                        android:layout_height="46dp"
-                        android:background="@drawable/bg_icon_pill"
-                    >
-
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="Appearance"
-                            android:src="@drawable/ic_description"
-                            app:tint="?attr/colorPrimary"
-                        />
-                    </FrameLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                    >
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Appearance"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textSize="19sp"
-                            android:textStyle="bold"
-                        />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Pick how Ekko should look on this device."
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="13sp"
-                        />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
                     android:orientation="vertical"
-                    android:paddingTop="2dp"
+                    android:visibility="gone"
                 >
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/recyclerFolders"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Theme"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp"
+                        android:layout_marginTop="12dp"
+                        android:nestedScrollingEnabled="false"
+                        tools:listitem="@layout/item_folder_setting"
                     />
 
-                    <com.google.android.material.button.MaterialButtonToggleGroup
-                        android:id="@+id/toggleTheme"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:orientation="horizontal"
-                        app:singleSelection="true"
-                    >
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnThemeLight"
-                            style="@style/Widget.Ekko.Button.ToggleTheme"
-                            android:layout_width="0dp"
-                            android:layout_height="46dp"
-                            android:layout_weight="1"
-                            android:text="Light"
-                            android:textSize="13sp"
-                        />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnThemeDark"
-                            style="@style/Widget.Ekko.Button.ToggleTheme"
-                            android:layout_width="0dp"
-                            android:layout_height="46dp"
-                            android:layout_weight="1"
-                            android:text="Dark"
-                            android:textSize="13sp"
-                        />
-                    </com.google.android.material.button.MaterialButtonToggleGroup>
-
                     <TextView
-                        android:id="@+id/txtThemeSummary"
+                        android:id="@+id/txtNoFolders"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:fontFamily="@font/bricolage_grotesque"
+                        android:text="No folders added yet."
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp"
-                        tools:text="Light mode is active on this device."
+                        android:textSize="13sp"
+                        android:visibility="gone"
                     />
                 </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="14dp"
-            android:background="@drawable/bg_divider"
-        />
-
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
         >
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
+                android:padding="18dp"
             >
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:text="Assistant"
+                    android:text="Appearance"
                     android:textColor="?attr/colorOnSurface"
-                    android:textSize="19sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                 />
 
@@ -508,24 +307,82 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:text="Jump into Ekko Bot once your included folders are ready."
+                    android:text="A light, paper-soft look with a cleaner dark mode when you need it."
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="13sp"
+                    android:textSize="12sp"
                 />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSettingsWiseBot"
-                    style="@style/Widget.Ekko.Button.Primary"
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    android:text="Open Ekko Bot"
-                    app:icon="@drawable/ic_chat"
-                    app:iconTint="?attr/colorOnPrimary"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                >
+
+                    <View
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:background="@drawable/bg_surface_pill"
+                    />
+
+                    <View
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_icon_pill"
+                    />
+
+                    <View
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="8dp"
+                        android:backgroundTint="?attr/colorPrimaryContainer"
+                        android:background="@drawable/bg_surface_pill"
+                    />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggleTheme"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    app:singleSelection="true"
+                >
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnThemeLight"
+                        style="@style/Widget.Ekko.Button.ToggleTheme"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_weight="1"
+                        android:text="Light"
+                        android:textSize="13sp"
+                    />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnThemeDark"
+                        style="@style/Widget.Ekko.Button.ToggleTheme"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_weight="1"
+                        android:text="Dark"
+                        android:textSize="13sp"
+                    />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <TextView
+                    android:id="@+id/txtThemeSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    tools:text="Light mode is active on this device."
                 />
             </LinearLayout>
-        </LinearLayout>
-
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

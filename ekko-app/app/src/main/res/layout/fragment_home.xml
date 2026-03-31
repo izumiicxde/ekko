@@ -77,93 +77,63 @@
                 </FrameLayout>
             </LinearLayout>
 
-            <com.google.android.material.card.MaterialCardView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@android:color/transparent"
-                app:cardCornerRadius="34dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
             >
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_home_hero"
+                    android:layout_weight="1"
                     android:orientation="vertical"
-                    android:padding="20dp"
                 >
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_surface_pill"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:paddingStart="12dp"
-                        android:paddingTop="6dp"
-                        android:paddingEnd="12dp"
-                        android:paddingBottom="6dp"
-                        android:text="Workspace overview"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
+                        android:text="Library"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
                     />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="4dp"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:lineSpacingExtra="2dp"
-                        android:text="Everything indexed,\nready to use."
+                        android:text="Your files, quietly organized."
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="28sp"
                         android:textStyle="bold"
                     />
 
                     <TextView
+                        android:id="@+id/txtHeroDetail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="6dp"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:lineSpacingExtra="2dp"
-                        android:text="Track what is already in your vault, then jump straight into grounded search and Q&amp;A."
+                        android:text="Add a source folder to start building your study space."
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="14sp"
+                        android:textSize="13sp"
                     />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:orientation="vertical"
-                    >
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnHeroWiseBot"
-                            style="@style/Widget.Ekko.Button.Primary"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:text="Ask Ekko Bot"
-                            app:icon="@drawable/ic_chat"
-                            app:iconTint="?attr/colorOnPrimary"
-                        />
-
-                        <TextView
-                            android:id="@+id/txtHeroDetail"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Add a source folder to start building your study space."
-                            android:textColor="?attr/colorOnSurfaceVariant"
-                            android:textSize="12sp"
-                        />
-                    </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnHeroWiseBot"
+                    style="@style/Widget.Ekko.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="46dp"
+                    android:text="Ask"
+                    app:icon="@drawable/ic_chat"
+                    app:iconTint="?attr/colorOnSurface"
+                />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/layoutIndexingProgress"

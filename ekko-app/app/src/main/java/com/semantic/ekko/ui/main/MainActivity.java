@@ -198,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
     ) {
         int activeColor = MaterialColors.getColor(
             this,
-            com.google.android.material.R.attr.colorOnPrimary,
+            com.google.android.material.R.attr.colorOnPrimaryContainer,
             0
         );
         int inactiveColor = MaterialColors.getColor(
@@ -218,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
             .animate()
             .scaleX(selected ? 1f : 0.94f)
             .scaleY(selected ? 1f : 0.94f)
-            .translationY(selected ? 0f : 1.5f)
+            .translationY(selected ? 0f : 0.5f)
             .setDuration(180)
             .start();
 

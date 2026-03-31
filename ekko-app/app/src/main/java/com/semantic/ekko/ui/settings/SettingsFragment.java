@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -25,7 +26,6 @@ import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.home.HomeViewModel;
-import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.util.PrefsManager;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +43,9 @@ public class SettingsFragment extends Fragment {
     private TextView txtFolderStats;
     private TextView txtReindexStage;
     private TextView txtThemeSummary;
+    private View layoutFolderSectionHeader;
+    private View layoutFolderListContainer;
+    private ImageView imgFolderSectionToggle;
     private MaterialButtonToggleGroup toggleTheme;
     private MaterialButton btnAddFolder;
     private MaterialButton btnResetExcluded;
@@ -51,6 +54,7 @@ public class SettingsFragment extends Fragment {
     private LinearProgressIndicator progressReindex;
 
     private List<FolderEntity> currentFolders = new ArrayList<>();
+    private boolean foldersExpanded = false;
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -95,6 +99,13 @@ public class SettingsFragment extends Fragment {
         txtFolderStats = view.findViewById(R.id.txtFolderStats);
         txtReindexStage = view.findViewById(R.id.txtReindexStage);
         txtThemeSummary = view.findViewById(R.id.txtThemeSummary);
+        layoutFolderSectionHeader = view.findViewById(
+            R.id.layoutFolderSectionHeader
+        );
+        layoutFolderListContainer = view.findViewById(
+            R.id.layoutFolderListContainer
+        );
+        imgFolderSectionToggle = view.findViewById(R.id.imgFolderSectionToggle);
         toggleTheme = view.findViewById(R.id.toggleTheme);
         btnAddFolder = view.findViewById(R.id.btnAddFolder);
         btnResetExcluded = view.findViewById(R.id.btnResetExcluded);
@@ -171,6 +182,7 @@ public class SettingsFragment extends Fragment {
             });
 
         setupThemeToggle(view);
+        setupFolderSection();
 
         view
             .findViewById(R.id.btnAddFolder)
@@ -203,22 +215,6 @@ public class SettingsFragment extends Fragment {
                     Snackbar.LENGTH_SHORT
                 ).show();
             });
-
-        view
-            .findViewById(R.id.btnSettingsWiseBot)
-            .setOnClickListener(v -> {
-                if (getIncludedFolders().isEmpty()) {
-                    Snackbar.make(
-                        v,
-                        "Add and include at least one folder first.",
-                        Snackbar.LENGTH_SHORT
-                    ).show();
-                    return;
-                }
-                Intent intent = new Intent(getActivity(), QAActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(intent);
-            });
     }
 
     private void refreshFolderUi() {
@@ -231,7 +227,9 @@ public class SettingsFragment extends Fragment {
             if (excluded.contains(folder.uri)) hidden++;
         }
 
-        txtNoFolders.setVisibility(total == 0 ? View.VISIBLE : View.GONE);
+        txtNoFolders.setVisibility(
+            foldersExpanded && total == 0 ? View.VISIBLE : View.GONE
+        );
         txtFolderStats.setText(
             total +
                 " source" +
@@ -240,6 +238,38 @@ public class SettingsFragment extends Fragment {
                 (total - hidden) +
                 " included"
         );
+        applyFolderExpansionState();
+    }
+
+    private void setupFolderSection() {
+        layoutFolderSectionHeader.setOnClickListener(v -> {
+            foldersExpanded = !foldersExpanded;
+            applyFolderExpansionState();
+        });
+        applyFolderExpansionState();
+    }
+
+    private void applyFolderExpansionState() {
+        if (
+            layoutFolderListContainer == null || imgFolderSectionToggle == null
+        ) {
+            return;
+        }
+        layoutFolderListContainer.setVisibility(
+            foldersExpanded ? View.VISIBLE : View.GONE
+        );
+        imgFolderSectionToggle
+            .animate()
+            .rotation(foldersExpanded ? 270f : 90f)
+            .setDuration(160)
+            .start();
+        if (!foldersExpanded) {
+            txtNoFolders.setVisibility(View.GONE);
+        } else {
+            txtNoFolders.setVisibility(
+                currentFolders.isEmpty() ? View.VISIBLE : View.GONE
+            );
+        }
     }
 
     private List<FolderEntity> getIncludedFolders() {
