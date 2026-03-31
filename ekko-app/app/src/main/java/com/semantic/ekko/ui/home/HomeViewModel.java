@@ -155,7 +155,7 @@ public class HomeViewModel extends AndroidViewModel {
 
         isIndexing.postValue(true);
 
-        String folderName = FileUtils.getFolderName(folderUri);
+        String folderName = FileUtils.getFolderDisplayPath(folderUri);
         FolderEntity folder = new FolderEntity(
             folderUri.toString(),
             folderName

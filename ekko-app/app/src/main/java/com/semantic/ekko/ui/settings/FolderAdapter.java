@@ -1,5 +1,6 @@
 package com.semantic.ekko.ui.settings;
 
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.util.FileUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -83,12 +85,18 @@ public class FolderAdapter
         }
 
         void bind(FolderEntity folder) {
+            String displayPath = resolveDisplayPath(folder);
+            String leafName = displayPath;
+            if (leafName.contains("/")) {
+                leafName = leafName.substring(leafName.lastIndexOf('/') + 1);
+            }
+
             txtFolderName.setText(
-                folder.name != null && !folder.name.isEmpty()
-                    ? folder.name
+                leafName != null && !leafName.isEmpty()
+                    ? leafName
                     : "Unnamed folder"
             );
-            txtFolderUri.setText(folder.uri);
+            txtFolderUri.setText(displayPath);
 
             boolean included = !excludedUris.contains(folder.uri);
             switchInclude.setOnCheckedChangeListener(null);
@@ -103,6 +111,20 @@ public class FolderAdapter
             btnRemoveFolder.setOnClickListener(v -> {
                 if (listener != null) listener.onFolderRemove(folder);
             });
+        }
+
+        private String resolveDisplayPath(FolderEntity folder) {
+            if (folder == null) return "Unknown Folder";
+            if (folder.name != null && folder.name.contains("/")) {
+                return folder.name;
+            }
+            try {
+                return FileUtils.getFolderDisplayPath(Uri.parse(folder.uri));
+            } catch (Exception e) {
+                return folder.name != null && !folder.name.isEmpty()
+                    ? folder.name
+                    : "Unknown Folder";
+            }
         }
     }
 }

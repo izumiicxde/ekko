@@ -1,10 +1,10 @@
 package com.semantic.ekko.util;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
-import android.database.Cursor;
 
 public class FileUtils {
 
@@ -20,9 +20,17 @@ public class FileUtils {
         String result = null;
 
         if ("content".equals(uri.getScheme())) {
-            try (Cursor cursor = context.getContentResolver().query(
-                    uri, new String[]{ OpenableColumns.DISPLAY_NAME },
-                    null, null, null)) {
+            try (
+                Cursor cursor = context
+                    .getContentResolver()
+                    .query(
+                        uri,
+                        new String[] { OpenableColumns.DISPLAY_NAME },
+                        null,
+                        null,
+                        null
+                    )
+            ) {
                 if (cursor != null && cursor.moveToFirst()) {
                     result = cursor.getString(0);
                 }
@@ -59,11 +67,16 @@ public class FileUtils {
      */
     public static String getMimeType(String fileName) {
         switch (getExtension(fileName)) {
-            case "pdf":  return "application/pdf";
-            case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            case "pptx": return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-            case "txt":  return "text/plain";
-            default:     return "*/*";
+            case "pdf":
+                return "application/pdf";
+            case "docx":
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "pptx":
+                return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "txt":
+                return "text/plain";
+            default:
+                return "*/*";
         }
     }
 
@@ -72,8 +85,12 @@ public class FileUtils {
      */
     public static boolean isSupportedFile(String fileName) {
         String ext = getExtension(fileName);
-        return ext.equals("pdf") || ext.equals("docx")
-                || ext.equals("pptx") || ext.equals("txt");
+        return (
+            ext.equals("pdf") ||
+            ext.equals("docx") ||
+            ext.equals("pptx") ||
+            ext.equals("txt")
+        );
     }
 
     // =========================
@@ -98,9 +115,17 @@ public class FileUtils {
      * Returns -1 if size cannot be determined.
      */
     public static long getFileSize(Context context, Uri uri) {
-        try (Cursor cursor = context.getContentResolver().query(
-                uri, new String[]{ OpenableColumns.SIZE },
-                null, null, null)) {
+        try (
+            Cursor cursor = context
+                .getContentResolver()
+                .query(
+                    uri,
+                    new String[] { OpenableColumns.SIZE },
+                    null,
+                    null,
+                    null
+                )
+        ) {
             if (cursor != null && cursor.moveToFirst()) {
                 return cursor.getLong(0);
             }
@@ -118,13 +143,33 @@ public class FileUtils {
      * Extracts a human-readable folder name from a tree URI.
      */
     public static String getFolderName(Uri treeUri) {
-        String path = treeUri.getLastPathSegment();
-        if (path == null) return "Unknown Folder";
-        if (path.contains(":")) {
-            path = path.substring(path.lastIndexOf(':') + 1);
-        }
+        String path = getFolderDisplayPath(treeUri);
         if (path.contains("/")) {
             path = path.substring(path.lastIndexOf('/') + 1);
+        }
+        return path.isEmpty() ? "Unknown Folder" : path;
+    }
+
+    /**
+     * Extracts the full relative path selected from a tree URI.
+     * Example: primary:Notes/Sem3 -> Notes/Sem3
+     */
+    public static String getFolderDisplayPath(Uri treeUri) {
+        if (treeUri == null) return "Unknown Folder";
+
+        String path = null;
+        try {
+            path = DocumentsContract.getTreeDocumentId(treeUri);
+        } catch (Exception e) {
+            path = treeUri.getLastPathSegment();
+        }
+
+        if (path == null) return "Unknown Folder";
+        if (path.contains(":")) {
+            path = path.substring(path.indexOf(':') + 1);
+        }
+        if (path.contains("/")) {
+            path = path.replaceAll("/+", "/");
         }
         return path.isEmpty() ? "Unknown Folder" : path;
     }

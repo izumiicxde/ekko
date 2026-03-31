@@ -11,10 +11,10 @@ import java.util.List;
 public class DocumentScanner {
 
     private static final String[] SUPPORTED_MIME_TYPES = {
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "text/plain"
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
     };
 
     // =========================
@@ -22,6 +22,7 @@ public class DocumentScanner {
     // =========================
 
     public static class ScanResult {
+
         public final List<DocumentEntity> documents;
         public final int skipped;
 
@@ -65,7 +66,10 @@ public class DocumentScanner {
         List<DocumentEntity> found
     ) {
         int skipped = 0;
-        String parentDocumentId = DocumentsContract.getDocumentId(parentUri);
+        String parentDocumentId = resolveDocumentId(treeUri, parentUri);
+        if (parentDocumentId == null || parentDocumentId.isEmpty()) {
+            return skipped;
+        }
         Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
             treeUri,
             parentDocumentId
@@ -75,7 +79,7 @@ public class DocumentScanner {
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE,
-            DocumentsContract.Document.COLUMN_SIZE
+            DocumentsContract.Document.COLUMN_SIZE,
         };
 
         try (
@@ -149,7 +153,11 @@ public class DocumentScanner {
         int totalSkipped = 0;
 
         for (int i = 0; i < folderUris.size(); i++) {
-            ScanResult result = scanFolder(context, folderUris.get(i), folderIds.get(i));
+            ScanResult result = scanFolder(
+                context,
+                folderUris.get(i),
+                folderIds.get(i)
+            );
             allDocs.addAll(result.documents);
             totalSkipped += result.skipped;
         }
@@ -161,6 +169,22 @@ public class DocumentScanner {
         if (segment == null || segment.trim().isEmpty()) return base;
         if (base == null || base.isEmpty()) return segment;
         return base + "/" + segment;
+    }
+
+    private static String resolveDocumentId(Uri treeUri, Uri candidateUri) {
+        if (candidateUri == null) return null;
+        try {
+            if (candidateUri.equals(treeUri)) {
+                return DocumentsContract.getTreeDocumentId(treeUri);
+            }
+            return DocumentsContract.getDocumentId(candidateUri);
+        } catch (IllegalArgumentException ignored) {
+            try {
+                return DocumentsContract.getTreeDocumentId(candidateUri);
+            } catch (IllegalArgumentException ignoredAgain) {
+                return null;
+            }
+        }
     }
 
     // =========================
@@ -177,11 +201,16 @@ public class DocumentScanner {
 
     private static String mimeToFileType(String mime) {
         switch (mime) {
-            case "application/pdf": return "pdf";
-            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document": return "docx";
-            case "application/vnd.openxmlformats-officedocument.presentationml.presentation": return "pptx";
-            case "text/plain": return "txt";
-            default: return "unknown";
+            case "application/pdf":
+                return "pdf";
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                return "docx";
+            case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+                return "pptx";
+            case "text/plain":
+                return "txt";
+            default:
+                return "unknown";
         }
     }
 }
