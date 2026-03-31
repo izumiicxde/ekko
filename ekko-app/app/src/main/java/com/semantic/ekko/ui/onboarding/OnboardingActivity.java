@@ -1,12 +1,15 @@
 package com.semantic.ekko.ui.onboarding;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -16,7 +19,10 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
 import com.semantic.ekko.R;
+import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.main.MainActivity;
+import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
 import java.util.Arrays;
 import java.util.List;
@@ -31,6 +37,41 @@ public class OnboardingActivity extends AppCompatActivity {
     private LinearLayout indicatorLayout;
     private List<OnboardingPagerAdapter.OnboardingPage> pages;
     private PrefsManager prefsManager;
+    private FolderRepository folderRepository;
+    private boolean hasRequiredFolder = false;
+    private final ActivityResultLauncher<Uri> folderPicker =
+        registerForActivityResult(
+            new ActivityResultContracts.OpenDocumentTree(),
+            uri -> {
+                if (uri == null) {
+                    btnNext.setEnabled(true);
+                    return;
+                }
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    );
+                } catch (SecurityException | IllegalArgumentException e) {
+                    btnNext.setEnabled(true);
+                    return;
+                }
+
+                FolderEntity folder = new FolderEntity(
+                    uri.toString(),
+                    FileUtils.getFolderDisplayPath(uri)
+                );
+                folderRepository.insertIfNotExists(
+                    folder,
+                    (id, alreadyExists) ->
+                        runOnUiThread(() -> {
+                            hasRequiredFolder = true;
+                            btnNext.setEnabled(true);
+                            updateUiForPage(viewPager.getCurrentItem());
+                        })
+                );
+            }
+        );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +79,7 @@ public class OnboardingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         prefsManager = new PrefsManager(this);
+        folderRepository = new FolderRepository(this);
         if (prefsManager.isOnboardingDone()) {
             launchMain();
             return;
@@ -49,6 +91,12 @@ public class OnboardingActivity extends AppCompatActivity {
         applyWindowInsets();
 
         viewPager.setAdapter(new OnboardingPagerAdapter(pages));
+        folderRepository
+            .getAllLive()
+            .observe(this, folders -> {
+                hasRequiredFolder = folders != null && !folders.isEmpty();
+                updateUiForPage(viewPager.getCurrentItem());
+            });
         createIndicators();
         updateUiForPage(0);
 
@@ -67,14 +115,21 @@ public class OnboardingActivity extends AppCompatActivity {
 
         btnNext.setOnClickListener(v -> {
             int nextPosition = viewPager.getCurrentItem() + 1;
-            if (nextPosition < pages.size()) {
-                viewPager.setCurrentItem(nextPosition, true);
-            } else {
+            if (viewPager.getCurrentItem() == pages.size() - 1) {
+                if (!hasRequiredFolder) {
+                    btnNext.setEnabled(false);
+                    folderPicker.launch(null);
+                    return;
+                }
                 completeOnboarding();
+            } else if (nextPosition < pages.size()) {
+                viewPager.setCurrentItem(nextPosition, true);
             }
         });
 
-        btnSkip.setOnClickListener(v -> completeOnboarding());
+        btnSkip.setOnClickListener(v ->
+            viewPager.setCurrentItem(pages.size() - 1, true)
+        );
 
         getOnBackPressedDispatcher().addCallback(
             this,
@@ -127,6 +182,14 @@ public class OnboardingActivity extends AppCompatActivity {
                 R.string.onboarding_body_3,
                 R.string.onboarding_highlight_3,
                 R.string.onboarding_tip_3,
+                R.drawable.ic_folder_open
+            ),
+            new OnboardingPagerAdapter.OnboardingPage(
+                R.string.onboarding_step_four,
+                R.string.onboarding_title_4,
+                R.string.onboarding_body_4,
+                R.string.onboarding_highlight_4,
+                R.string.onboarding_tip_4,
                 R.drawable.ic_folder_open
             )
         );
@@ -206,9 +269,16 @@ public class OnboardingActivity extends AppCompatActivity {
 
         btnBack.setVisibility(firstPage ? View.INVISIBLE : View.VISIBLE);
         btnSkip.setVisibility(lastPage ? View.INVISIBLE : View.VISIBLE);
-        btnNext.setText(
-            lastPage ? R.string.onboarding_start : R.string.onboarding_next
-        );
+        btnSkip.setText(R.string.onboarding_skip_setup);
+        if (lastPage) {
+            btnNext.setText(
+                hasRequiredFolder
+                    ? R.string.onboarding_start
+                    : R.string.onboarding_choose_folder
+            );
+        } else {
+            btnNext.setText(R.string.onboarding_next);
+        }
         btnNext.setIcon(
             ContextCompat.getDrawable(this, R.drawable.ic_arrow_forward_small)
         );

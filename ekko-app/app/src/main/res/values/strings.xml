@@ -11,6 +11,7 @@
     <string name="onboarding_step_one">Step 1</string>
     <string name="onboarding_step_two">Step 2</string>
     <string name="onboarding_step_three">Step 3</string>
+    <string name="onboarding_step_four">Step 4</string>
     <string name="onboarding_header_title">Meet Ekko</string>
     <string
         name="onboarding_header_subtitle"
@@ -27,9 +28,14 @@
     <string
         name="onboarding_body_3"
     >Choose folders, keep private spaces excluded, and start with reading, search, summaries, or Q&amp;A when you are ready.</string>
+    <string name="onboarding_title_4">Grant access to one source folder</string>
+    <string
+        name="onboarding_body_4"
+    >Ekko uses the Android folder picker to get direct access to the files you want it to read. This setup step is required before entering the app.</string>
     <string name="onboarding_highlight_1">Organize mixed file types</string>
     <string name="onboarding_highlight_2">Search, summarize, and chat</string>
     <string name="onboarding_highlight_3">Control what gets indexed</string>
+    <string name="onboarding_highlight_4">Required secure folder access</string>
     <string
         name="onboarding_tip_1"
     >PDFs, docs, text, and slides stay together in one reading space.</string>
@@ -39,6 +45,11 @@
     <string
         name="onboarding_tip_3"
     >Choose what gets indexed and keep private folders out of the mix.</string>
+    <string
+        name="onboarding_tip_4"
+    >Pick a folder once and Android keeps access scoped to that location instead of exposing your whole storage.</string>
+    <string name="onboarding_choose_folder">Choose folder</string>
+    <string name="onboarding_skip_setup">Skip ahead</string>
     <string name="launcher_routing_message">Preparing your workspace</string>
     <string name="launcher_title">Ekko</string>
     <string
