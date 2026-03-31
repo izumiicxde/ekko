@@ -38,8 +38,44 @@
             tools:targetApi="m"
         >false</item>
         <item name="android:navigationBarColor">#00000000</item>
+        <item
+            name="android:windowAnimationStyle"
+        >@style/Animation.Ekko.Window</item>
     </style>
 
     <style name="Theme.Ekko" parent="Base.Theme.Ekko" />
+
+    <style name="Theme.Ekko.Splash" parent="Theme.SplashScreen">
+        <item
+            name="windowSplashScreenAnimatedIcon"
+        >@drawable/ic_splash_mark</item>
+        <item
+            name="windowSplashScreenBackground"
+        >@color/ekko_splash_background_dark</item>
+        <item name="postSplashScreenTheme">@style/Theme.Ekko.Launcher</item>
+    </style>
+
+    <style
+        name="Theme.Ekko.Onboarding"
+        parent="Theme.Material3.Light.NoActionBar"
+    >
+        <item name="colorPrimary">#0F8C78</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSurface">#FFFDFC</item>
+        <item name="colorOnSurface">#1B1A18</item>
+        <item name="colorSurfaceVariant">#E8EFEC</item>
+        <item name="colorOnSurfaceVariant">#5D6662</item>
+        <item name="android:colorBackground">#F4F8F5</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item
+            name="android:windowLightStatusBar"
+            tools:targetApi="m"
+        >true</item>
+        <item
+            name="android:navigationBarColor"
+        >@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.Ekko.Launcher" parent="Theme.Ekko.Onboarding" />
 
 </resources>

@@ -1,3 +1,55 @@
 <resources>
     <string name="app_name">Ekko</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_start">Enter Ekko</string>
+    <string name="onboarding_content_description">Onboarding screen</string>
+    <string name="onboarding_hero_badge">WELCOME FLOW</string>
+    <string name="onboarding_page_counter">%1$d / %2$d</string>
+    <string name="onboarding_step_label">Step %1$d</string>
+    <string name="onboarding_step_one">Step 1</string>
+    <string name="onboarding_step_two">Step 2</string>
+    <string name="onboarding_step_three">Step 3</string>
+    <string name="onboarding_header_title">Meet Ekko</string>
+    <string
+        name="onboarding_header_subtitle"
+    >A calmer space for notes, docs, and answers.</string>
+    <string name="onboarding_title_1">Build a calmer document workspace</string>
+    <string
+        name="onboarding_body_1"
+    >Bring your PDFs, notes, slides, and study material into one place with a layout designed to feel light instead of cluttered.</string>
+    <string name="onboarding_title_2">Ask across your vault</string>
+    <string
+        name="onboarding_body_2"
+    >Ekko turns indexed material into a searchable study layer so you can jump from questions to grounded answers without losing context.</string>
+    <string name="onboarding_title_3">Set it up in minutes</string>
+    <string
+        name="onboarding_body_3"
+    >Choose folders, keep private spaces excluded, and start with reading, search, summaries, or Q&amp;A when you are ready.</string>
+    <string name="onboarding_highlight_1">Organize mixed file types</string>
+    <string name="onboarding_highlight_2">Search, summarize, and chat</string>
+    <string name="onboarding_highlight_3">Control what gets indexed</string>
+    <string
+        name="onboarding_tip_1"
+    >PDFs, docs, text, and slides stay together in one reading space.</string>
+    <string
+        name="onboarding_tip_2"
+    >Ground answers in your indexed material instead of jumping between apps.</string>
+    <string
+        name="onboarding_tip_3"
+    >Choose what gets indexed and keep private folders out of the mix.</string>
+    <string name="launcher_routing_message">Preparing your workspace</string>
+    <string name="launcher_title">Ekko</string>
+    <string
+        name="launcher_subtitle"
+    >Quietly organize notes, docs, and answers.</string>
+    <string name="launcher_caption">Organize. Ask. Focus.</string>
+    <string
+        name="theme_summary_system"
+    >System follows your phone setting.</string>
+    <string
+        name="theme_summary_light"
+    >Light keeps Ekko bright all the time.</string>
+    <string name="theme_summary_dark">Dark keeps Ekko dim all the time.</string>
 </resources>

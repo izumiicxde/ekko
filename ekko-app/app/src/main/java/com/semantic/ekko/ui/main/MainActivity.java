@@ -10,6 +10,10 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.color.MaterialColors;
@@ -44,10 +48,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         applySavedTheme();
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         bindNavViews();
+        applyWindowInsets();
         folderRepository = new FolderRepository(this);
         prefsManager = new PrefsManager(this);
 
@@ -88,32 +94,35 @@ public class MainActivity extends AppCompatActivity {
             syncNavToCurrentTag();
         });
 
-        getOnBackPressedDispatcher()
-            .addCallback(
-                this,
-                new OnBackPressedCallback(true) {
-                    @Override
-                    public void handleOnBackPressed() {
-                        Fragment currentFragment =
-                            getSupportFragmentManager().findFragmentByTag(currentTag);
+        getOnBackPressedDispatcher().addCallback(
+            this,
+            new OnBackPressedCallback(true) {
+                @Override
+                public void handleOnBackPressed() {
+                    Fragment currentFragment =
+                        getSupportFragmentManager().findFragmentByTag(
+                            currentTag
+                        );
 
-                        if (
-                            currentFragment instanceof HomeFragment &&
-                            ((HomeFragment) currentFragment).handleSystemBackPressed()
-                        ) {
-                            return;
-                        }
-
-                        if (!TAG_HOME.equals(currentTag)) {
-                            showFragment(TAG_HOME);
-                            syncNavToCurrentTag();
-                            return;
-                        }
-
-                        moveTaskToBack(true);
+                    if (
+                        currentFragment instanceof HomeFragment &&
+                        (
+                            (HomeFragment) currentFragment
+                        ).handleSystemBackPressed()
+                    ) {
+                        return;
                     }
+
+                    if (!TAG_HOME.equals(currentTag)) {
+                        showFragment(TAG_HOME);
+                        syncNavToCurrentTag();
+                        return;
+                    }
+
+                    moveTaskToBack(true);
                 }
-            );
+            }
+        );
     }
 
     @Override
@@ -136,21 +145,64 @@ public class MainActivity extends AppCompatActivity {
         navSettings = findViewById(R.id.navSettings);
     }
 
+    private void applyWindowInsets() {
+        View root = findViewById(R.id.mainRoot);
+        int baseTop = root.getPaddingTop();
+        int baseBottom = root.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(
+            root,
+            (view, windowInsets) -> {
+                Insets insets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                );
+                view.setPadding(
+                    view.getPaddingLeft(),
+                    baseTop + insets.top,
+                    view.getPaddingRight(),
+                    baseBottom + insets.bottom
+                );
+                return windowInsets;
+            }
+        );
+    }
+
     private void syncNavToCurrentTag() {
         setNavSelected(navHome, TAG_HOME.equals(currentTag), true);
-        setNavSelected(navSearch, TAG_SEARCH.equals(currentTag), hasIncludedFolders);
+        setNavSelected(
+            navSearch,
+            TAG_SEARCH.equals(currentTag),
+            hasIncludedFolders
+        );
         setNavSelected(navAsk, false, hasIncludedFolders);
         setNavSelected(navSettings, TAG_SETTINGS.equals(currentTag), true);
     }
 
-    private void setNavSelected(LinearLayout item, boolean selected, boolean enabled) {
-        int activeColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnPrimary, 0);
-        int inactiveColor = MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnSurfaceVariant, 0);
+    private void setNavSelected(
+        LinearLayout item,
+        boolean selected,
+        boolean enabled
+    ) {
+        int activeColor = MaterialColors.getColor(
+            this,
+            com.google.android.material.R.attr.colorOnPrimary,
+            0
+        );
+        int inactiveColor = MaterialColors.getColor(
+            this,
+            com.google.android.material.R.attr.colorOnSurfaceVariant,
+            0
+        );
 
-        item.setBackgroundResource(selected ? R.drawable.bg_bottom_nav_selected : android.R.color.transparent);
+        item.setBackgroundResource(
+            selected
+                ? R.drawable.bg_bottom_nav_selected
+                : android.R.color.transparent
+        );
         item.setAlpha(enabled ? 1f : 0.38f);
         item.setEnabled(enabled);
-        item.animate()
+        item
+            .animate()
             .scaleX(selected ? 1f : 0.94f)
             .scaleY(selected ? 1f : 0.94f)
             .translationY(selected ? 0f : 1.5f)
@@ -160,16 +212,22 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < item.getChildCount(); i++) {
             View child = item.getChildAt(i);
             if (child instanceof ImageView) {
-                ((ImageView) child).setColorFilter(selected ? activeColor : inactiveColor);
-                child.animate()
+                ((ImageView) child).setColorFilter(
+                    selected ? activeColor : inactiveColor
+                );
+                child
+                    .animate()
                     .alpha(enabled ? 1f : 0.38f)
                     .scaleX(selected ? 1f : 0.92f)
                     .scaleY(selected ? 1f : 0.92f)
                     .setDuration(180)
                     .start();
             } else if (child instanceof TextView) {
-                ((TextView) child).setTextColor(selected ? activeColor : inactiveColor);
-                child.animate()
+                ((TextView) child).setTextColor(
+                    selected ? activeColor : inactiveColor
+                );
+                child
+                    .animate()
                     .alpha(enabled ? 1f : 0.68f)
                     .translationY(selected ? 0f : -1f)
                     .setDuration(180)
@@ -193,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         FragmentTransaction tx = getSupportFragmentManager().beginTransaction();
+        tx.setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out);
 
         for (Fragment f : getSupportFragmentManager().getFragments()) {
             tx.hide(f);

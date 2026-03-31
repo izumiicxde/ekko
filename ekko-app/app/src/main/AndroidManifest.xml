@@ -24,8 +24,9 @@
         android:usesCleartextTraffic="true"
     >
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.launcher.LauncherActivity"
             android:exported="true"
+            android:theme="@style/Theme.Ekko.Launcher"
             android:windowSoftInputMode="adjustResize"
         >
             <intent-filter>
@@ -33,6 +34,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.onboarding.OnboardingActivity"
+            android:theme="@style/Theme.Ekko.Onboarding"
+            android:windowSoftInputMode="adjustResize"
+        />
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:windowSoftInputMode="adjustResize"
+        />
         <activity android:name=".ui.home.HomeActivity" />
         <activity android:name=".ui.detail.DetailActivity" />
         <activity android:name=".ui.search.SearchActivity" />

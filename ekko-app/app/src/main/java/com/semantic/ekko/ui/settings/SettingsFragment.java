@@ -42,6 +42,7 @@ public class SettingsFragment extends Fragment {
     private TextView txtNoFolders;
     private TextView txtFolderStats;
     private TextView txtReindexStage;
+    private TextView txtThemeSummary;
     private MaterialButtonToggleGroup toggleTheme;
     private MaterialButton btnAddFolder;
     private MaterialButton btnResetExcluded;
@@ -91,6 +92,7 @@ public class SettingsFragment extends Fragment {
         txtNoFolders = view.findViewById(R.id.txtNoFolders);
         txtFolderStats = view.findViewById(R.id.txtFolderStats);
         txtReindexStage = view.findViewById(R.id.txtReindexStage);
+        txtThemeSummary = view.findViewById(R.id.txtThemeSummary);
         toggleTheme = view.findViewById(R.id.toggleTheme);
         btnAddFolder = view.findViewById(R.id.btnAddFolder);
         btnResetExcluded = view.findViewById(R.id.btnResetExcluded);
@@ -289,10 +291,13 @@ public class SettingsFragment extends Fragment {
         String theme = prefsManager.getTheme();
         if ("light".equals(theme)) {
             toggleTheme.check(btnLight);
+            txtThemeSummary.setText(R.string.theme_summary_light);
         } else if ("dark".equals(theme)) {
             toggleTheme.check(btnDark);
+            txtThemeSummary.setText(R.string.theme_summary_dark);
         } else {
             toggleTheme.check(btnSystem);
+            txtThemeSummary.setText(R.string.theme_summary_system);
         }
 
         toggleTheme.addOnButtonCheckedListener(
@@ -304,12 +309,15 @@ public class SettingsFragment extends Fragment {
                 if (checkedId == btnLight) {
                     selected = "light";
                     mode = AppCompatDelegate.MODE_NIGHT_NO;
+                    txtThemeSummary.setText(R.string.theme_summary_light);
                 } else if (checkedId == btnDark) {
                     selected = "dark";
                     mode = AppCompatDelegate.MODE_NIGHT_YES;
+                    txtThemeSummary.setText(R.string.theme_summary_dark);
                 } else {
                     selected = "system";
                     mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+                    txtThemeSummary.setText(R.string.theme_summary_system);
                 }
 
                 if (!selected.equals(prefsManager.getTheme())) {
