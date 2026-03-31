@@ -26,6 +26,8 @@
         <activity
             android:name=".ui.launcher.LauncherActivity"
             android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
             android:theme="@style/Theme.Ekko.Launcher"
             android:windowSoftInputMode="adjustResize"
         >
