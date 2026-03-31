@@ -51,7 +51,7 @@ public class HomeViewModel extends AndroidViewModel {
     private String activeKeywordFilter = null;
     private String activeSortOrder = "recent";
     private String activeFileTypeFilter = "all";
-    private String activeViewMode = "grouped";
+    private String activeViewMode = "folders";
 
     // =========================
     // INIT

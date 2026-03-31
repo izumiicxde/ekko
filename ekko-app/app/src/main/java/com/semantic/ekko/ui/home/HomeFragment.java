@@ -47,6 +47,7 @@ public class HomeFragment extends Fragment {
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
     private TextView txtDocCount;
+    private TextView txtHeroDetail;
     private TextView txtFolderPath;
     private LinearProgressIndicator progressIndexing;
     private ChipGroup chipGroupFilters;
@@ -101,6 +102,11 @@ public class HomeFragment extends Fragment {
         setupClickListeners(view);
         folderRepository = new FolderRepository(requireContext());
         prefsManager = new PrefsManager(requireContext());
+        folderRepository
+            .getAllLive()
+            .observe(getViewLifecycleOwner(), folders ->
+                refreshFolderAvailabilityState()
+            );
         refreshFolderAvailabilityState();
 
         Executors.newSingleThreadExecutor().execute(() -> {
@@ -128,6 +134,7 @@ public class HomeFragment extends Fragment {
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
         txtDocCount = view.findViewById(R.id.txtDocCount);
+        txtHeroDetail = view.findViewById(R.id.txtHeroDetail);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
         progressIndexing = view.findViewById(R.id.progressIndexing);
         chipGroupFilters = view.findViewById(R.id.chipGroupFilters);
@@ -138,25 +145,28 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupRecycler() {
-        adapter =
-            new DocumentAdapter(
-                doc -> {
-                    Intent intent = new Intent(getActivity(), DetailActivity.class);
-                    intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
-                    startActivity(intent);
-                },
-                this::updateFolderNavigation
-            );
+        adapter = new DocumentAdapter(
+            doc -> {
+                Intent intent = new Intent(getActivity(), DetailActivity.class);
+                intent.putExtra(DetailActivity.EXTRA_DOCUMENT_ID, doc.id);
+                startActivity(intent);
+            },
+            this::updateFolderNavigation
+        );
         recyclerDocuments.setLayoutManager(
             new LinearLayoutManager(getContext())
         );
         recyclerDocuments.setAdapter(adapter);
         recyclerDocuments.setNestedScrollingEnabled(false);
-        adapter.setDisplayMode(viewModel != null ? viewModel.getCurrentViewMode() : "grouped");
+        adapter.setDisplayMode(
+            viewModel != null ? viewModel.getCurrentViewMode() : "grouped"
+        );
     }
 
     private void setupViewModel() {
-        viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity()).get(
+            HomeViewModel.class
+        );
         adapter.setDisplayMode(viewModel.getCurrentViewMode());
 
         viewModel
@@ -166,6 +176,7 @@ public class HomeFragment extends Fragment {
                 updateEmptyState(docs);
                 updateDocCount(docs.size());
                 buildFilterChips(docs);
+                updateHeroDetail(docs == null ? 0 : docs.size());
             });
 
         viewModel
@@ -183,7 +194,9 @@ public class HomeFragment extends Fragment {
         viewModel
             .getIndexingStage()
             .observe(getViewLifecycleOwner(), stage -> {
-                if (stage != null) txtIndexingStage.setText(stage);
+                if (stage != null && progressIndexing.getProgress() == 0) {
+                    txtIndexingStage.setText(stage);
+                }
             });
 
         viewModel
@@ -192,13 +205,9 @@ public class HomeFragment extends Fragment {
                 if (progress == null) return;
                 progressIndexing.setMax(progress.total);
                 progressIndexing.setProgress(progress.current);
+                txtIndexingStage.setText(progress.docName);
                 txtIndexingDoc.setText(
-                    progress.docName +
-                        " (" +
-                        progress.current +
-                        "/" +
-                        progress.total +
-                        ")"
+                    progress.current + " / " + progress.total
                 );
             });
 
@@ -383,9 +392,13 @@ public class HomeFragment extends Fragment {
 
     private void updateFolderNavigation(DocumentAdapter.NavigationState state) {
         if (state == null) return;
-        layoutFolderNavigation.setVisibility(state.visible ? View.VISIBLE : View.GONE);
+        layoutFolderNavigation.setVisibility(
+            state.visible ? View.VISIBLE : View.GONE
+        );
         txtFolderPath.setText(state.pathLabel);
-        View backButton = layoutFolderNavigation.findViewById(R.id.btnFolderBack);
+        View backButton = layoutFolderNavigation.findViewById(
+            R.id.btnFolderBack
+        );
         backButton.setEnabled(state.canNavigateUp);
         backButton.setAlpha(state.canNavigateUp ? 1f : 0.45f);
     }
@@ -418,6 +431,22 @@ public class HomeFragment extends Fragment {
         );
     }
 
+    private void updateHeroDetail(int documentCount) {
+        if (!hasIncludedFolders) {
+            txtHeroDetail.setText(
+                "Add a source folder to start building your study space."
+            );
+            return;
+        }
+
+        txtHeroDetail.setText(
+            documentCount +
+                (documentCount == 1
+                    ? " indexed file ready for search and chat."
+                    : " indexed files ready for search and chat.")
+        );
+    }
+
     private void refreshFolderAvailabilityState() {
         if (
             folderRepository == null ||
@@ -440,6 +469,7 @@ public class HomeFragment extends Fragment {
                 List<DocumentEntity> currentDocs = viewModel
                     .getDocuments()
                     .getValue();
+                updateHeroDetail(currentDocs == null ? 0 : currentDocs.size());
                 updateEmptyState(
                     currentDocs == null ? new ArrayList<>() : currentDocs
                 );

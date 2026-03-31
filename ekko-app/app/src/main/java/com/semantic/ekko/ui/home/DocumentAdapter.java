@@ -25,7 +25,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+public class DocumentAdapter
+    extends RecyclerView.Adapter<RecyclerView.ViewHolder>
+{
 
     private static final int VIEW_TYPE_HEADER = 0;
     private static final int VIEW_TYPE_DOCUMENT = 1;
@@ -45,7 +47,11 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         public final boolean canNavigateUp;
         public final String pathLabel;
 
-        NavigationState(boolean visible, boolean canNavigateUp, String pathLabel) {
+        NavigationState(
+            boolean visible,
+            boolean canNavigateUp,
+            String pathLabel
+        ) {
             this.visible = visible;
             this.canNavigateUp = canNavigateUp;
             this.pathLabel = pathLabel;
@@ -216,7 +222,10 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bucket.add(doc);
         }
 
-        for (Map.Entry<String, List<DocumentEntity>> entry : groupedDocs.entrySet()) {
+        for (Map.Entry<
+            String,
+            List<DocumentEntity>
+        > entry : groupedDocs.entrySet()) {
             items.add(RowItem.header(entry.getKey()));
             for (DocumentEntity doc : entry.getValue()) {
                 items.add(RowItem.document(doc));
@@ -241,7 +250,11 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     private ExplorerNode buildExplorerTree() {
-        ExplorerNode root = new ExplorerNode("Folders", null, new ArrayList<>());
+        ExplorerNode root = new ExplorerNode(
+            "Folders",
+            null,
+            new ArrayList<>()
+        );
         Map<Long, ExplorerNode> rootFolders = new HashMap<>();
 
         for (DocumentEntity doc : documents) {
@@ -249,7 +262,7 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             ExplorerNode folderNode = rootFolders.get(folderId);
             if (folderNode == null) {
                 folderNode = new ExplorerNode(
-                    getFolderName(doc),
+                    getFolderLeafName(doc),
                     folderId,
                     new ArrayList<>()
                 );
@@ -315,9 +328,9 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
 
         StringBuilder label = new StringBuilder();
-        label.append(getFolderNameById(currentRootFolderId));
+        label.append(getFolderLeafNameById(currentRootFolderId));
         for (String segment : currentPathSegments) {
-            label.append(" / ").append(segment);
+            label.append(" > ").append(segment);
         }
 
         navigationListener.onNavigationChanged(
@@ -332,7 +345,7 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private String getFolderName(DocumentEntity doc) {
         if (doc == null) return "Unknown folder";
-        return getFolderNameById(doc.folderId);
+        return getFolderLeafNameById(doc.folderId);
     }
 
     private String getFolderNameById(long folderId) {
@@ -341,6 +354,27 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             return "Unknown folder";
         }
         return folderName;
+    }
+
+    private String getFolderLeafName(DocumentEntity doc) {
+        if (doc == null) return "Unknown folder";
+        return getFolderLeafNameById(doc.folderId);
+    }
+
+    private String getFolderLeafNameById(long folderId) {
+        return extractLeafName(getFolderNameById(folderId));
+    }
+
+    private String extractLeafName(String folderName) {
+        if (folderName == null || folderName.trim().isEmpty()) {
+            return "Unknown folder";
+        }
+        String normalized = folderName.replace('\\', '/');
+        int slashIndex = normalized.lastIndexOf('/');
+        if (slashIndex >= 0 && slashIndex < normalized.length() - 1) {
+            return normalized.substring(slashIndex + 1);
+        }
+        return normalized;
     }
 
     private List<String> getFolderSegments(DocumentEntity doc) {
@@ -408,7 +442,11 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         final Map<String, ExplorerNode> children = new HashMap<>();
         final List<DocumentEntity> documents = new ArrayList<>();
 
-        ExplorerNode(String name, Long rootFolderId, List<String> pathSegments) {
+        ExplorerNode(
+            String name,
+            Long rootFolderId,
+            List<String> pathSegments
+        ) {
             this.name = name;
             this.rootFolderId = rootFolderId;
             this.pathSegments = pathSegments;
@@ -475,7 +513,9 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
             if (fileCount > 0) {
                 if (meta.length() > 0) meta.append("  •  ");
-                meta.append(fileCount).append(fileCount == 1 ? " file" : " files");
+                meta
+                    .append(fileCount)
+                    .append(fileCount == 1 ? " file" : " files");
             }
             if (meta.length() == 0) {
                 meta.append("Open folder");
@@ -522,12 +562,18 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             Context ctx = itemView.getContext();
 
             txtDocName.setText(doc.name);
-            txtCategory.setText(doc.category != null ? doc.category : "General");
+            txtCategory.setText(
+                doc.category != null ? doc.category : "General"
+            );
             txtFolderName.setText(folderName);
-            txtFolderName.setVisibility(showFolderName ? View.VISIBLE : View.GONE);
+            txtFolderName.setVisibility(
+                showFolderName ? View.VISIBLE : View.GONE
+            );
 
             String fileType =
-                doc.fileType != null ? doc.fileType.toUpperCase(Locale.ROOT) : "FILE";
+                doc.fileType != null
+                    ? doc.fileType.toUpperCase(Locale.ROOT)
+                    : "FILE";
             chipFileType.setText(fileType);
             imgFileIcon.setImageResource(resolveFileIcon(doc.fileType));
 
@@ -576,9 +622,11 @@ public class DocumentAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         private static String formatIndexedDate(long timestamp) {
             if (timestamp <= 0) return "Indexed recently";
-            return "Indexed " +
-            new SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(
-                new Date(timestamp)
+            return (
+                "Indexed " +
+                new SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(
+                    new Date(timestamp)
+                )
             );
         }
 

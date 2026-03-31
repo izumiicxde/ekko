@@ -105,7 +105,7 @@
                         android:paddingTop="6dp"
                         android:paddingEnd="12dp"
                         android:paddingBottom="6dp"
-                        android:text="Today in your vault"
+                        android:text="Workspace overview"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="12sp"
                         android:textStyle="bold"
@@ -117,7 +117,7 @@
                         android:layout_marginTop="14dp"
                         android:fontFamily="@font/bricolage_grotesque"
                         android:lineSpacingExtra="2dp"
-                        android:text="Read, ask,\nand stay organized."
+                        android:text="Everything indexed,\nready to use."
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="28sp"
                         android:textStyle="bold"
@@ -129,7 +129,7 @@
                         android:layout_marginTop="8dp"
                         android:fontFamily="@font/bricolage_grotesque"
                         android:lineSpacingExtra="2dp"
-                        android:text="A softer workspace for browsing notes, asking questions, and keeping dense material under control."
+                        android:text="Track what is already in your vault, then jump straight into grounded search and Q&amp;A."
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="14sp"
                     />
@@ -152,11 +152,12 @@
                         />
 
                         <TextView
+                            android:id="@+id/txtHeroDetail"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="10dp"
                             android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Jump into answers, summaries, and source documents from one clean entry point."
+                            android:text="Add a source folder to start building your study space."
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp"
                         />
@@ -187,11 +188,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:ellipsize="end"
                         android:fontFamily="@font/bricolage_grotesque"
+                        android:maxLines="1"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         android:textStyle="bold"
-                        tools:text="Refreshing your vault..."
+                        tools:text="lecture_notes_week_4.pdf"
                     />
 
                     <TextView
@@ -209,6 +212,16 @@
                         tools:text="2 / 10"
                     />
                 </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Refreshing your vault"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                />
 
                 <com.google.android.material.progressindicator.LinearProgressIndicator
                     android:id="@+id/progressIndexing"
@@ -243,24 +256,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:background="@drawable/bg_soft_panel"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:padding="12dp"
                 android:visibility="gone"
             >
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnFolderBack"
-                    style="@style/Widget.Material3.Button.TextButton"
+                    style="@style/Widget.Ekko.Button.Text"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
+                    android:layout_height="36dp"
                     android:fontFamily="@font/bricolage_grotesque"
                     android:minWidth="0dp"
-                    android:text="Back"
+                    android:text="Up"
                     android:textAllCaps="false"
                     android:textSize="12sp"
-                    app:cornerRadius="14dp"
+                    app:icon="@drawable/ic_arrow_forward_small"
+                    app:iconGravity="textStart"
+                    app:iconTint="?attr/colorOnSurfaceVariant"
                 />
 
                 <TextView
@@ -272,9 +285,10 @@
                     android:ellipsize="end"
                     android:fontFamily="@font/bricolage_grotesque"
                     android:maxLines="1"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    tools:text="Folders / Semester Notes / Unit 2"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="AI > Notes"
                 />
             </LinearLayout>
 

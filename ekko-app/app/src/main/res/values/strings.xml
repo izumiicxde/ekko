@@ -47,9 +47,11 @@
     <string name="launcher_caption">Organize. Ask. Focus.</string>
     <string
         name="theme_summary_system"
-    >System follows your phone setting.</string>
+    >Uses the current device appearance.</string>
     <string
         name="theme_summary_light"
-    >Light keeps Ekko bright all the time.</string>
-    <string name="theme_summary_dark">Dark keeps Ekko dim all the time.</string>
+    >Light mode is active on this device.</string>
+    <string
+        name="theme_summary_dark"
+    >Dark mode is active on this device.</string>
 </resources>

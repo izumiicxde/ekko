@@ -77,7 +77,7 @@ public class PrefsManager {
     // =========================
 
     public String getTheme() {
-        return prefs.getString(KEY_THEME, "system");
+        return prefs.getString(KEY_THEME, "light");
     }
 
     public void setTheme(String theme) {
@@ -157,5 +157,17 @@ public class PrefsManager {
 
     public void clearAll() {
         prefs.edit().clear().apply();
+    }
+
+    public void registerListener(
+        SharedPreferences.OnSharedPreferenceChangeListener listener
+    ) {
+        prefs.registerOnSharedPreferenceChangeListener(listener);
+    }
+
+    public void unregisterListener(
+        SharedPreferences.OnSharedPreferenceChangeListener listener
+    ) {
+        prefs.unregisterOnSharedPreferenceChangeListener(listener);
     }
 }

@@ -9,7 +9,6 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -44,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
     private FolderRepository folderRepository;
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
+    private final android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener =
+        (sharedPreferences, key) -> refreshFolderAvailability();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +57,10 @@ public class MainActivity extends AppCompatActivity {
         applyWindowInsets();
         folderRepository = new FolderRepository(this);
         prefsManager = new PrefsManager(this);
+        prefsManager.registerListener(prefsListener);
+        folderRepository
+            .getAllLive()
+            .observe(this, folders -> refreshFolderAvailability());
 
         if (savedInstanceState == null) {
             showFragment(TAG_HOME);
@@ -136,6 +141,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString("currentTag", currentTag);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (prefsManager != null) {
+            prefsManager.unregisterListener(prefsListener);
+        }
+        super.onDestroy();
     }
 
     private void bindNavViews() {
@@ -286,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
         } else if ("dark".equals(theme)) {
             mode = AppCompatDelegate.MODE_NIGHT_YES;
         } else {
-            mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+            mode = AppCompatDelegate.MODE_NIGHT_NO;
         }
         AppCompatDelegate.setDefaultNightMode(mode);
     }

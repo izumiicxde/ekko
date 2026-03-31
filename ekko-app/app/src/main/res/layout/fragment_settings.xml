@@ -19,19 +19,9 @@
         android:paddingBottom="20dp"
     >
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/bricolage_grotesque"
-            android:text="Settings"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="13sp"
-        />
-
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
             app:cardBackgroundColor="@android:color/transparent"
             app:cardCornerRadius="34dp"
             app:cardElevation="0dp"
@@ -75,7 +65,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="10dp"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Workspace setup"
+                        android:text="Settings"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="13sp"
                     />
@@ -86,9 +76,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:text="Tune Ekko to match how you study."
+                    android:text="Simple controls for folders and appearance."
                     android:textColor="?attr/colorOnSurface"
-                    android:textSize="30sp"
+                    android:textSize="28sp"
                     android:textStyle="bold"
                 />
 
@@ -98,7 +88,7 @@
                     android:layout_marginTop="8dp"
                     android:fontFamily="@font/bricolage_grotesque"
                     android:lineSpacingExtra="2dp"
-                    android:text="Keep folders organized, choose what gets indexed, and set the look of the app without fighting the interface."
+                    android:text="Add folders, refresh the index, and choose the look you want without extra clutter."
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
                 />
@@ -129,7 +119,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
                             android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Folders, indexing, and visibility controls"
+                            android:text="Folder changes apply across the app right away"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="13sp"
                         />
@@ -154,7 +144,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
                             android:fontFamily="@font/bricolage_grotesque"
-                            android:text="Theme and reading atmosphere for this device"
+                            android:text="Pick a clean light or dark appearance"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="13sp"
                         />
@@ -432,7 +422,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Display mode"
+                        android:text="Theme"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="12sp"
                     />
@@ -443,19 +433,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:orientation="horizontal"
-                        app:selectionRequired="true"
                         app:singleSelection="true"
                     >
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnThemeSystem"
-                            style="@style/Widget.Ekko.Button.ToggleTheme"
-                            android:layout_width="0dp"
-                            android:layout_height="46dp"
-                            android:layout_weight="1"
-                            android:text="System"
-                            android:textSize="13sp"
-                        />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnThemeLight"
@@ -486,7 +465,7 @@
                         android:fontFamily="@font/bricolage_grotesque"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="12sp"
-                        tools:text="System follows your phone setting."
+                        tools:text="Light mode is active on this device."
                     />
                 </LinearLayout>
             </LinearLayout>

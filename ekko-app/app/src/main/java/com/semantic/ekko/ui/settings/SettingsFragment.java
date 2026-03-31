@@ -86,7 +86,9 @@ public class SettingsFragment extends Fragment {
 
         folderRepository = new FolderRepository(requireContext());
         prefsManager = new PrefsManager(requireContext());
-        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+        homeViewModel = new ViewModelProvider(requireActivity()).get(
+            HomeViewModel.class
+        );
 
         recyclerFolders = view.findViewById(R.id.recyclerFolders);
         txtNoFolders = view.findViewById(R.id.txtNoFolders);
@@ -160,12 +162,11 @@ public class SettingsFragment extends Fragment {
                 progressReindex.setMax(progress.total);
                 progressReindex.setProgress(progress.current);
                 txtReindexStage.setText(
-                    progress.docName +
-                        " (" +
-                        progress.current +
-                        "/" +
+                    progress.current +
+                        " / " +
                         progress.total +
-                        ")"
+                        "  •  " +
+                        progress.docName
                 );
             });
 
@@ -284,7 +285,6 @@ public class SettingsFragment extends Fragment {
     }
 
     private void setupThemeToggle(View root) {
-        int btnSystem = R.id.btnThemeSystem;
         int btnLight = R.id.btnThemeLight;
         int btnDark = R.id.btnThemeDark;
 
@@ -296,9 +296,10 @@ public class SettingsFragment extends Fragment {
             toggleTheme.check(btnDark);
             txtThemeSummary.setText(R.string.theme_summary_dark);
         } else {
-            toggleTheme.check(btnSystem);
-            txtThemeSummary.setText(R.string.theme_summary_system);
+            toggleTheme.check(btnLight);
+            txtThemeSummary.setText(R.string.theme_summary_light);
         }
+        updateThemeLabels();
 
         toggleTheme.addOnButtonCheckedListener(
             (group, checkedId, isChecked) -> {
@@ -315,11 +316,12 @@ public class SettingsFragment extends Fragment {
                     mode = AppCompatDelegate.MODE_NIGHT_YES;
                     txtThemeSummary.setText(R.string.theme_summary_dark);
                 } else {
-                    selected = "system";
-                    mode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
-                    txtThemeSummary.setText(R.string.theme_summary_system);
+                    selected = "light";
+                    mode = AppCompatDelegate.MODE_NIGHT_NO;
+                    txtThemeSummary.setText(R.string.theme_summary_light);
                 }
 
+                updateThemeLabels();
                 if (!selected.equals(prefsManager.getTheme())) {
                     prefsManager.setTheme(selected);
                     AppCompatDelegate.setDefaultNightMode(mode);
@@ -327,5 +329,18 @@ public class SettingsFragment extends Fragment {
                 }
             }
         );
+    }
+
+    private void updateThemeLabels() {
+        MaterialButton btnLight = toggleTheme.findViewById(R.id.btnThemeLight);
+        MaterialButton btnDark = toggleTheme.findViewById(R.id.btnThemeDark);
+
+        boolean lightSelected =
+            toggleTheme.getCheckedButtonId() == R.id.btnThemeLight;
+        boolean darkSelected =
+            toggleTheme.getCheckedButtonId() == R.id.btnThemeDark;
+
+        btnLight.setText(lightSelected ? "Light  •  Current" : "Light");
+        btnDark.setText(darkSelected ? "Dark  •  Current" : "Dark");
     }
 }
