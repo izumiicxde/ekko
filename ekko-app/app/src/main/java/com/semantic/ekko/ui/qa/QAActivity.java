@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.semantic.ekko.R;
 import java.util.ArrayList;
@@ -132,18 +133,18 @@ public class QAActivity extends AppCompatActivity {
         } else {
             txtQaTitle.setText("Ekko Bot");
             txtQaSubtitle.setText(
-                "Use @file: question or @latest: question for one-file context"
+                "Grounded answers from your indexed material"
             );
-            txtEmptyTitle.setText("Ask Ekko Bot anything");
+            txtEmptyTitle.setText("Start with a grounded question");
             txtEmptySubtitle.setText(
-                "Answers are grounded in your indexed documents. You can target one file with @filename: ..."
+                "Ask across your vault, or target a single file with @filename: for tighter context."
             );
             editQuestion.setHint("Ask anything or use @filename: question");
             setupSuggestions(
                 new String[] {
-                    "What is in my documents?",
-                    "@latest: summarize this file",
-                    "/file policy.pdf: list key points",
+                    "Summarize my latest file",
+                    "What should I review first?",
+                    "@latest: list key points",
                 }
             );
         }
@@ -230,9 +231,11 @@ public class QAActivity extends AppCompatActivity {
             chip.setChipCornerRadius(16f);
             chip.setChipStrokeWidth(0f);
             chip.setTextSize(12f);
+            chip.setMinWidth(dpToPx(148));
             chip.setTypeface(
                 ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
             );
+            applyChipColors(chip, true);
             chip.setOnClickListener(v -> {
                 editQuestion.setText(suggestion);
                 editQuestion.setSelection(suggestion.length());
@@ -396,6 +399,15 @@ public class QAActivity extends AppCompatActivity {
             Chip chip = new Chip(this);
             chip.setText(value);
             chip.setCheckable(false);
+            chip.setEnsureMinTouchTargetSize(false);
+            chip.setChipMinHeight(34f);
+            chip.setChipCornerRadius(16f);
+            chip.setChipStrokeWidth(0f);
+            chip.setTextSize(12f);
+            chip.setTypeface(
+                ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
+            );
+            applyChipColors(chip, false);
             chip.setOnClickListener(v -> applyCompletion(value));
             chipGroupInputCompletions.addView(chip);
         }
@@ -445,5 +457,31 @@ public class QAActivity extends AppCompatActivity {
             editQuestion.getWindowToken(),
             0
         );
+    }
+
+    private void applyChipColors(Chip chip, boolean prominent) {
+        int background = MaterialColors.getColor(
+            this,
+            prominent
+                ? com.google.android.material.R.attr.colorPrimaryContainer
+                : com.google.android.material.R.attr.colorSurfaceVariant,
+            0
+        );
+        int textColor = MaterialColors.getColor(
+            this,
+            prominent
+                ? com.google.android.material.R.attr.colorOnPrimaryContainer
+                : com.google.android.material.R.attr.colorOnSurfaceVariant,
+            0
+        );
+        chip.setChipBackgroundColorResource(android.R.color.transparent);
+        chip.setChipBackgroundColor(
+            android.content.res.ColorStateList.valueOf(background)
+        );
+        chip.setTextColor(textColor);
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 }

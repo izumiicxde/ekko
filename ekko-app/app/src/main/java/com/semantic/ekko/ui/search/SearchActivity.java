@@ -112,17 +112,14 @@ public class SearchActivity extends AppCompatActivity {
 
                     String query = editSearch.getText().toString().trim();
                     if (query.isEmpty()) {
-                        // Fully cleared: show default prompt
                         txtEmptyTitle.setText("Search your documents");
-                        txtEmptySubtitle.setText(
-                            "Type a query above to find relevant documents using semantic search."
-                        );
+                        txtEmptySubtitle.setVisibility(View.GONE);
                     } else {
-                        // Query entered but no matches
                         txtEmptyTitle.setText("No results found");
                         txtEmptySubtitle.setText(
                             "Try a different query or add more documents."
                         );
+                        txtEmptySubtitle.setVisibility(View.VISIBLE);
                     }
                 } else {
                     txtResultCount.setVisibility(View.VISIBLE);
@@ -264,9 +261,7 @@ public class SearchActivity extends AppCompatActivity {
         recyclerResults.setVisibility(View.GONE);
         layoutEmptyState.setVisibility(View.VISIBLE);
         txtEmptyTitle.setText("Search your documents");
-        txtEmptySubtitle.setText(
-            "Type a query above to find relevant documents using semantic search."
-        );
+        txtEmptySubtitle.setVisibility(View.GONE);
     }
 
     // =========================

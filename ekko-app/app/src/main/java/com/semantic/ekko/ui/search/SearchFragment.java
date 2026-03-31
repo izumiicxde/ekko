@@ -121,15 +121,14 @@ public class SearchFragment extends Fragment {
                     layoutEmptyState.setVisibility(View.VISIBLE);
                     String query = editSearch.getText().toString().trim();
                     if (query.isEmpty()) {
-                        txtEmptyTitle.setText("Search your documents");
-                        txtEmptySubtitle.setText(
-                            "Type a query above to find relevant documents using semantic search."
-                        );
+                        txtEmptyTitle.setText("Search your notes");
+                        txtEmptySubtitle.setVisibility(View.GONE);
                     } else {
                         txtEmptyTitle.setText("No results found");
                         txtEmptySubtitle.setText(
                             "Try a different query or add more documents."
                         );
+                        txtEmptySubtitle.setVisibility(View.VISIBLE);
                     }
                 } else {
                     txtResultCount.setVisibility(View.VISIBLE);
@@ -253,10 +252,8 @@ public class SearchFragment extends Fragment {
         txtResultCount.setVisibility(View.GONE);
         recyclerResults.setVisibility(View.GONE);
         layoutEmptyState.setVisibility(View.VISIBLE);
-        txtEmptyTitle.setText("Search your documents");
-        txtEmptySubtitle.setText(
-            "Type a query above to find relevant documents using semantic search."
-        );
+        txtEmptyTitle.setText("Search your notes");
+        txtEmptySubtitle.setVisibility(View.GONE);
     }
 
     private void hideKeyboard() {
