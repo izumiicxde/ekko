@@ -1,5 +1,6 @@
 package com.semantic.ekko.ui.detail;
 
+import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -7,6 +8,10 @@ import android.view.View;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
@@ -17,6 +22,7 @@ import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.ui.qa.QAActivity;
+import com.semantic.ekko.util.FileUtils;
 import io.noties.markwon.Markwon;
 import java.util.List;
 
@@ -50,11 +56,13 @@ public class DetailActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
         markwon = Markwon.create(this);
 
         bindViews();
+        applyInsets();
         setupViewModel();
         observeReadiness();
 
@@ -87,6 +95,24 @@ public class DetailActivity extends AppCompatActivity {
         txtSummaryHint = findViewById(R.id.txtSummaryHint);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+    }
+
+    private void applyInsets() {
+        View content = findViewById(R.id.detailContent);
+        int baseTop = content.getPaddingTop();
+        int baseBottom = content.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(content, (view, insets) -> {
+            Insets systemBars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars()
+            );
+            view.setPadding(
+                view.getPaddingLeft(),
+                baseTop + systemBars.top,
+                view.getPaddingRight(),
+                baseBottom + systemBars.bottom
+            );
+            return insets;
+        });
     }
 
     private void setupViewModel() {
@@ -305,17 +331,39 @@ public class DetailActivity extends AppCompatActivity {
         try {
             Uri uri = Uri.parse(doc.uri);
             String mimeType = getContentResolver().getType(uri);
+            if (mimeType == null || mimeType.isEmpty()) {
+                mimeType = FileUtils.getMimeType(doc.name);
+            }
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, mimeType != null ? mimeType : "*/*");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setClipData(
+                ClipData.newUri(
+                    getContentResolver(),
+                    doc.name != null ? doc.name : "document",
+                    uri
+                )
+            );
             if (intent.resolveActivity(getPackageManager()) == null) {
                 throw new IllegalStateException("No viewer available");
             }
-            startActivity(Intent.createChooser(intent, "Open with"));
+            List<android.content.pm.ResolveInfo> resolvedActivities =
+                getPackageManager().queryIntentActivities(intent, 0);
+            for (var resolveInfo : resolvedActivities) {
+                grantUriPermission(
+                    resolveInfo.activityInfo.packageName,
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
+            }
+            Intent chooser = Intent.createChooser(intent, "Open with");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            chooser.setClipData(intent.getClipData());
+            startActivity(chooser);
         } catch (Exception e) {
             Snackbar.make(
                 btnOpenFile,
-                "Could not open file.",
+                "Could not open file. Re-select the source folder if access was revoked.",
                 Snackbar.LENGTH_SHORT
             ).show();
         }

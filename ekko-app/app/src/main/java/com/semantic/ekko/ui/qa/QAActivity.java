@@ -13,6 +13,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -46,6 +50,7 @@ public class QAActivity extends AppCompatActivity {
     private TextView txtQaTitle;
     private TextView txtQaSubtitle;
     private ChipGroup chipGroupInputCompletions;
+    private View layoutInputContainer;
 
     private final List<String> includedFileNames = new ArrayList<>();
     private int completionReplaceStart = -1;
@@ -62,10 +67,12 @@ public class QAActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_qa);
 
         bindViews();
+        applyInsets();
         setupRecycler();
         setupViewModel();
         setupInput();
@@ -98,6 +105,25 @@ public class QAActivity extends AppCompatActivity {
         chipGroupInputCompletions = findViewById(
             R.id.chipGroupInputCompletions
         );
+        layoutInputContainer = findViewById(R.id.layoutInputContainer);
+    }
+
+    private void applyInsets() {
+        View content = findViewById(R.id.qaContent);
+        int baseTop = content.getPaddingTop();
+        int baseBottom = content.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(content, (view, insets) -> {
+            Insets systemBars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars()
+            );
+            view.setPadding(
+                view.getPaddingLeft(),
+                baseTop + systemBars.top,
+                view.getPaddingRight(),
+                baseBottom + systemBars.bottom
+            );
+            return insets;
+        });
     }
 
     private void setupRecycler() {
@@ -257,22 +283,29 @@ public class QAActivity extends AppCompatActivity {
             Boolean.TRUE.equals(viewModel.getIsLoading().getValue());
         editQuestion.setEnabled(ready && !loading);
         btnSend.setEnabled(ready && !loading);
-        chipGroupSuggestions.setAlpha(ready ? 1f : 0.45f);
+        chipGroupSuggestions.setAlpha(ready ? 1f : 0.42f);
         chipGroupSuggestions.setEnabled(ready);
+        chipGroupSuggestions.setVisibility(ready ? View.VISIBLE : View.GONE);
+        chipGroupInputCompletions.setVisibility(View.GONE);
+        layoutInputContainer.setAlpha(ready ? 1f : 0.62f);
         if (!ready) {
             btnStop.setVisibility(View.GONE);
             btnSend.setVisibility(View.VISIBLE);
             editQuestion.setHint(
                 !mlReady
                     ? "Assistant becomes available when local models finish loading"
-                    : "Assistant is waiting for the backend connection"
+                    : "Assistant is unavailable until the backend reconnects"
             );
-            txtEmptyTitle.setText("Assistant is preparing");
+            txtEmptyTitle.setText(
+                !mlReady ? "Assistant is preparing" : "Backend unavailable"
+            );
             txtEmptySubtitle.setText(
                 !mlReady
                     ? "Local models are still loading."
-                    : "Backend connection is unavailable right now."
+                    : "The Ask page needs the local backend connection before it can answer."
             );
+        } else if (adapter.getItemCount() == 0) {
+            chipGroupSuggestions.setVisibility(View.VISIBLE);
         }
     }
 
