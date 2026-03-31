@@ -1,6 +1,7 @@
 package com.semantic.ekko.ui.settings;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -20,8 +21,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
+import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
@@ -52,6 +55,7 @@ public class SettingsFragment extends Fragment {
     private MaterialButton btnReindexIncluded;
     private View layoutReindexProgress;
     private LinearProgressIndicator progressReindex;
+    private boolean mlReady = false;
 
     private List<FolderEntity> currentFolders = new ArrayList<>();
     private boolean foldersExpanded = false;
@@ -61,12 +65,24 @@ public class SettingsFragment extends Fragment {
             new ActivityResultContracts.OpenDocumentTree(),
             uri -> {
                 if (uri == null || getActivity() == null) return;
-                getActivity()
-                    .getContentResolver()
-                    .takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    );
+                try {
+                    getActivity()
+                        .getContentResolver()
+                        .takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+                } catch (SecurityException | IllegalArgumentException e) {
+                    View root = getView();
+                    if (root != null) {
+                        Snackbar.make(
+                            root,
+                            "Could not access that folder. Please try selecting it again.",
+                            Snackbar.LENGTH_LONG
+                        ).show();
+                    }
+                    return;
+                }
                 homeViewModel.addFolderAndIndex(uri);
             }
         );
@@ -93,6 +109,7 @@ public class SettingsFragment extends Fragment {
         homeViewModel = new ViewModelProvider(requireActivity()).get(
             HomeViewModel.class
         );
+        observeReadiness();
 
         recyclerFolders = view.findViewById(R.id.recyclerFolders);
         txtNoFolders = view.findViewById(R.id.txtNoFolders);
@@ -153,9 +170,7 @@ public class SettingsFragment extends Fragment {
                 layoutReindexProgress.setVisibility(
                     running ? View.VISIBLE : View.GONE
                 );
-                btnAddFolder.setEnabled(!running);
-                btnResetExcluded.setEnabled(!running);
-                btnReindexIncluded.setEnabled(!running);
+                updateActionButtons(running);
             });
 
         homeViewModel
@@ -186,7 +201,17 @@ public class SettingsFragment extends Fragment {
 
         view
             .findViewById(R.id.btnAddFolder)
-            .setOnClickListener(v -> folderPicker.launch(null));
+            .setOnClickListener(v -> {
+                if (!mlReady) {
+                    Snackbar.make(
+                        view,
+                        "Indexing tools are still loading. Please wait a moment.",
+                        Snackbar.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+                folderPicker.launch(null);
+            });
 
         view
             .findViewById(R.id.btnResetExcluded)
@@ -215,6 +240,31 @@ public class SettingsFragment extends Fragment {
                     Snackbar.LENGTH_SHORT
                 ).show();
             });
+    }
+
+    private void observeReadiness() {
+        EkkoApp.getInstance()
+            .getMlReadyState()
+            .observe(getViewLifecycleOwner(), ready -> {
+                mlReady = ready != null && ready;
+                updateActionButtons(
+                    homeViewModel != null &&
+                        Boolean.TRUE.equals(
+                            homeViewModel.getIsIndexing().getValue()
+                        )
+                );
+            });
+    }
+
+    private void updateActionButtons(boolean indexing) {
+        if (btnAddFolder == null) {
+            return;
+        }
+        btnAddFolder.setEnabled(mlReady && !indexing);
+        btnReindexIncluded.setEnabled(mlReady && !indexing);
+        btnResetExcluded.setEnabled(!indexing);
+        btnAddFolder.setAlpha(mlReady ? 1f : 0.55f);
+        btnReindexIncluded.setAlpha(mlReady ? 1f : 0.55f);
     }
 
     private void refreshFolderUi() {
@@ -303,8 +353,11 @@ public class SettingsFragment extends Fragment {
                 homeViewModel.loadDocuments();
                 folderRepository.delete(folder, () -> {
                     prefsManager.setFolderExcluded(folder.uri, false);
-                    if (getActivity() != null) {
+                    if (isAdded() && getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
+                            if (!isAdded()) {
+                                return;
+                            }
                             refreshFolderUi();
                             homeViewModel.loadDocuments();
                         });
@@ -370,7 +423,32 @@ public class SettingsFragment extends Fragment {
         boolean darkSelected =
             toggleTheme.getCheckedButtonId() == R.id.btnThemeDark;
 
-        btnLight.setText(lightSelected ? "Light  •  Current" : "Light");
-        btnDark.setText(darkSelected ? "Dark  •  Current" : "Dark");
+        int activeBg = MaterialColors.getColor(
+            toggleTheme,
+            com.google.android.material.R.attr.colorPrimaryContainer
+        );
+        int activeFg = MaterialColors.getColor(
+            toggleTheme,
+            com.google.android.material.R.attr.colorOnPrimaryContainer
+        );
+        int inactiveBg = android.graphics.Color.TRANSPARENT;
+        int inactiveFg = MaterialColors.getColor(
+            toggleTheme,
+            com.google.android.material.R.attr.colorOnSurfaceVariant
+        );
+
+        btnLight.setText("Light");
+        btnDark.setText("Dark");
+
+        btnLight.setBackgroundTintList(
+            ColorStateList.valueOf(lightSelected ? activeBg : inactiveBg)
+        );
+        btnDark.setBackgroundTintList(
+            ColorStateList.valueOf(darkSelected ? activeBg : inactiveBg)
+        );
+        btnLight.setTextColor(lightSelected ? activeFg : inactiveFg);
+        btnDark.setTextColor(darkSelected ? activeFg : inactiveFg);
+        btnLight.setStrokeWidth(0);
+        btnDark.setStrokeWidth(0);
     }
 }

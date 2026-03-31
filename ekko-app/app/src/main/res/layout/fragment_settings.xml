@@ -147,27 +147,37 @@
                         app:iconTint="?attr/colorOnPrimaryContainer"
                     />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnReindexIncluded"
-                        style="@style/Widget.Ekko.Button.Secondary"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="42dp"
+                        android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Refresh index"
-                        app:icon="@drawable/ic_refresh"
-                        app:iconTint="?attr/colorOnSurface"
-                    />
+                        android:baselineAligned="false"
+                        android:orientation="horizontal"
+                    >
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnResetExcluded"
-                        style="@style/Widget.Ekko.Button.Outlined"
-                        android:layout_width="match_parent"
-                        android:layout_height="42dp"
-                        android:layout_marginTop="8dp"
-                        android:text="Show hidden folders"
-                        app:icon="@drawable/ic_refresh"
-                        app:iconTint="?attr/colorOnSurface"
-                    />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReindexIncluded"
+                            style="@style/Widget.Ekko.Button.Utility"
+                            android:layout_width="0dp"
+                            android:layout_height="54dp"
+                            android:layout_weight="1"
+                            android:text="Refresh"
+                            app:icon="@drawable/ic_refresh"
+                            app:iconTint="?attr/colorOnSurface"
+                        />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnResetExcluded"
+                            style="@style/Widget.Ekko.Button.Utility"
+                            android:layout_width="0dp"
+                            android:layout_height="54dp"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:text="Hidden"
+                            app:icon="@drawable/ic_refresh"
+                            app:iconTint="?attr/colorOnSurface"
+                        />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <LinearLayout
@@ -279,34 +289,45 @@
                     />
                 </LinearLayout>
 
-                <com.google.android.material.button.MaterialButtonToggleGroup
-                    android:id="@+id/toggleTheme"
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
-                    app:singleSelection="true"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:cardCornerRadius="22dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp"
                 >
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnThemeLight"
-                        style="@style/Widget.Ekko.Button.ToggleTheme"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_weight="1"
-                        android:text="Light"
-                        android:textSize="13sp"
-                    />
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/toggleTheme"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="6dp"
+                        app:singleSelection="true"
+                    >
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnThemeDark"
-                        style="@style/Widget.Ekko.Button.ToggleTheme"
-                        android:layout_width="0dp"
-                        android:layout_height="46dp"
-                        android:layout_weight="1"
-                        android:text="Dark"
-                        android:textSize="13sp"
-                    />
-                </com.google.android.material.button.MaterialButtonToggleGroup>
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnThemeLight"
+                            style="@style/Widget.Ekko.Button.ToggleTheme"
+                            android:layout_width="0dp"
+                            android:layout_height="52dp"
+                            android:layout_weight="1"
+                            android:text="Light"
+                            android:textSize="13sp"
+                        />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnThemeDark"
+                            style="@style/Widget.Ekko.Button.ToggleTheme"
+                            android:layout_width="0dp"
+                            android:layout_height="52dp"
+                            android:layout_weight="1"
+                            android:text="Dark"
+                            android:textSize="13sp"
+                        />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                </com.google.android.material.card.MaterialCardView>
 
                 <TextView
                     android:id="@+id/txtThemeSummary"
