@@ -44,10 +44,70 @@
                     app:tint="?attr/colorOnSurface"
                 />
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Document"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                />
+
+                <TextView
+                    android:id="@+id/txtFileType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_surface_pill"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:paddingStart="12dp"
+                    android:paddingTop="7dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="7dp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    tools:text="PDF"
+                />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtDocName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:lineSpacingMultiplier="1.15"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                tools:text="Introduction to Machine Learning.pdf"
+            />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipCategory"
+                style="@style/Widget.Material3.Chip.Assist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:textSize="12sp"
+                tools:text="Technical"
+            />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:orientation="horizontal"
+            >
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:orientation="vertical"
                 >
 
@@ -55,449 +115,305 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Detail"
+                        android:text="Words"
                         android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp"
+                        android:textSize="11sp"
                     />
 
                     <TextView
+                        android:id="@+id/txtWordCount"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Document overview"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="18sp"
                         android:textStyle="bold"
+                        tools:text="22.4k"
+                    />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                >
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:text="Read time"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="11sp"
+                    />
+
+                    <TextView
+                        android:id="@+id/txtReadTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        tools:text="112"
+                    />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                >
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:text="Entities"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="11sp"
+                    />
+
+                    <TextView
+                        android:id="@+id/txtEntityCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="@font/bricolage_grotesque"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        tools:text="5"
                     />
                 </LinearLayout>
             </LinearLayout>
 
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                app:cardBackgroundColor="@android:color/transparent"
-                app:cardCornerRadius="34dp"
-                app:cardElevation="0dp"
-                app:strokeColor="?attr/colorOutlineVariant"
-                app:strokeWidth="1dp"
-            >
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_search_hero"
-                    android:orientation="vertical"
-                    android:padding="20dp"
-                >
-
-                    <TextView
-                        android:id="@+id/txtDocName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:lineSpacingMultiplier="1.15"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="28sp"
-                        android:textStyle="bold"
-                        tools:text="Introduction to Machine Learning.pdf"
-                    />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                    >
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipCategory"
-                            style="@style/Widget.Material3.Chip.Assist"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:textSize="12sp"
-                            tools:text="Technical"
-                        />
-
-                        <TextView
-                            android:id="@+id/txtFileType"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:background="@drawable/bg_surface_pill"
-                            android:fontFamily="@font/bricolage_grotesque"
-                            android:paddingStart="12dp"
-                            android:paddingTop="7dp"
-                            android:paddingEnd="12dp"
-                            android:paddingBottom="7dp"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textSize="11sp"
-                            android:textStyle="bold"
-                            tools:text="PDF"
-                        />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:orientation="horizontal"
-                    >
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_stats_row"
-                            android:gravity="center"
-                            android:orientation="vertical"
-                            android:paddingTop="14dp"
-                            android:paddingBottom="14dp"
-                        >
-
-                            <TextView
-                                android:id="@+id/txtWordCount"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/bricolage_grotesque"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                tools:text="22.4k"
-                            />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="3dp"
-                                android:fontFamily="@font/bricolage_grotesque"
-                                android:text="words"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:textSize="11sp"
-                            />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:layout_marginEnd="8dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_stats_row"
-                            android:gravity="center"
-                            android:orientation="vertical"
-                            android:paddingTop="14dp"
-                            android:paddingBottom="14dp"
-                        >
-
-                            <TextView
-                                android:id="@+id/txtReadTime"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/bricolage_grotesque"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                tools:text="112"
-                            />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="3dp"
-                                android:fontFamily="@font/bricolage_grotesque"
-                                android:text="min read"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:textSize="11sp"
-                            />
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_stats_row"
-                            android:gravity="center"
-                            android:orientation="vertical"
-                            android:paddingTop="14dp"
-                            android:paddingBottom="14dp"
-                        >
-
-                            <TextView
-                                android:id="@+id/txtEntityCount"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="@font/bricolage_grotesque"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                tools:text="5"
-                            />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="3dp"
-                                android:fontFamily="@font/bricolage_grotesque"
-                                android:text="entities"
-                                android:textColor="?attr/colorOnSurfaceVariant"
-                                android:textSize="11sp"
-                            />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:orientation="horizontal"
-                    >
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnOpenFile"
-                            style="@style/Widget.Ekko.Button.Primary"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_weight="1"
-                            android:text="Open file"
-                            android:textSize="14sp"
-                        />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnChatWithFile"
-                            style="@style/Widget.Ekko.Button.Outlined"
-                            android:layout_width="0dp"
-                            android:layout_height="48dp"
-                            android:layout_weight="1"
-                            android:layout_marginStart="8dp"
-                            android:text="Ask Ekko Bot"
-                            android:textSize="14sp"
-                        />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:background="@drawable/bg_soft_panel"
-                android:orientation="vertical"
-                android:padding="20dp"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
             >
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                >
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Summary"
-                        android:textColor="?attr/colorOnSurface"
-                        android:textSize="22sp"
-                        android:textStyle="bold"
-                    />
-
-                    <TextView
-                        android:id="@+id/txtSummaryHint"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Generated from the indexed text already stored on-device"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="13sp"
-                    />
-                </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnEnhanceSummary"
-                    style="@style/Widget.Ekko.Button.Outlined"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="16dp"
-                    android:text="Create summary"
+                    android:id="@+id/btnOpenFile"
+                    style="@style/Widget.Ekko.Button.Primary"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:text="Open file"
                     android:textSize="14sp"
-                    app:icon="@drawable/ic_refresh"
-                    app:iconGravity="textStart"
-                    app:iconTint="?attr/colorPrimary"
                 />
 
-                <LinearLayout
-                    android:id="@+id/layoutSummaryLoading"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="@drawable/bg_quick_action_card"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="14dp"
-                    android:visibility="gone"
-                >
-
-                    <com.google.android.material.progressindicator.CircularProgressIndicator
-                        android:id="@+id/progressEnhanceSummary"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:layout_marginEnd="10dp"
-                        android:visibility="gone"
-                        app:indicatorInset="0dp"
-                        app:indicatorSize="20dp"
-                        app:trackThickness="2dp"
-                    />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Building a clean summary from indexed content"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:textSize="12sp"
-                    />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/txtSummary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:lineSpacingExtra="3dp"
-                    android:lineSpacingMultiplier="1.6"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="15sp"
-                    tools:text="This document introduces core machine learning concepts."
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChatWithFile"
+                    style="@style/Widget.Ekko.Button.Outlined"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="Ask Ekko Bot"
+                    android:textSize="14sp"
                 />
             </LinearLayout>
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:text="Summary"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="22sp"
+                android:textStyle="bold"
+            />
+
+            <TextView
+                android:id="@+id/txtSummaryHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:text="Generated from the indexed text already stored on-device"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+            />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEnhanceSummary"
+                style="@style/Widget.Ekko.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="14dp"
+                android:text="Create summary"
+                android:textSize="14sp"
+                app:icon="@drawable/ic_refresh"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorPrimary"
+            />
+
             <LinearLayout
+                android:id="@+id/layoutSummaryLoading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:background="@drawable/bg_soft_panel"
-                android:orientation="vertical"
-                android:padding="18dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_quick_action_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="14dp"
+                android:visibility="gone"
             >
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:letterSpacing="0.08"
-                    android:text="KEYWORDS"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupKeywords"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    app:chipSpacingHorizontal="6dp"
-                    app:chipSpacingVertical="6dp"
-                />
-
-                <TextView
-                    android:id="@+id/labelEntities"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:fontFamily="@font/bricolage_grotesque"
-                    android:letterSpacing="0.08"
-                    android:text="ENTITIES"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupEntities"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    app:chipSpacingHorizontal="6dp"
-                    app:chipSpacingVertical="6dp"
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressEnhanceSummary"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="10dp"
+                    android:visibility="gone"
+                    app:indicatorInset="0dp"
+                    app:indicatorSize="20dp"
+                    app:trackThickness="2dp"
                 />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
                     android:fontFamily="@font/bricolage_grotesque"
-                    android:letterSpacing="0.08"
-                    android:text="CORRECT CATEGORY"
+                    android:text="Building a clean summary from indexed content"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12sp"
-                    android:textStyle="bold"
                 />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroupCorrection"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    app:chipSpacingHorizontal="6dp"
-                    app:chipSpacingVertical="6dp"
-                    app:selectionRequired="true"
-                    app:singleSelection="true"
-                >
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipCorTechnical"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Technical"
-                    />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipCorResearch"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Research"
-                    />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipCorLegal"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Legal"
-                    />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipCorMedical"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="Medical"
-                    />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chipCorGeneral"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/bricolage_grotesque"
-                        android:text="General"
-                    />
-                </com.google.android.material.chip.ChipGroup>
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:lineSpacingExtra="3dp"
+                android:lineSpacingMultiplier="1.6"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="15sp"
+                tools:text="This document introduces core machine learning concepts."
+            />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:letterSpacing="0.08"
+                android:text="KEYWORDS"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:textStyle="bold"
+            />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupKeywords"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:chipSpacingHorizontal="6dp"
+                app:chipSpacingVertical="6dp"
+            />
+
+            <TextView
+                android:id="@+id/labelEntities"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:letterSpacing="0.08"
+                android:text="ENTITIES"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:textStyle="bold"
+            />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupEntities"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:chipSpacingHorizontal="6dp"
+                app:chipSpacingVertical="6dp"
+            />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:letterSpacing="0.08"
+                android:text="CORRECT CATEGORY"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:textStyle="bold"
+            />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupCorrection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:chipSpacingHorizontal="6dp"
+                app:chipSpacingVertical="6dp"
+                app:selectionRequired="true"
+                app:singleSelection="true"
+            >
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCorTechnical"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Technical"
+                />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCorResearch"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Research"
+                />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCorLegal"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Legal"
+                />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCorMedical"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Medical"
+                />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCorGeneral"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="General"
+                />
+            </com.google.android.material.chip.ChipGroup>
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
