@@ -19,6 +19,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.qa.QAActivity;
@@ -251,10 +252,16 @@ public class HomeActivity extends AppCompatActivity {
 
         Set<String> keywords = new LinkedHashSet<>();
         for (DocumentEntity doc : docs) {
+            Set<String> entityTerms = extractEntityTerms(doc);
             if (doc.keywords == null || doc.keywords.isEmpty()) continue;
             for (String kw : doc.keywords.split(",")) {
                 String trimmed = kw.trim();
-                if (!trimmed.isEmpty()) keywords.add(trimmed);
+                if (
+                    !trimmed.isEmpty() &&
+                    !entityTerms.contains(trimmed.toLowerCase())
+                ) {
+                    keywords.add(trimmed);
+                }
             }
         }
 
@@ -334,6 +341,20 @@ public class HomeActivity extends AppCompatActivity {
                 text.equals(activeChipKeyword);
             applyChipColor(chip, active);
         }
+    }
+
+    private Set<String> extractEntityTerms(DocumentEntity doc) {
+        Set<String> entityTerms = new LinkedHashSet<>();
+        if (doc == null) {
+            return entityTerms;
+        }
+        for (String entity : EntityExtractorHelper.entitiesFromString(doc.entities)) {
+            String normalized = entity.replaceFirst("^[A-Za-z]+:\\s*", "").trim();
+            if (!normalized.isEmpty()) {
+                entityTerms.add(normalized.toLowerCase());
+            }
+        }
+        return entityTerms;
     }
 
     // =========================
