@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.WorkInfo;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -29,6 +30,8 @@ import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -58,6 +61,8 @@ public class HomeFragment extends Fragment {
     private FolderRepository folderRepository;
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
+    private boolean isAppIndexing = false;
+    private boolean isPublicImportRunning = false;
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -93,6 +98,28 @@ public class HomeFragment extends Fragment {
                     }
                 }
                 viewModel.addFolderAndIndex(uri);
+            }
+        );
+
+    private final ActivityResultLauncher<Intent> allFilesAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (!isAdded() || getContext() == null) {
+                    return;
+                }
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    startPublicFolderImport();
+                    return;
+                }
+                View root = getView();
+                if (root != null) {
+                    Snackbar.make(
+                        root,
+                        "Allow full storage access to index shared folders at once.",
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                }
             }
         );
 
@@ -211,7 +238,8 @@ public class HomeFragment extends Fragment {
         viewModel
             .getIsIndexing()
             .observe(getViewLifecycleOwner(), indexing -> {
-                updateIndexingUi(indexing != null && indexing);
+                isAppIndexing = indexing != null && indexing;
+                updateIndexingUi();
             });
 
         viewModel
@@ -245,6 +273,10 @@ public class HomeFragment extends Fragment {
                     ).show();
                 }
             });
+
+        PublicStorageImportWorker
+            .getWorkInfoLiveData(requireContext())
+            .observe(getViewLifecycleOwner(), this::handlePublicImportState);
     }
 
     private void setupClickListeners(View root) {
@@ -259,7 +291,7 @@ public class HomeFragment extends Fragment {
         root
             .findViewById(R.id.btnEmptyAddFolder)
             .setOnClickListener(v -> {
-                folderPicker.launch(null);
+                launchFolderImport();
             });
 
         root
@@ -269,6 +301,34 @@ public class HomeFragment extends Fragment {
                     ((MainActivity) getActivity()).navigateToSettings();
                 }
             });
+    }
+
+    private void launchFolderImport() {
+        if (StorageAccessHelper.supportsAllFilesAccess()) {
+            if (StorageAccessHelper.hasAllFilesAccess()) {
+                startPublicFolderImport();
+            } else if (getContext() != null) {
+                allFilesAccessLauncher.launch(
+                    StorageAccessHelper.createManageAllFilesAccessIntent(
+                        requireContext()
+                    )
+                );
+            }
+            return;
+        }
+        folderPicker.launch(null);
+    }
+
+    private void startPublicFolderImport() {
+        if (!isAdded() || getContext() == null) {
+            return;
+        }
+        PublicStorageImportWorker.enqueue(requireContext());
+        isPublicImportRunning = true;
+        updateIndexingUi();
+        txtIndexingStage.setText("Indexing shared folders...");
+        txtIndexingDoc.setText("Scanning public storage");
+        progressIndexing.setIndeterminate(true);
     }
 
     public boolean handleSystemBackPressed() {
@@ -504,8 +564,8 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void updateIndexingUi(boolean appIndexing) {
-        boolean showBanner = appIndexing;
+    private void updateIndexingUi() {
+        boolean showBanner = isAppIndexing || isPublicImportRunning;
         layoutIndexingProgress.setVisibility(showBanner ? View.VISIBLE : View.GONE);
         if (!showBanner) {
             progressIndexing.setIndeterminate(false);
@@ -516,5 +576,53 @@ public class HomeFragment extends Fragment {
         }
 
         progressIndexing.setIndeterminate(false);
+    }
+
+    private void handlePublicImportState(List<WorkInfo> workInfos) {
+        boolean running = false;
+        boolean finished = false;
+        boolean success = false;
+
+        if (workInfos != null) {
+            for (WorkInfo workInfo : workInfos) {
+                if (workInfo == null) {
+                    continue;
+                }
+                WorkInfo.State state = workInfo.getState();
+                if (
+                    state == WorkInfo.State.ENQUEUED ||
+                    state == WorkInfo.State.RUNNING ||
+                    state == WorkInfo.State.BLOCKED
+                ) {
+                    running = true;
+                }
+                if (state.isFinished()) {
+                    finished = true;
+                    if (state == WorkInfo.State.SUCCEEDED) {
+                        success = true;
+                    }
+                }
+            }
+        }
+
+        isPublicImportRunning = running;
+        if (running && !isAppIndexing) {
+            progressIndexing.setIndeterminate(true);
+            txtIndexingStage.setText("Indexing shared folders...");
+            txtIndexingDoc.setText("Scanning public storage");
+        }
+        updateIndexingUi();
+
+        if (finished && !running) {
+            viewModel.loadDocuments();
+            refreshFolderAvailabilityState();
+            if (success && getView() != null) {
+                Snackbar.make(
+                    getView(),
+                    "Shared folders indexed.",
+                    Snackbar.LENGTH_SHORT
+                ).show();
+            }
+        }
     }
 }

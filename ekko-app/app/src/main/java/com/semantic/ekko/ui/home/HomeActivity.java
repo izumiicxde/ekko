@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.WorkInfo;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
@@ -26,6 +27,8 @@ import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchActivity;
 import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
+import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -49,6 +52,8 @@ public class HomeActivity extends AppCompatActivity {
     private ChipGroup chipGroupFilters;
     private View searchBar;
     private Map<Long, String> currentFolderNames = new HashMap<>();
+    private boolean isAppIndexing = false;
+    private boolean isPublicImportRunning = false;
 
     // =========================
     // FOLDER PICKER
@@ -72,6 +77,22 @@ public class HomeActivity extends AppCompatActivity {
                     );
                 }
                 viewModel.addFolderAndIndex(uri);
+            }
+        );
+
+    private final ActivityResultLauncher<Intent> allFilesAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    startPublicFolderImport();
+                    return;
+                }
+                Snackbar.make(
+                    recyclerDocuments,
+                    "Allow full storage access to index shared folders at once.",
+                    Snackbar.LENGTH_LONG
+                ).show();
             }
         );
 
@@ -162,10 +183,8 @@ public class HomeActivity extends AppCompatActivity {
         viewModel
             .getIsIndexing()
             .observe(this, indexing -> {
-                layoutIndexingProgress.setVisibility(
-                    indexing ? View.VISIBLE : View.GONE
-                );
-                findViewById(R.id.fabAddFolder).setEnabled(!indexing);
+                isAppIndexing = indexing != null && indexing;
+                updateIndexingUi();
             });
 
         viewModel
@@ -201,6 +220,10 @@ public class HomeActivity extends AppCompatActivity {
                     ).show();
                 }
             });
+
+        PublicStorageImportWorker
+            .getWorkInfoLiveData(this)
+            .observe(this, this::handlePublicImportState);
     }
 
     // =========================
@@ -219,7 +242,7 @@ public class HomeActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
         findViewById(R.id.fabAddFolder).setOnClickListener(v -> {
-            folderPicker.launch(null);
+            launchFolderImport();
         });
 
         findViewById(R.id.btnStatistics).setOnClickListener(v ->
@@ -238,6 +261,29 @@ public class HomeActivity extends AppCompatActivity {
         findViewById(R.id.btnAskEkko).setOnClickListener(v ->
             startActivity(new Intent(this, QAActivity.class))
         );
+    }
+
+    private void launchFolderImport() {
+        if (StorageAccessHelper.supportsAllFilesAccess()) {
+            if (StorageAccessHelper.hasAllFilesAccess()) {
+                startPublicFolderImport();
+            } else {
+                allFilesAccessLauncher.launch(
+                    StorageAccessHelper.createManageAllFilesAccessIntent(this)
+                );
+            }
+            return;
+        }
+        folderPicker.launch(null);
+    }
+
+    private void startPublicFolderImport() {
+        PublicStorageImportWorker.enqueue(this);
+        isPublicImportRunning = true;
+        progressIndexing.setIndeterminate(true);
+        txtIndexingStage.setText("Indexing shared folders...");
+        txtIndexingDoc.setText("Scanning public storage");
+        updateIndexingUi();
     }
 
     // =========================
@@ -388,5 +434,44 @@ public class HomeActivity extends AppCompatActivity {
 
     private void updateDocCount(int count) {
         txtDocCount.setText(count + (count == 1 ? " document" : " documents"));
+    }
+
+    private void updateIndexingUi() {
+        boolean running = isAppIndexing || isPublicImportRunning;
+        layoutIndexingProgress.setVisibility(running ? View.VISIBLE : View.GONE);
+        findViewById(R.id.fabAddFolder).setEnabled(!running);
+        if (!running) {
+            progressIndexing.setIndeterminate(false);
+            progressIndexing.setProgress(0);
+            txtIndexingStage.setText("");
+            txtIndexingDoc.setText("");
+        }
+    }
+
+    private void handlePublicImportState(List<WorkInfo> workInfos) {
+        boolean running = false;
+
+        if (workInfos != null) {
+            for (WorkInfo workInfo : workInfos) {
+                if (workInfo == null) {
+                    continue;
+                }
+                WorkInfo.State state = workInfo.getState();
+                if (
+                    state == WorkInfo.State.ENQUEUED ||
+                    state == WorkInfo.State.RUNNING ||
+                    state == WorkInfo.State.BLOCKED
+                ) {
+                    running = true;
+                    break;
+                }
+            }
+        }
+
+        isPublicImportRunning = running;
+        updateIndexingUi();
+        if (!running) {
+            viewModel.loadDocuments();
+        }
     }
 }
