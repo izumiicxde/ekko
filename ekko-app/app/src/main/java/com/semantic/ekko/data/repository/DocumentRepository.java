@@ -156,7 +156,15 @@ public class DocumentRepository {
             String[] queryTerms = queryLower.split("\\s+");
 
             for (DocumentDao.DocumentEmbeddingRow row : rows) {
-                if (row.word_count < 20) continue;
+                boolean obviousTextMatch = hasAnyFieldMatch(
+                    queryTerms,
+                    row.name,
+                    row.relative_path,
+                    row.keywords,
+                    row.summary,
+                    row.raw_text
+                );
+                if (row.word_count < 20 && !obviousTextMatch) continue;
                 float embeddingScore = 0f;
                 if (row.embedding != null) {
                     float[] docEmbedding = EmbeddingEngine.fromBytes(
@@ -188,15 +196,6 @@ public class DocumentRepository {
                     0.15f * summaryScore +
                     0.20f * fullTextScore +
                     0.10f * filenameScore;
-
-                boolean obviousTextMatch = hasAnyFieldMatch(
-                    queryTerms,
-                    row.name,
-                    row.relative_path,
-                    row.keywords,
-                    row.summary,
-                    row.raw_text
-                );
 
                 if (
                     finalScore >= minScore ||
