@@ -336,34 +336,38 @@ public class DetailActivity extends AppCompatActivity {
                 throw new SecurityException("Missing read permission for source");
             }
             String mimeType = FileUtils.resolveMimeType(this, sourceUri, doc.name);
-            Uri viewerUri = FileUtils.copyToViewerCache(
-                this,
-                sourceUri,
-                doc.name
-            );
-            if ("application/pdf".equalsIgnoreCase(mimeType)) {
-                Intent intent = new Intent(this, PdfViewerActivity.class);
-                intent.putExtra(
-                    PdfViewerActivity.EXTRA_PDF_URI,
-                    viewerUri.toString()
-                );
-                intent.putExtra(PdfViewerActivity.EXTRA_TITLE, doc.name);
-                startActivity(intent);
-                return;
-            }
+            Uri openUri = "content".equalsIgnoreCase(sourceUri.getScheme())
+                ? sourceUri
+                : FileUtils.copyToViewerCache(this, sourceUri, doc.name);
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(
-                viewerUri,
+                openUri,
                 mimeType != null ? mimeType : "*/*"
             );
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.setClipData(
-                ClipData.newUri(getContentResolver(), doc.name, viewerUri)
+                ClipData.newUri(getContentResolver(), doc.name, openUri)
             );
 
             List<ResolveInfo> matches = getPackageManager()
                 .queryIntentActivities(intent, 0);
             if (matches == null || matches.isEmpty()) {
+                if ("application/pdf".equalsIgnoreCase(mimeType)) {
+                    Intent fallbackIntent = new Intent(
+                        this,
+                        PdfViewerActivity.class
+                    );
+                    fallbackIntent.putExtra(
+                        PdfViewerActivity.EXTRA_PDF_URI,
+                        openUri.toString()
+                    );
+                    fallbackIntent.putExtra(
+                        PdfViewerActivity.EXTRA_TITLE,
+                        doc.name
+                    );
+                    startActivity(fallbackIntent);
+                    return;
+                }
                 throw new IllegalStateException("No viewer available");
             }
 
@@ -371,7 +375,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (match.activityInfo == null) continue;
                 grantUriPermission(
                     match.activityInfo.packageName,
-                    viewerUri,
+                    openUri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 );
             }
@@ -379,7 +383,7 @@ public class DetailActivity extends AppCompatActivity {
             Intent chooser = Intent.createChooser(intent, "Open with");
             chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             chooser.setClipData(
-                ClipData.newUri(getContentResolver(), doc.name, viewerUri)
+                ClipData.newUri(getContentResolver(), doc.name, openUri)
             );
             startActivity(chooser);
         } catch (Exception e) {
