@@ -2,7 +2,7 @@ package com.semantic.ekko.processing.extractor;
 
 import android.content.Context;
 import android.net.Uri;
-
+import com.semantic.ekko.util.FileUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,7 +16,7 @@ public class TxtTextExtractor {
      * Returns empty string on failure.
      */
     public static String extract(Context context, Uri uri) {
-        try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+        try (InputStream is = FileUtils.openInputStream(context, uri)) {
             if (is == null) return "";
 
             BufferedReader reader = new BufferedReader(

@@ -5,6 +5,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.util.FileUtils;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -178,6 +180,42 @@ public class DocumentScanner {
         return new ScanResult(allDocs, totalSkipped);
     }
 
+    public static ScanResult scanFilesystemFolders(
+        Context context,
+        List<File> folderFiles,
+        List<Long> folderIds
+    ) {
+        List<DocumentEntity> allDocs = new ArrayList<>();
+        int totalSkipped = 0;
+        if (
+            folderFiles == null ||
+            folderIds == null ||
+            folderFiles.isEmpty() ||
+            folderIds.isEmpty()
+        ) {
+            return new ScanResult(allDocs, totalSkipped);
+        }
+
+        int limit = Math.min(folderFiles.size(), folderIds.size());
+        for (int i = 0; i < limit; i++) {
+            File folderFile = folderFiles.get(i);
+            Long folderId = folderIds.get(i);
+            if (folderFile == null || folderId == null) {
+                totalSkipped++;
+                continue;
+            }
+            totalSkipped += scanFilesystemFolderRecursive(
+                folderFile,
+                folderFile,
+                folderId,
+                "",
+                allDocs
+            );
+        }
+
+        return new ScanResult(allDocs, totalSkipped);
+    }
+
     private static String appendSegment(String base, String segment) {
         if (segment == null || segment.trim().isEmpty()) return base;
         if (base == null || base.isEmpty()) return segment;
@@ -210,6 +248,80 @@ public class DocumentScanner {
             if (supported.equals(mime)) return true;
         }
         return false;
+    }
+
+    private static int scanFilesystemFolderRecursive(
+        File rootFolder,
+        File currentFolder,
+        long folderId,
+        String relativeDir,
+        List<DocumentEntity> found
+    ) {
+        if (
+            currentFolder == null ||
+            !currentFolder.exists() ||
+            !currentFolder.isDirectory() ||
+            !currentFolder.canRead()
+        ) {
+            return 0;
+        }
+
+        File[] children = currentFolder.listFiles();
+        if (children == null) return 0;
+
+        int skipped = 0;
+        for (File child : children) {
+            if (child == null || !child.canRead()) {
+                skipped++;
+                continue;
+            }
+            if (child.isDirectory()) {
+                if (shouldSkipDirectory(child)) {
+                    skipped++;
+                    continue;
+                }
+                String childRelativeDir = appendSegment(
+                    relativeDir,
+                    child.getName()
+                );
+                skipped += scanFilesystemFolderRecursive(
+                    rootFolder,
+                    child,
+                    folderId,
+                    childRelativeDir,
+                    found
+                );
+                continue;
+            }
+
+            String fileName = child.getName();
+            if (!FileUtils.isSupportedFile(fileName) || child.length() == 0L) {
+                skipped++;
+                continue;
+            }
+
+            String relativePath = appendSegment(relativeDir, fileName);
+            DocumentEntity doc = new DocumentEntity(
+                fileName,
+                Uri.fromFile(child).toString(),
+                relativePath,
+                folderId,
+                FileUtils.getExtension(fileName)
+            );
+            found.add(doc);
+        }
+        return skipped;
+    }
+
+    private static boolean shouldSkipDirectory(File folder) {
+        String name = folder.getName();
+        if (name == null || name.trim().isEmpty()) return true;
+        return (
+            name.startsWith(".") ||
+            "Android".equalsIgnoreCase(name) ||
+            "data".equalsIgnoreCase(name) ||
+            "obb".equalsIgnoreCase(name)
+        );
     }
 
     private static String mimeToFileType(String mime) {

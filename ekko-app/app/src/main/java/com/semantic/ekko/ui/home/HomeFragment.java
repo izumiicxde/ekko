@@ -28,6 +28,8 @@ import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -57,6 +59,22 @@ public class HomeFragment extends Fragment {
     private FolderRepository folderRepository;
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
+    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                View root = getView();
+                if (root == null) return;
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    PublicStorageImportWorker.enqueue(requireContext());
+                    Snackbar.make(
+                        root,
+                        "Public folder import started in the background.",
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                }
+            }
+        );
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -68,18 +86,28 @@ public class HomeFragment extends Fragment {
                         .getContentResolver()
                         .takePersistableUriPermission(
                             uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                         );
                 } catch (SecurityException | IllegalArgumentException e) {
-                    View root = getView();
-                    if (root != null) {
-                        Snackbar.make(
-                            root,
-                            "Could not access that folder. Please try selecting it again.",
-                            Snackbar.LENGTH_LONG
-                        ).show();
+                    try {
+                        getActivity()
+                            .getContentResolver()
+                            .takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            );
+                    } catch (SecurityException | IllegalArgumentException ignored) {
+                        View root = getView();
+                        if (root != null) {
+                            Snackbar.make(
+                                root,
+                                "Could not access that folder. Please try selecting it again.",
+                                Snackbar.LENGTH_LONG
+                            ).show();
+                        }
+                        return;
                     }
-                    return;
                 }
                 viewModel.addFolderAndIndex(uri);
             }
@@ -249,7 +277,29 @@ public class HomeFragment extends Fragment {
 
         root
             .findViewById(R.id.btnEmptyAddFolder)
-            .setOnClickListener(v -> folderPicker.launch(null));
+            .setOnClickListener(v -> {
+                if (
+                    StorageAccessHelper.supportsAllFilesAccess() &&
+                    !StorageAccessHelper.hasAllFilesAccess()
+                ) {
+                    manageStorageAccessLauncher.launch(
+                        StorageAccessHelper.createManageAllFilesAccessIntent(
+                            requireContext()
+                        )
+                    );
+                    return;
+                }
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    PublicStorageImportWorker.enqueue(requireContext());
+                    Snackbar.make(
+                        root,
+                        "Public folder import started in the background.",
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                    return;
+                }
+                folderPicker.launch(null);
+            });
 
         root
             .findViewById(R.id.btnEmptyOpenSettings)

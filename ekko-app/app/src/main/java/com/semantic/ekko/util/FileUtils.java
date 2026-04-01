@@ -5,6 +5,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class FileUtils {
 
@@ -78,6 +84,61 @@ public class FileUtils {
             default:
                 return "*/*";
         }
+    }
+
+    /**
+     * Copies a document into app cache and returns a FileProvider URI that can
+     * be safely granted to external viewer apps.
+     */
+    public static Uri copyToViewerCache(
+        Context context,
+        Uri sourceUri,
+        String fileName
+    ) throws Exception {
+        File cacheDir = new File(context.getCacheDir(), "viewer");
+        if (!cacheDir.exists() && !cacheDir.mkdirs()) {
+            throw new IllegalStateException("Could not create viewer cache");
+        }
+
+        File outFile = new File(cacheDir, buildSafeCacheFileName(fileName));
+        try (
+            InputStream inputStream = openInputStream(context, sourceUri);
+            FileOutputStream outputStream = new FileOutputStream(outFile, false)
+        ) {
+            if (inputStream == null) {
+                throw new IllegalStateException("Could not open source file");
+            }
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            outputStream.flush();
+        }
+
+        return FileProvider.getUriForFile(
+            context,
+            context.getPackageName() + ".fileprovider",
+            outFile
+        );
+    }
+
+    private static String buildSafeCacheFileName(String fileName) {
+        String normalized =
+            (fileName == null || fileName.trim().isEmpty())
+                ? "document"
+                : fileName.trim();
+        return normalized.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    public static InputStream openInputStream(Context context, Uri uri)
+        throws IOException {
+        if (uri == null) return null;
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            String path = uri.getPath();
+            return path != null ? new FileInputStream(path) : null;
+        }
+        return context.getContentResolver().openInputStream(uri);
     }
 
     /**
@@ -156,6 +217,10 @@ public class FileUtils {
      */
     public static String getFolderDisplayPath(Uri treeUri) {
         if (treeUri == null) return "Unknown Folder";
+        if ("file".equalsIgnoreCase(treeUri.getScheme())) {
+            String path = treeUri.getPath();
+            return (path == null || path.isEmpty()) ? "Unknown Folder" : path;
+        }
 
         String path = null;
         try {

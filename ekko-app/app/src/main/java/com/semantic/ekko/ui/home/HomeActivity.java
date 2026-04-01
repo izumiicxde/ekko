@@ -25,6 +25,8 @@ import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchActivity;
 import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
+import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -48,6 +50,20 @@ public class HomeActivity extends AppCompatActivity {
     private ChipGroup chipGroupFilters;
     private View searchBar;
     private Map<Long, String> currentFolderNames = new HashMap<>();
+    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    PublicStorageImportWorker.enqueue(this);
+                    Snackbar.make(
+                        recyclerDocuments,
+                        "Public folder import started in the background.",
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                }
+            }
+        );
 
     // =========================
     // FOLDER PICKER
@@ -58,10 +74,18 @@ public class HomeActivity extends AppCompatActivity {
             new ActivityResultContracts.OpenDocumentTree(),
             uri -> {
                 if (uri == null) return;
-                getContentResolver().takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                );
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    );
+                } catch (SecurityException | IllegalArgumentException e) {
+                    getContentResolver().takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    );
+                }
                 viewModel.addFolderAndIndex(uri);
             }
         );
@@ -209,9 +233,27 @@ public class HomeActivity extends AppCompatActivity {
     // =========================
 
     private void setupClickListeners() {
-        findViewById(R.id.fabAddFolder).setOnClickListener(v ->
-            folderPicker.launch(null)
-        );
+        findViewById(R.id.fabAddFolder).setOnClickListener(v -> {
+            if (
+                StorageAccessHelper.supportsAllFilesAccess() &&
+                !StorageAccessHelper.hasAllFilesAccess()
+            ) {
+                manageStorageAccessLauncher.launch(
+                    StorageAccessHelper.createManageAllFilesAccessIntent(this)
+                );
+                return;
+            }
+            if (StorageAccessHelper.hasAllFilesAccess()) {
+                PublicStorageImportWorker.enqueue(this);
+                Snackbar.make(
+                    recyclerDocuments,
+                    "Public folder import started in the background.",
+                    Snackbar.LENGTH_LONG
+                ).show();
+                return;
+            }
+            folderPicker.launch(null);
+        });
 
         findViewById(R.id.btnStatistics).setOnClickListener(v ->
             startActivity(new Intent(this, StatisticsActivity.class))

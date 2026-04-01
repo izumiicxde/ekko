@@ -42,7 +42,7 @@ public class FolderRepository {
         executor.execute(() -> {
             FolderEntity existing = folderDao.getByUri(folder.uri);
             if (existing != null) {
-                if (callback != null) callback.onInserted(-1, true);
+                if (callback != null) callback.onInserted(existing.id, true);
                 return;
             }
             long id = folderDao.insert(folder);

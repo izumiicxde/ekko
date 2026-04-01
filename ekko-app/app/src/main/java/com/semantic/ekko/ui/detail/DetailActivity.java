@@ -1,6 +1,5 @@
 package com.semantic.ekko.ui.detail;
 
-import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -329,36 +328,27 @@ public class DetailActivity extends AppCompatActivity {
 
     private void openFile(DocumentEntity doc) {
         try {
-            Uri uri = Uri.parse(doc.uri);
-            String mimeType = getContentResolver().getType(uri);
+            Uri sourceUri = Uri.parse(doc.uri);
+            String mimeType = getContentResolver().getType(sourceUri);
             if (mimeType == null || mimeType.isEmpty()) {
                 mimeType = FileUtils.getMimeType(doc.name);
             }
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uri, mimeType != null ? mimeType : "*/*");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.setClipData(
-                ClipData.newUri(
-                    getContentResolver(),
-                    doc.name != null ? doc.name : "document",
-                    uri
-                )
+            Uri viewerUri = FileUtils.copyToViewerCache(
+                this,
+                sourceUri,
+                doc.name
             );
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(
+                viewerUri,
+                mimeType != null ? mimeType : "*/*"
+            );
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             if (intent.resolveActivity(getPackageManager()) == null) {
                 throw new IllegalStateException("No viewer available");
             }
-            List<android.content.pm.ResolveInfo> resolvedActivities =
-                getPackageManager().queryIntentActivities(intent, 0);
-            for (var resolveInfo : resolvedActivities) {
-                grantUriPermission(
-                    resolveInfo.activityInfo.packageName,
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                );
-            }
             Intent chooser = Intent.createChooser(intent, "Open with");
             chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            chooser.setClipData(intent.getClipData());
             startActivity(chooser);
         } catch (Exception e) {
             Snackbar.make(

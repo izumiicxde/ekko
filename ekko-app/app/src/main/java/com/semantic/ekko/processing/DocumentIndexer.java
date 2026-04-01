@@ -2,6 +2,7 @@ package com.semantic.ekko.processing;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.SystemClock;
 import android.util.Log;
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.ChunkDao;
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DocumentIndexer {
 
     private static final String TAG = "DocumentIndexer";
+    private static final long PER_DOCUMENT_COOLDOWN_MS = 120L;
 
     public interface ProgressListener {
         void onStageChanged(String stage);
@@ -207,6 +209,7 @@ public class DocumentIndexer {
 
                     indexed.incrementAndGet();
                     Log.d(TAG, "Indexed: " + doc.name);
+                    SystemClock.sleep(PER_DOCUMENT_COOLDOWN_MS);
                 } catch (Exception e) {
                     Log.e(
                         TAG,

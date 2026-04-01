@@ -30,6 +30,8 @@ import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.home.HomeViewModel;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -70,20 +72,46 @@ public class SettingsFragment extends Fragment {
                         .getContentResolver()
                         .takePersistableUriPermission(
                             uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                         );
                 } catch (SecurityException | IllegalArgumentException e) {
-                    View root = getView();
-                    if (root != null) {
-                        Snackbar.make(
-                            root,
-                            "Could not access that folder. Please try selecting it again.",
-                            Snackbar.LENGTH_LONG
-                        ).show();
+                    try {
+                        getActivity()
+                            .getContentResolver()
+                            .takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            );
+                    } catch (SecurityException | IllegalArgumentException ignored) {
+                        View root = getView();
+                        if (root != null) {
+                            Snackbar.make(
+                                root,
+                                "Could not access that folder. Please try selecting it again.",
+                                Snackbar.LENGTH_LONG
+                            ).show();
+                        }
+                        return;
                     }
-                    return;
                 }
                 homeViewModel.addFolderAndIndex(uri);
+            }
+        );
+    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                View root = getView();
+                if (root == null) return;
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    PublicStorageImportWorker.enqueue(requireContext());
+                    Snackbar.make(
+                        root,
+                        "Public folder import started in the background.",
+                        Snackbar.LENGTH_LONG
+                    ).show();
+                }
             }
         );
 
@@ -207,6 +235,26 @@ public class SettingsFragment extends Fragment {
                         view,
                         "Indexing tools are still loading. Please wait a moment.",
                         Snackbar.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+                if (
+                    StorageAccessHelper.supportsAllFilesAccess() &&
+                    !StorageAccessHelper.hasAllFilesAccess()
+                ) {
+                    manageStorageAccessLauncher.launch(
+                        StorageAccessHelper.createManageAllFilesAccessIntent(
+                            requireContext()
+                        )
+                    );
+                    return;
+                }
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    PublicStorageImportWorker.enqueue(requireContext());
+                    Snackbar.make(
+                        view,
+                        "Public folder import started in the background.",
+                        Snackbar.LENGTH_LONG
                     ).show();
                     return;
                 }

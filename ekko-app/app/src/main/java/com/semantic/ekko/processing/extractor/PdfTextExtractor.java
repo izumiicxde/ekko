@@ -2,11 +2,10 @@ package com.semantic.ekko.processing.extractor;
 
 import android.content.Context;
 import android.net.Uri;
-
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
-
+import com.semantic.ekko.util.FileUtils;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -24,7 +23,7 @@ public class PdfTextExtractor {
      * Returns empty string on failure.
      */
     public static String extract(Context context, Uri uri) {
-        try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+        try (InputStream is = FileUtils.openInputStream(context, uri)) {
             if (is == null) return "";
 
             try (PDDocument document = PDDocument.load(is)) {
