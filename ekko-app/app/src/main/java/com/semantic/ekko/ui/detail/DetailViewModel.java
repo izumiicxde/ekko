@@ -57,6 +57,8 @@ public class DetailViewModel extends AndroidViewModel {
             errorMessage.postValue("Document not loaded.");
             return;
         }
+        RagRepository.cancelActiveSummaryRequest();
+        EkkoApp.getInstance().startSummary(currentDocumentId);
         summaryLoading.postValue(true);
         aiSummary.postValue(null);
         ragRepository.summarizeDocument(
@@ -65,12 +67,20 @@ public class DetailViewModel extends AndroidViewModel {
                 @Override
                 public void onAnswer(String answer, String sourceDocumentName) {
                     repository.updateSummary(currentDocumentId, answer);
+                    EkkoApp.getInstance().finishSummary(
+                        currentDocumentId,
+                        answer
+                    );
                     summaryLoading.postValue(false);
                     aiSummary.postValue(answer);
                 }
 
                 @Override
                 public void onError(String message) {
+                    EkkoApp.getInstance().failSummary(
+                        currentDocumentId,
+                        RagRepository.getGenericSummaryErrorMessage()
+                    );
                     summaryLoading.postValue(false);
                     errorMessage.postValue(
                         RagRepository.getGenericSummaryErrorMessage()

@@ -63,6 +63,8 @@ public class RagRepository {
     private final String baseUrl;
 
     private volatile Call activeCall = null;
+    private static volatile retrofit2.Call<SummaryResponse> activeSummaryCall =
+        null;
 
     public interface RagCallback {
         void onAnswer(String answer, String sourceDocumentName);
@@ -77,6 +79,13 @@ public class RagRepository {
 
     public static String getGenericSummaryErrorMessage() {
         return GENERIC_SUMMARY_UNAVAILABLE;
+    }
+
+    public static synchronized void cancelActiveSummaryRequest() {
+        if (activeSummaryCall != null && !activeSummaryCall.isCanceled()) {
+            activeSummaryCall.cancel();
+        }
+        activeSummaryCall = null;
     }
 
     public RagRepository(Context context, EmbeddingEngine embeddingEngine) {
@@ -631,8 +640,20 @@ public class RagRepository {
                 final String sourceName =
                     doc.name != null ? doc.name : "Document";
 
-                apiService
-                    .summarize(request)
+                retrofit2.Call<SummaryResponse> call = apiService.summarize(
+                    request
+                );
+                synchronized (RagRepository.class) {
+                    if (
+                        activeSummaryCall != null &&
+                        !activeSummaryCall.isCanceled()
+                    ) {
+                        activeSummaryCall.cancel();
+                    }
+                    activeSummaryCall = call;
+                }
+
+                call
                     .enqueue(
                         new Callback<SummaryResponse>() {
                             @Override
@@ -655,6 +676,7 @@ public class RagRepository {
                                         GENERIC_SUMMARY_UNAVAILABLE
                                     );
                                 }
+                                clearActiveSummaryCall(call);
                             }
 
                             @Override
@@ -662,7 +684,12 @@ public class RagRepository {
                                 retrofit2.Call<SummaryResponse> call,
                                 Throwable t
                             ) {
-                                callback.onError(GENERIC_SUMMARY_UNAVAILABLE);
+                                if (!call.isCanceled()) {
+                                    callback.onError(
+                                        GENERIC_SUMMARY_UNAVAILABLE
+                                    );
+                                }
+                                clearActiveSummaryCall(call);
                             }
                         }
                     );
@@ -671,6 +698,14 @@ public class RagRepository {
             }
         })
             .start();
+    }
+
+    private static synchronized void clearActiveSummaryCall(
+        retrofit2.Call<SummaryResponse> call
+    ) {
+        if (activeSummaryCall == call) {
+            activeSummaryCall = null;
+        }
     }
 
     public void query(String question, RagCallback callback) {

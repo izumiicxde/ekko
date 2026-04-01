@@ -60,11 +60,14 @@ public class DetailActivity extends AppCompatActivity {
     private View progressEnhanceSummary;
     private View layoutSummaryLoading;
     private TextView btnToggleSummary;
+    private TextView btnToggleEntities;
     private TextView txtSummaryHint;
     private Markwon markwon;
     private boolean mlReady = false;
     private boolean backendReady = false;
     private boolean summaryExpanded = false;
+    private boolean entitiesExpanded = false;
+    private List<String> currentEntities = new ArrayList<>();
     private DocumentEntity pendingOpenDoc;
     private FolderEntity pendingOpenFolder;
     private final ActivityResultLauncher<Uri> folderAccessLauncher =
@@ -138,8 +141,10 @@ public class DetailActivity extends AppCompatActivity {
         progressEnhanceSummary = findViewById(R.id.progressEnhanceSummary);
         layoutSummaryLoading = findViewById(R.id.layoutSummaryLoading);
         btnToggleSummary = findViewById(R.id.btnToggleSummary);
+        btnToggleEntities = findViewById(R.id.btnToggleEntities);
         txtSummaryHint = findViewById(R.id.txtSummaryHint);
         btnToggleSummary.setOnClickListener(v -> toggleSummary());
+        btnToggleEntities.setOnClickListener(v -> toggleEntities());
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
@@ -242,6 +247,43 @@ public class DetailActivity extends AppCompatActivity {
                 backendReady = ready != null && ready;
                 updateActionReadiness();
             });
+        app
+            .getSummaryState()
+            .observe(this, state -> {
+                if (
+                    state == null ||
+                    currentDoc == null ||
+                    state.documentId != currentDoc.id
+                ) {
+                    return;
+                }
+                if (state.loading) {
+                    progressEnhanceSummary.setVisibility(View.VISIBLE);
+                    layoutSummaryLoading.setVisibility(View.VISIBLE);
+                    btnEnhanceSummary.setEnabled(false);
+                    btnEnhanceSummary.setText("Creating summary...");
+                    txtSummaryHint.setText(
+                        "Generating in the background. You can leave this page and come back."
+                    );
+                    return;
+                }
+
+                progressEnhanceSummary.setVisibility(View.GONE);
+                layoutSummaryLoading.setVisibility(View.GONE);
+                btnEnhanceSummary.setEnabled(mlReady && backendReady);
+                btnEnhanceSummary.setText(getSummaryActionText());
+
+                if (state.summary != null && !state.summary.trim().isEmpty()) {
+                    currentDoc.summary = state.summary;
+                    summaryExpanded = false;
+                    renderMarkdownSummary(state.summary);
+                    updateSummaryToggle(state.summary);
+                    txtSummaryHint.setText(
+                        "Freshly generated from your indexed document text"
+                    );
+                    viewModel.loadDocument(currentDoc.id);
+                }
+            });
         app.refreshBackendHealthAsync();
         updateActionReadiness();
     }
@@ -325,28 +367,19 @@ public class DetailActivity extends AppCompatActivity {
         }
 
         chipGroupEntities.removeAllViews();
-        List<String> entities = EntityExtractorHelper.entitiesFromString(
-            doc.entities
-        );
-        txtEntityCount.setText(String.valueOf(entities.size()));
+        currentEntities = EntityExtractorHelper.entitiesFromString(doc.entities);
+        txtEntityCount.setText(String.valueOf(currentEntities.size()));
 
-        if (!entities.isEmpty()) {
+        if (!currentEntities.isEmpty()) {
             labelEntities.setVisibility(View.VISIBLE);
             chipGroupEntities.setVisibility(View.VISIBLE);
-            for (String entity : entities) {
-                Chip chip = new Chip(this);
-                chip.setText(entity);
-                chip.setClickable(false);
-                chip.setFocusable(false);
-                chip.setTypeface(
-                    ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
-                );
-                styleDisplayChip(chip);
-                chipGroupEntities.addView(chip);
-            }
+            entitiesExpanded = false;
+            renderEntityChips();
+            updateEntitiesToggle();
         } else {
             labelEntities.setVisibility(View.GONE);
             chipGroupEntities.setVisibility(View.GONE);
+            btnToggleEntities.setVisibility(View.GONE);
         }
 
         preselectCorrection(doc.category);
@@ -646,5 +679,40 @@ public class DetailActivity extends AppCompatActivity {
         chip.setChipCornerRadius(getResources().getDisplayMetrics().density * 17f);
         chip.setChipBackgroundColorResource(R.color.detail_chip_background);
         chip.setTextColor(getColorStateList(R.color.detail_chip_text));
+    }
+
+    private void renderEntityChips() {
+        chipGroupEntities.removeAllViews();
+        int limit = entitiesExpanded
+            ? currentEntities.size()
+            : Math.min(8, currentEntities.size());
+        for (int i = 0; i < limit; i++) {
+            String entity = currentEntities.get(i);
+            Chip chip = new Chip(this);
+            chip.setText(entity);
+            chip.setClickable(false);
+            chip.setFocusable(false);
+            chip.setTypeface(
+                ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
+            );
+            styleDisplayChip(chip);
+            chipGroupEntities.addView(chip);
+        }
+    }
+
+    private void toggleEntities() {
+        entitiesExpanded = !entitiesExpanded;
+        renderEntityChips();
+        updateEntitiesToggle();
+    }
+
+    private void updateEntitiesToggle() {
+        boolean shouldShow = currentEntities.size() > 8;
+        btnToggleEntities.setVisibility(shouldShow ? View.VISIBLE : View.GONE);
+        if (shouldShow) {
+            btnToggleEntities.setText(
+                entitiesExpanded ? "Show fewer entities" : "Show all entities"
+            );
+        }
     }
 }

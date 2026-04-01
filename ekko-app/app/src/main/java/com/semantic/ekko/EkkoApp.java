@@ -40,6 +40,8 @@ public class EkkoApp extends Application {
     );
     private final MutableLiveData<Boolean> backendReachableState =
         new MutableLiveData<>(null);
+    private final MutableLiveData<SummaryState> summaryState =
+        new MutableLiveData<>(SummaryState.idle());
 
     // =========================
     // CHAT STORE
@@ -155,6 +157,42 @@ public class EkkoApp extends Application {
                 return safe;
             }
             return safe.substring(safe.length() - MAX_STREAM_BUFFER_CHARS);
+        }
+    }
+
+    public static class SummaryState {
+
+        public final long documentId;
+        public final boolean loading;
+        public final String summary;
+        public final String error;
+
+        private SummaryState(
+            long documentId,
+            boolean loading,
+            String summary,
+            String error
+        ) {
+            this.documentId = documentId;
+            this.loading = loading;
+            this.summary = summary;
+            this.error = error;
+        }
+
+        public static SummaryState idle() {
+            return new SummaryState(-1L, false, null, null);
+        }
+
+        public static SummaryState loading(long documentId) {
+            return new SummaryState(documentId, true, null, null);
+        }
+
+        public static SummaryState success(long documentId, String summary) {
+            return new SummaryState(documentId, false, summary, null);
+        }
+
+        public static SummaryState error(long documentId, String error) {
+            return new SummaryState(documentId, false, null, error);
         }
     }
 
@@ -288,5 +326,21 @@ public class EkkoApp extends Application {
 
     public ChatStore getChatStore() {
         return chatStore;
+    }
+
+    public LiveData<SummaryState> getSummaryState() {
+        return summaryState;
+    }
+
+    public void startSummary(long documentId) {
+        summaryState.postValue(SummaryState.loading(documentId));
+    }
+
+    public void finishSummary(long documentId, String summary) {
+        summaryState.postValue(SummaryState.success(documentId, summary));
+    }
+
+    public void failSummary(long documentId, String error) {
+        summaryState.postValue(SummaryState.error(documentId, error));
     }
 }

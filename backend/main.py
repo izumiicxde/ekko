@@ -19,6 +19,7 @@ OLLAMA_OPTIONS = {
     "temperature": 0,
     "num_predict": -1,
 }
+OLLAMA_REQUEST_TIMEOUT = 600.0
 
 SYSTEM_PROMPT = (
     "You are a strict document assistant. "
@@ -249,7 +250,7 @@ async def rag(request: RAGRequest):
 
     context = "\n\n".join(chunk.strip() for chunk in request.chunks if chunk.strip())
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
         relevant = await is_relevant(request.question, context, client)
         if not relevant:
             logger.info(f"Model rejected as irrelevant: '{request.question}'")
@@ -296,7 +297,7 @@ async def summary(request: SummaryRequest):
     )
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
             response = await client.post(
                 OLLAMA_URL,
                 json={
@@ -344,7 +345,7 @@ async def rag_stream(request: RAGRequest):
     context = "\n\n".join(chunk.strip() for chunk in request.chunks if chunk.strip())
 
     # Run relevance check before opening the stream
-    async with httpx.AsyncClient(timeout=120.0) as check_client:
+    async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as check_client:
         relevant = await is_relevant(request.question, context, check_client)
 
     if not relevant:
@@ -363,7 +364,7 @@ async def rag_stream(request: RAGRequest):
 
     async def token_generator():
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
                 async with client.stream(
                     "POST",
                     OLLAMA_URL,
