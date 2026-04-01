@@ -1,16 +1,19 @@
 package com.semantic.ekko.util;
 
 import android.content.Context;
+import android.content.UriPermission;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
+import android.webkit.MimeTypeMap;
 import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
 public class FileUtils {
 
@@ -75,15 +78,51 @@ public class FileUtils {
         switch (getExtension(fileName)) {
             case "pdf":
                 return "application/pdf";
+            case "doc":
+                return "application/msword";
             case "docx":
                 return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "ppt":
+                return "application/vnd.ms-powerpoint";
             case "pptx":
                 return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "md":
+                return "text/markdown";
+            case "rtf":
+                return "application/rtf";
             case "txt":
                 return "text/plain";
             default:
                 return "*/*";
         }
+    }
+
+    public static String resolveMimeType(
+        Context context,
+        Uri uri,
+        String fileName
+    ) {
+        if (context != null && uri != null) {
+            try {
+                String contentType = context.getContentResolver().getType(uri);
+                if (contentType != null && !contentType.trim().isEmpty()) {
+                    return contentType;
+                }
+            } catch (Exception ignored) {
+                // fall through
+            }
+        }
+
+        String extension = getExtension(fileName);
+        if (!extension.isEmpty()) {
+            String mapped = MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(extension);
+            if (mapped != null && !mapped.trim().isEmpty()) {
+                return mapped;
+            }
+        }
+
+        return getMimeType(fileName);
     }
 
     /**
@@ -99,8 +138,10 @@ public class FileUtils {
         if (!cacheDir.exists() && !cacheDir.mkdirs()) {
             throw new IllegalStateException("Could not create viewer cache");
         }
-
-        File outFile = new File(cacheDir, buildSafeCacheFileName(fileName));
+        File outFile = new File(
+            cacheDir,
+            buildSafeCacheFileName(fileName, sourceUri)
+        );
         try (
             InputStream inputStream = openInputStream(context, sourceUri);
             FileOutputStream outputStream = new FileOutputStream(outFile, false)
@@ -123,12 +164,21 @@ public class FileUtils {
         );
     }
 
-    private static String buildSafeCacheFileName(String fileName) {
+    private static String buildSafeCacheFileName(String fileName, Uri sourceUri) {
         String normalized =
             (fileName == null || fileName.trim().isEmpty())
                 ? "document"
                 : fileName.trim();
-        return normalized.replaceAll("[^A-Za-z0-9._-]", "_");
+        String sanitized = normalized.replaceAll("[^A-Za-z0-9._-]", "_");
+        int dotIndex = sanitized.lastIndexOf('.');
+        String baseName = dotIndex > 0
+            ? sanitized.substring(0, dotIndex)
+            : sanitized;
+        String extension = dotIndex > 0 ? sanitized.substring(dotIndex) : "";
+        String suffix = Integer.toHexString(
+            sourceUri != null ? sourceUri.toString().hashCode() : sanitized.hashCode()
+        );
+        return baseName + "_" + suffix + extension;
     }
 
     public static InputStream openInputStream(Context context, Uri uri)
@@ -139,6 +189,27 @@ public class FileUtils {
             return path != null ? new FileInputStream(path) : null;
         }
         return context.getContentResolver().openInputStream(uri);
+    }
+
+    public static boolean hasPersistedReadPermission(Context context, Uri uri) {
+        if (context == null || uri == null) return false;
+        if (!"content".equalsIgnoreCase(uri.getScheme())) return true;
+
+        List<UriPermission> permissions = context
+            .getContentResolver()
+            .getPersistedUriPermissions();
+        if (permissions == null) return false;
+
+        for (UriPermission permission : permissions) {
+            if (
+                permission != null &&
+                permission.isReadPermission() &&
+                uri.toString().startsWith(permission.getUri().toString())
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -70,8 +70,15 @@ public class OnboardingActivity extends AppCompatActivity {
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     );
                 } catch (SecurityException | IllegalArgumentException e) {
-                    btnNext.setEnabled(true);
-                    return;
+                    try {
+                        getContentResolver().takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+                    } catch (SecurityException | IllegalArgumentException ignored) {
+                        btnNext.setEnabled(true);
+                        return;
+                    }
                 }
 
                 FolderEntity folder = new FolderEntity(
