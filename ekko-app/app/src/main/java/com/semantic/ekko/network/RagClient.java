@@ -16,9 +16,9 @@ public class RagClient {
         return new OkHttpClient.Builder()
             .retryOnConnectionFailure(true)
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(150, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .callTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(180, TimeUnit.SECONDS)
             .build();
     }
 

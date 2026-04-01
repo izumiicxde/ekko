@@ -2,6 +2,9 @@ package com.semantic.ekko.ui.detail;
 
 import android.content.ClipData;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -29,6 +32,7 @@ import com.semantic.ekko.ui.pdf.PdfViewerActivity;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.util.FileUtils;
 import io.noties.markwon.Markwon;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DetailActivity extends AppCompatActivity {
@@ -55,10 +59,12 @@ public class DetailActivity extends AppCompatActivity {
     private View labelEntities;
     private View progressEnhanceSummary;
     private View layoutSummaryLoading;
+    private TextView btnToggleSummary;
     private TextView txtSummaryHint;
     private Markwon markwon;
     private boolean mlReady = false;
     private boolean backendReady = false;
+    private boolean summaryExpanded = false;
     private DocumentEntity pendingOpenDoc;
     private FolderEntity pendingOpenFolder;
     private final ActivityResultLauncher<Uri> folderAccessLauncher =
@@ -131,7 +137,9 @@ public class DetailActivity extends AppCompatActivity {
         labelEntities = findViewById(R.id.labelEntities);
         progressEnhanceSummary = findViewById(R.id.progressEnhanceSummary);
         layoutSummaryLoading = findViewById(R.id.layoutSummaryLoading);
+        btnToggleSummary = findViewById(R.id.btnToggleSummary);
         txtSummaryHint = findViewById(R.id.txtSummaryHint);
+        btnToggleSummary.setOnClickListener(v -> toggleSummary());
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
     }
@@ -185,7 +193,9 @@ public class DetailActivity extends AppCompatActivity {
                     txtSummaryHint.setText(
                         "Freshly generated from your indexed document text"
                     );
+                    summaryExpanded = false;
                     renderMarkdownSummary(summary);
+                    updateSummaryToggle(summary);
                     btnEnhanceSummary.setText("Refresh summary");
                     btnEnhanceSummary.setEnabled(true);
                 }
@@ -280,16 +290,20 @@ public class DetailActivity extends AppCompatActivity {
         if (doc.summary != null && !doc.summary.isEmpty()) {
             txtSummary.setVisibility(View.VISIBLE);
             txtSummaryHint.setText("Saved summary from the indexed document");
+            summaryExpanded = false;
             renderMarkdownSummary(doc.summary);
+            updateSummaryToggle(doc.summary);
             btnEnhanceSummary.setText("Refresh summary");
         } else {
             txtSummary.setVisibility(View.VISIBLE);
             txtSummaryHint.setText(
                 "Create a quick overview from the indexed text already stored on-device"
             );
+            summaryExpanded = false;
             renderMarkdownSummary(
                 "No summary yet. Use the action above to create one."
             );
+            updateSummaryToggle("");
             btnEnhanceSummary.setText("Create summary");
         }
 
@@ -305,6 +319,7 @@ public class DetailActivity extends AppCompatActivity {
                 chip.setTypeface(
                     ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
                 );
+                styleDisplayChip(chip);
                 chipGroupKeywords.addView(chip);
             }
         }
@@ -326,6 +341,7 @@ public class DetailActivity extends AppCompatActivity {
                 chip.setTypeface(
                     ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
                 );
+                styleDisplayChip(chip);
                 chipGroupEntities.addView(chip);
             }
         } else {
@@ -472,12 +488,28 @@ public class DetailActivity extends AppCompatActivity {
         String mimeType
     ) {
         Intent intent = buildViewIntent(docName, openUri, mimeType);
-        Intent chooser = Intent.createChooser(intent, "Open with");
-        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        chooser.setClipData(ClipData.newUri(getContentResolver(), docName, openUri));
+        List<ResolveInfo> handlers = getPackageManager().queryIntentActivities(
+            intent,
+            PackageManager.MATCH_DEFAULT_ONLY
+        );
+        if (handlers == null || handlers.isEmpty()) {
+            return false;
+        }
+
+        grantReadAccessToHandlers(openUri, handlers);
+
+        Intent launchIntent = intent;
+        if (handlers.size() > 1) {
+            Intent chooser = Intent.createChooser(intent, "Open with");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            chooser.setClipData(
+                ClipData.newUri(getContentResolver(), docName, openUri)
+            );
+            launchIntent = chooser;
+        }
 
         try {
-            startActivity(chooser);
+            startActivity(launchIntent);
             return true;
         } catch (Exception ignored) {
             return false;
@@ -490,6 +522,30 @@ public class DetailActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setClipData(ClipData.newUri(getContentResolver(), docName, openUri));
         return intent;
+    }
+
+    private void grantReadAccessToHandlers(Uri openUri, List<ResolveInfo> handlers) {
+        if (openUri == null || handlers == null) {
+            return;
+        }
+        for (ResolveInfo handler : new ArrayList<>(handlers)) {
+            if (
+                handler == null ||
+                handler.activityInfo == null ||
+                handler.activityInfo.packageName == null
+            ) {
+                continue;
+            }
+            try {
+                grantUriPermission(
+                    handler.activityInfo.packageName,
+                    openUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
+            } catch (Exception ignored) {
+                // Continue granting other handlers even if one grant fails.
+            }
+        }
     }
 
     private boolean isPdfDocument(String mimeType, String docName) {
@@ -553,10 +609,42 @@ public class DetailActivity extends AppCompatActivity {
             txtSummary.setText("");
             return;
         }
+        txtSummary.setMaxLines(summaryExpanded ? Integer.MAX_VALUE : 7);
+        txtSummary.setEllipsize(summaryExpanded ? null : android.text.TextUtils.TruncateAt.END);
         try {
             markwon.setMarkdown(txtSummary, text);
         } catch (Exception ignored) {
             txtSummary.setText(text);
         }
+    }
+
+    private void toggleSummary() {
+        if (currentDoc == null || currentDoc.summary == null || currentDoc.summary.isEmpty()) {
+            return;
+        }
+        summaryExpanded = !summaryExpanded;
+        renderMarkdownSummary(currentDoc.summary);
+        updateSummaryToggle(currentDoc.summary);
+    }
+
+    private void updateSummaryToggle(String summary) {
+        boolean hasSummary = summary != null && !summary.trim().isEmpty();
+        boolean shouldShowToggle = hasSummary && summary.trim().length() > 220;
+        btnToggleSummary.setVisibility(shouldShowToggle ? View.VISIBLE : View.GONE);
+        if (shouldShowToggle) {
+            btnToggleSummary.setText(summaryExpanded ? "Show less" : "Show more");
+        }
+    }
+
+    private void styleDisplayChip(Chip chip) {
+        if (chip == null) {
+            return;
+        }
+        chip.setChipStrokeWidth(0f);
+        chip.setEnsureMinTouchTargetSize(false);
+        chip.setChipMinHeight(getResources().getDisplayMetrics().density * 34f);
+        chip.setChipCornerRadius(getResources().getDisplayMetrics().density * 17f);
+        chip.setChipBackgroundColorResource(R.color.detail_chip_background);
+        chip.setTextColor(getColorStateList(R.color.detail_chip_text));
     }
 }

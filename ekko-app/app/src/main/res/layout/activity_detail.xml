@@ -89,7 +89,7 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipCategory"
-                style="@style/Widget.Material3.Chip.Assist"
+                style="@style/Widget.Ekko.Chip.Display"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -102,6 +102,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
+                android:gravity="center_horizontal"
                 android:orientation="horizontal"
             >
 
@@ -109,6 +110,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:gravity="center_horizontal"
                     android:orientation="vertical"
                 >
 
@@ -138,6 +140,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:gravity="center_horizontal"
                     android:orientation="vertical"
                 >
 
@@ -167,6 +170,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:gravity="center_horizontal"
                     android:orientation="vertical"
                 >
 
@@ -296,12 +300,31 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
+                android:ellipsize="end"
                 android:fontFamily="@font/bricolage_grotesque"
                 android:lineSpacingExtra="3dp"
                 android:lineSpacingMultiplier="1.6"
+                android:maxLines="7"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="15sp"
                 tools:text="This document introduces core machine learning concepts."
+            />
+
+            <TextView
+                android:id="@+id/btnToggleSummary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:paddingStart="2dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="2dp"
+                android:paddingBottom="4dp"
+                android:text="Show more"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone"
             />
 
             <TextView
@@ -372,7 +395,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorTechnical"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.Ekko.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/bricolage_grotesque"
@@ -381,7 +404,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorResearch"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.Ekko.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/bricolage_grotesque"
@@ -390,7 +413,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorLegal"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.Ekko.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/bricolage_grotesque"
@@ -399,7 +422,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorMedical"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.Ekko.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/bricolage_grotesque"
@@ -408,7 +431,7 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipCorGeneral"
-                    style="@style/Widget.Material3.Chip.Filter"
+                    style="@style/Widget.Ekko.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/bricolage_grotesque"

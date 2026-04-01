@@ -186,6 +186,28 @@
         <item name="elevation">0dp</item>
     </style>
 
+    <style name="Widget.Ekko.Chip.Display" parent="Widget.Material3.Chip.Assist">
+        <item name="android:minHeight">34dp</item>
+        <item name="chipCornerRadius">17dp</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="chipBackgroundColor">@color/detail_chip_background</item>
+        <item name="android:textColor">@color/detail_chip_text</item>
+        <item name="android:textStyle">bold</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
+    <style name="Widget.Ekko.Chip.Filter" parent="Widget.Material3.Chip.Filter">
+        <item name="android:minHeight">34dp</item>
+        <item name="chipCornerRadius">17dp</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="chipBackgroundColor">@color/detail_chip_background</item>
+        <item name="android:textColor">@color/detail_chip_text</item>
+        <item name="android:textStyle">bold</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
     <style
         name="Animation.Ekko.Window"
         parent="@android:style/Animation.Activity"
