@@ -10,6 +10,7 @@ import com.semantic.ekko.ml.EmbeddingEngine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -151,13 +152,20 @@ public class DocumentRepository {
                 documentDao.getAllEmbeddings();
             List<SearchResult> results = new ArrayList<>();
 
-            String queryLower =
-                rawQuery != null ? rawQuery.toLowerCase().trim() : "";
-            String[] queryTerms = queryLower.split("\\s+");
+            String normalizedQuery = normalizeSearchText(rawQuery);
+            String[] queryTerms = tokenizeQuery(normalizedQuery);
 
             for (DocumentDao.DocumentEmbeddingRow row : rows) {
                 boolean obviousTextMatch = hasAnyFieldMatch(
                     queryTerms,
+                    row.name,
+                    row.relative_path,
+                    row.keywords,
+                    row.summary,
+                    row.raw_text
+                );
+                boolean exactPhraseMatch = hasPhraseMatch(
+                    normalizedQuery,
                     row.name,
                     row.relative_path,
                     row.keywords,
@@ -189,18 +197,30 @@ public class DocumentRepository {
                     computeFieldScore(row.name, queryTerms),
                     computeFieldScore(row.relative_path, queryTerms)
                 );
+                float phraseScore = computePhraseScore(
+                    normalizedQuery,
+                    row.name,
+                    row.relative_path,
+                    row.summary,
+                    row.raw_text
+                );
 
                 float finalScore =
-                    0.35f * embeddingScore +
-                    0.20f * keywordScore +
-                    0.15f * summaryScore +
-                    0.20f * fullTextScore +
-                    0.10f * filenameScore;
+                    0.30f * embeddingScore +
+                    0.18f * keywordScore +
+                    0.12f * summaryScore +
+                    0.18f * fullTextScore +
+                    0.10f * filenameScore +
+                    0.12f * phraseScore;
 
-                if (
-                    finalScore >= minScore ||
-                    (obviousTextMatch && finalScore >= 0.05f)
-                ) {
+                if (obviousTextMatch) {
+                    finalScore = Math.max(
+                        finalScore,
+                        exactPhraseMatch ? 0.24f : 0.12f
+                    );
+                }
+
+                if (finalScore >= minScore || obviousTextMatch) {
                     DocumentEntity doc = documentDao.getById(row.id);
                     if (doc != null) {
                         results.add(new SearchResult(doc, finalScore));
@@ -226,7 +246,7 @@ public class DocumentRepository {
         ) {
             return 0f;
         }
-        String lowerField = fieldText.toLowerCase();
+        String lowerField = normalizeSearchText(fieldText);
         int matches = 0;
         int validTerms = 0;
         for (String term : queryTerms) {
@@ -244,15 +264,49 @@ public class DocumentRepository {
         }
         for (String fieldText : fieldTexts) {
             if (fieldText == null || fieldText.isEmpty()) continue;
-            String lowerField = fieldText.toLowerCase();
+            String lowerField = normalizeSearchText(fieldText);
             for (String term : queryTerms) {
                 if (term == null || term.length() < 2) continue;
-                if (lowerField.contains(term.toLowerCase())) {
+                if (lowerField.contains(term)) {
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private boolean hasPhraseMatch(String query, String... fieldTexts) {
+        if (query == null || query.isEmpty() || fieldTexts == null) {
+            return false;
+        }
+        for (String fieldText : fieldTexts) {
+            if (fieldText == null || fieldText.isEmpty()) continue;
+            if (normalizeSearchText(fieldText).contains(query)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private float computePhraseScore(String query, String... fieldTexts) {
+        return hasPhraseMatch(query, fieldTexts) ? 1f : 0f;
+    }
+
+    private String[] tokenizeQuery(String normalizedQuery) {
+        if (normalizedQuery == null || normalizedQuery.isEmpty()) {
+            return new String[0];
+        }
+        return normalizedQuery.split("\\s+");
+    }
+
+    private String normalizeSearchText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+            .toLowerCase(Locale.ROOT)
+            .replaceAll("[^a-z0-9]+", " ")
+            .trim();
     }
 
     // =========================

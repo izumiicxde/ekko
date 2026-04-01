@@ -106,7 +106,7 @@ public class FileUtils {
         if (context != null && uri != null) {
             try {
                 String contentType = context.getContentResolver().getType(uri);
-                if (contentType != null && !contentType.trim().isEmpty()) {
+                if (isSpecificMimeType(contentType)) {
                     return contentType;
                 }
             } catch (Exception ignored) {
@@ -124,6 +124,17 @@ public class FileUtils {
         }
 
         return getMimeType(fileName);
+    }
+
+    private static boolean isSpecificMimeType(String mimeType) {
+        if (mimeType == null) return false;
+        String normalized = mimeType.trim().toLowerCase();
+        return (
+            !normalized.isEmpty() &&
+            !"*/*".equals(normalized) &&
+            !"application/octet-stream".equals(normalized) &&
+            !"binary/octet-stream".equals(normalized)
+        );
     }
 
     /**

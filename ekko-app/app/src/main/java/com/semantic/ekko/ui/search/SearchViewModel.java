@@ -21,7 +21,7 @@ public class SearchViewModel extends AndroidViewModel {
 
     // Keep a floor for semantic noise, but allow exact text hits through in the
     // repository fallback path.
-    private static final float MIN_SCORE = 0.12f;
+    private static final float MIN_SCORE = 0.08f;
 
     private final MutableLiveData<List<SearchResult>> results =
         new MutableLiveData<>();

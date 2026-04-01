@@ -14,9 +14,15 @@ public class DocumentScanner {
 
     private static final String[] SUPPORTED_MIME_TYPES = {
         "application/pdf",
+        "application/x-pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.ms-powerpoint",
         "text/plain",
+        "text/markdown",
+        "application/rtf",
+        "text/rtf",
     };
 
     // =========================
@@ -114,7 +120,7 @@ public class DocumentScanner {
                     continue;
                 }
 
-                if (!isSupportedMime(mime)) {
+                if (!isSupportedMime(mime, name)) {
                     skipped++;
                     continue;
                 }
@@ -125,7 +131,7 @@ public class DocumentScanner {
                     continue;
                 }
 
-                String fileType = mimeToFileType(mime);
+                String fileType = mimeToFileType(mime, name);
                 String relativePath = appendSegment(relativeDir, name);
                 DocumentEntity doc = new DocumentEntity(
                     name,
@@ -242,12 +248,13 @@ public class DocumentScanner {
     // HELPERS
     // =========================
 
-    private static boolean isSupportedMime(String mime) {
-        if (mime == null) return false;
-        for (String supported : SUPPORTED_MIME_TYPES) {
-            if (supported.equals(mime)) return true;
+    private static boolean isSupportedMime(String mime, String fileName) {
+        if (mime != null) {
+            for (String supported : SUPPORTED_MIME_TYPES) {
+                if (supported.equalsIgnoreCase(mime)) return true;
+            }
         }
-        return false;
+        return FileUtils.isSupportedFile(fileName);
     }
 
     private static int scanFilesystemFolderRecursive(
@@ -324,18 +331,31 @@ public class DocumentScanner {
         );
     }
 
-    private static String mimeToFileType(String mime) {
-        switch (mime) {
+    private static String mimeToFileType(String mime, String fileName) {
+        if (mime == null || mime.trim().isEmpty()) {
+            return FileUtils.getExtension(fileName);
+        }
+        switch (mime.toLowerCase()) {
             case "application/pdf":
+            case "application/x-pdf":
                 return "pdf";
+            case "application/msword":
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                return "docx";
+                return "doc".equals(FileUtils.getExtension(fileName))
+                    ? "doc"
+                    : "docx";
+            case "application/vnd.ms-powerpoint":
             case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-                return "pptx";
+                return "ppt".equals(FileUtils.getExtension(fileName))
+                    ? "ppt"
+                    : "pptx";
             case "text/plain":
+            case "text/markdown":
+            case "application/rtf":
+            case "text/rtf":
                 return "txt";
             default:
-                return "unknown";
+                return FileUtils.getExtension(fileName);
         }
     }
 }
