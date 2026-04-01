@@ -46,13 +46,8 @@ public class OnboardingActivity extends AppCompatActivity {
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 refreshAccessState();
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(this);
-                    completeOnboarding();
-                } else {
-                    btnNext.setEnabled(true);
-                    updateUiForPage(viewPager.getCurrentItem());
-                }
+                btnNext.setEnabled(true);
+                updateUiForPage(viewPager.getCurrentItem());
             }
         );
     private final ActivityResultLauncher<Uri> folderPicker =
@@ -193,6 +188,15 @@ public class OnboardingActivity extends AppCompatActivity {
         );
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshAccessState();
+        if (viewPager != null) {
+            updateUiForPage(viewPager.getCurrentItem());
+        }
+    }
+
     private void bindViews() {
         viewPager = findViewById(R.id.viewPagerOnboarding);
         btnBack = findViewById(R.id.btnOnboardingBack);
@@ -321,7 +325,7 @@ public class OnboardingActivity extends AppCompatActivity {
             ) {
                 btnNext.setText(R.string.onboarding_allow_storage_access);
             } else if (StorageAccessHelper.hasAllFilesAccess()) {
-                btnNext.setText(R.string.onboarding_import_public_folders);
+                btnNext.setText(R.string.onboarding_continue);
             } else {
                 btnNext.setText(
                     hasRequiredFolder
@@ -333,7 +337,12 @@ public class OnboardingActivity extends AppCompatActivity {
             btnNext.setText(R.string.onboarding_next);
         }
         btnNext.setIcon(
-            ContextCompat.getDrawable(this, R.drawable.ic_arrow_forward_small)
+            lastPage
+                ? null
+                : ContextCompat.getDrawable(
+                    this,
+                    R.drawable.ic_arrow_forward_small
+                )
         );
     }
 

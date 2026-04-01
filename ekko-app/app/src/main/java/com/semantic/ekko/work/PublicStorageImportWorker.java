@@ -4,10 +4,12 @@ import android.content.Context;
 import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.work.ExistingWorkPolicy;
+import androidx.work.WorkInfo;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
+import androidx.lifecycle.LiveData;
 import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.DocumentDao;
@@ -43,6 +45,12 @@ public class PublicStorageImportWorker extends Worker {
             ExistingWorkPolicy.KEEP,
             request
         );
+    }
+
+    public static LiveData<List<WorkInfo>> getWorkInfoLiveData(Context context) {
+        return WorkManager
+            .getInstance(context)
+            .getWorkInfosForUniqueWorkLiveData(UNIQUE_WORK_NAME);
     }
 
     @NonNull

@@ -50,8 +50,16 @@
     >Ekko indexes supported documents in a background queue and uses one worker to limit heat and battery drain.</string>
     <string name="onboarding_choose_folder">Choose folder</string>
     <string name="onboarding_allow_storage_access">Allow storage access</string>
+    <string name="onboarding_continue">Continue</string>
     <string name="onboarding_import_public_folders">Import public folders</string>
     <string name="onboarding_skip_setup">Skip ahead</string>
+    <string name="home_public_import_running_title">Importing public folders</string>
+    <string name="home_public_import_running_body">Running in the background</string>
+    <string name="pdf_viewer_title">PDF Viewer</string>
+    <string name="pdf_viewer_page_indicator">%1$d / %2$d</string>
+    <string name="pdf_viewer_previous">Previous</string>
+    <string name="pdf_viewer_next">Next</string>
+    <string name="pdf_viewer_open_error">Could not open this PDF.</string>
     <string name="launcher_routing_message">Preparing your workspace</string>
     <string name="launcher_title">Ekko</string>
     <string

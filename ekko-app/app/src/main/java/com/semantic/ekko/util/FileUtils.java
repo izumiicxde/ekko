@@ -2,6 +2,7 @@ package com.semantic.ekko.util;
 
 import android.content.Context;
 import android.content.UriPermission;
+import android.os.ParcelFileDescriptor;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.DocumentsContract;
@@ -189,6 +190,22 @@ public class FileUtils {
             return path != null ? new FileInputStream(path) : null;
         }
         return context.getContentResolver().openInputStream(uri);
+    }
+
+    public static ParcelFileDescriptor openFileDescriptor(
+        Context context,
+        Uri uri
+    ) throws IOException {
+        if (context == null || uri == null) return null;
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            String path = uri.getPath();
+            if (path == null) return null;
+            return ParcelFileDescriptor.open(
+                new File(path),
+                ParcelFileDescriptor.MODE_READ_ONLY
+            );
+        }
+        return context.getContentResolver().openFileDescriptor(uri, "r");
     }
 
     public static boolean hasPersistedReadPermission(Context context, Uri uri) {

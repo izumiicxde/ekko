@@ -51,6 +51,7 @@
         />
         <activity android:name=".ui.home.HomeActivity" />
         <activity android:name=".ui.detail.DetailActivity" />
+        <activity android:name=".ui.pdf.PdfViewerActivity" />
         <activity android:name=".ui.search.SearchActivity" />
         <activity android:name=".ui.settings.SettingsActivity" />
         <activity android:name=".ui.statistics.StatisticsActivity" />

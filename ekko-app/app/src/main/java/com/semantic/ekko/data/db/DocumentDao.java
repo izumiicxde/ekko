@@ -95,7 +95,7 @@ public interface DocumentDao {
     // EMBEDDED DOCUMENTS
     // =========================
     @Query(
-        "SELECT id, name, uri, category, embedding, word_count, file_type, keywords, summary FROM documents WHERE embedding IS NOT NULL"
+        "SELECT id, name, uri, category, embedding, word_count, file_type, keywords, summary, raw_text, relative_path FROM documents WHERE embedding IS NOT NULL"
     )
     List<DocumentEmbeddingRow> getAllEmbeddings();
 
@@ -133,5 +133,7 @@ public interface DocumentDao {
         public String file_type;
         public String keywords;
         public String summary;
+        public String raw_text;
+        public String relative_path;
     }
 }

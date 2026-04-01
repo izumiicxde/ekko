@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.work.WorkInfo;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -59,6 +60,7 @@ public class HomeFragment extends Fragment {
     private FolderRepository folderRepository;
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
+    private boolean publicImportRunning = false;
     private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
         registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -228,9 +230,7 @@ public class HomeFragment extends Fragment {
         viewModel
             .getIsIndexing()
             .observe(getViewLifecycleOwner(), indexing -> {
-                layoutIndexingProgress.setVisibility(
-                    indexing ? View.VISIBLE : View.GONE
-                );
+                updateIndexingUi(indexing != null && indexing);
             });
 
         viewModel
@@ -262,6 +262,19 @@ public class HomeFragment extends Fragment {
                         msg,
                         Snackbar.LENGTH_LONG
                     ).show();
+                }
+            });
+
+        PublicStorageImportWorker
+            .getWorkInfoLiveData(requireContext())
+            .observe(getViewLifecycleOwner(), workInfos -> {
+                boolean wasRunning = publicImportRunning;
+                publicImportRunning = isPublicImportRunning(workInfos);
+                updateIndexingUi(
+                    viewModel.getIsIndexing().getValue() == Boolean.TRUE
+                );
+                if (wasRunning && !publicImportRunning) {
+                    viewModel.loadDocuments();
                 }
             });
     }
@@ -521,5 +534,42 @@ public class HomeFragment extends Fragment {
                 );
             });
         });
+    }
+
+    private boolean isPublicImportRunning(List<WorkInfo> workInfos) {
+        if (workInfos == null || workInfos.isEmpty()) return false;
+        for (WorkInfo workInfo : workInfos) {
+            if (workInfo == null) continue;
+            WorkInfo.State state = workInfo.getState();
+            if (state == WorkInfo.State.RUNNING || state == WorkInfo.State.ENQUEUED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateIndexingUi(boolean appIndexing) {
+        boolean showBanner = appIndexing || publicImportRunning;
+        layoutIndexingProgress.setVisibility(showBanner ? View.VISIBLE : View.GONE);
+        if (!showBanner) {
+            progressIndexing.setIndeterminate(false);
+            progressIndexing.setProgress(0);
+            txtIndexingStage.setText("");
+            txtIndexingDoc.setText("");
+            return;
+        }
+
+        if (publicImportRunning && !appIndexing) {
+            progressIndexing.setIndeterminate(true);
+            txtIndexingStage.setText(
+                getString(R.string.home_public_import_running_title)
+            );
+            txtIndexingDoc.setText(
+                getString(R.string.home_public_import_running_body)
+            );
+            return;
+        }
+
+        progressIndexing.setIndeterminate(false);
     }
 }

@@ -124,19 +124,21 @@ public class DocumentRepository {
 
     /**
      * Hybrid search combining embedding cosine similarity with keyword,
-     * summary, and filename text matching.
+     * summary, full-text, and filename/path text matching.
      *
      * Scoring breakdown:
      *   embeddingScore  - cosine similarity between query and document vectors
      *   keywordScore    - proportion of query terms found in extracted keywords
      *   summaryScore    - proportion of query terms found in document summary
-     *   filenameScore   - whether query terms appear in the filename (minor bonus)
+     *   fullTextScore   - proportion of query terms found in indexed document text
+     *   filenameScore   - whether query terms appear in the filename/path
      *
-     * Final score = 0.55 * embeddingScore + 0.30 * keywordScore
-     *             + 0.10 * summaryScore   + 0.05 * filenameScore
+     * Final score = 0.35 * embeddingScore + 0.20 * keywordScore
+     *             + 0.15 * summaryScore   + 0.20 * fullTextScore
+     *             + 0.10 * filenameScore
      *
-     * A result is included only if its final score meets the minScore threshold.
-     * There is no fallback inclusion based on partial text matches alone.
+     * Exact text hits in indexed fields are also allowed through with a lower
+     * score floor so obvious matches are never hidden behind a weak embedding.
      */
     public void search(
         float[] queryEmbedding,
@@ -171,17 +173,35 @@ public class DocumentRepository {
                     queryTerms
                 );
                 float summaryScore = computeFieldScore(row.summary, queryTerms);
-                float filenameScore = computeFieldScore(row.name, queryTerms);
+                float fullTextScore = computeFieldScore(
+                    row.raw_text,
+                    queryTerms
+                );
+                float filenameScore = Math.max(
+                    computeFieldScore(row.name, queryTerms),
+                    computeFieldScore(row.relative_path, queryTerms)
+                );
 
                 float finalScore =
-                    0.55f * embeddingScore +
-                    0.30f * keywordScore +
-                    0.10f * summaryScore +
-                    0.05f * filenameScore;
+                    0.35f * embeddingScore +
+                    0.20f * keywordScore +
+                    0.15f * summaryScore +
+                    0.20f * fullTextScore +
+                    0.10f * filenameScore;
 
-                // Only include results that meet the minimum score threshold.
-                // No fallback inclusion for loose text matches.
-                if (finalScore >= minScore) {
+                boolean obviousTextMatch = hasAnyFieldMatch(
+                    queryTerms,
+                    row.name,
+                    row.relative_path,
+                    row.keywords,
+                    row.summary,
+                    row.raw_text
+                );
+
+                if (
+                    finalScore >= minScore ||
+                    (obviousTextMatch && finalScore >= 0.05f)
+                ) {
                     DocumentEntity doc = documentDao.getById(row.id);
                     if (doc != null) {
                         results.add(new SearchResult(doc, finalScore));
@@ -217,6 +237,23 @@ public class DocumentRepository {
         }
         if (validTerms == 0) return 0f;
         return (float) matches / validTerms;
+    }
+
+    private boolean hasAnyFieldMatch(String[] queryTerms, String... fieldTexts) {
+        if (queryTerms == null || queryTerms.length == 0 || fieldTexts == null) {
+            return false;
+        }
+        for (String fieldText : fieldTexts) {
+            if (fieldText == null || fieldText.isEmpty()) continue;
+            String lowerField = fieldText.toLowerCase();
+            for (String term : queryTerms) {
+                if (term == null || term.length() < 2) continue;
+                if (lowerField.contains(term.toLowerCase())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // =========================

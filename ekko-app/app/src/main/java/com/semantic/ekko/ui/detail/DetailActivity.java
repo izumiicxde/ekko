@@ -22,6 +22,7 @@ import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
+import com.semantic.ekko.ui.pdf.PdfViewerActivity;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.util.FileUtils;
 import io.noties.markwon.Markwon;
@@ -340,6 +341,16 @@ public class DetailActivity extends AppCompatActivity {
                 sourceUri,
                 doc.name
             );
+            if ("application/pdf".equalsIgnoreCase(mimeType)) {
+                Intent intent = new Intent(this, PdfViewerActivity.class);
+                intent.putExtra(
+                    PdfViewerActivity.EXTRA_PDF_URI,
+                    viewerUri.toString()
+                );
+                intent.putExtra(PdfViewerActivity.EXTRA_TITLE, doc.name);
+                startActivity(intent);
+                return;
+            }
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(
                 viewerUri,
