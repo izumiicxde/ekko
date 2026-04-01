@@ -16,7 +16,6 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.work.WorkInfo;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -29,8 +28,6 @@ import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
-import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -60,23 +57,6 @@ public class HomeFragment extends Fragment {
     private FolderRepository folderRepository;
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
-    private boolean publicImportRunning = false;
-    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
-        registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                View root = getView();
-                if (root == null) return;
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(requireContext());
-                    Snackbar.make(
-                        root,
-                        "Public folder import started in the background.",
-                        Snackbar.LENGTH_LONG
-                    ).show();
-                }
-            }
-        );
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -262,19 +242,6 @@ public class HomeFragment extends Fragment {
                         msg,
                         Snackbar.LENGTH_LONG
                     ).show();
-                }
-            });
-
-        PublicStorageImportWorker
-            .getWorkInfoLiveData(requireContext())
-            .observe(getViewLifecycleOwner(), workInfos -> {
-                boolean wasRunning = publicImportRunning;
-                publicImportRunning = isPublicImportRunning(workInfos);
-                updateIndexingUi(
-                    viewModel.getIsIndexing().getValue() == Boolean.TRUE
-                );
-                if (wasRunning && !publicImportRunning) {
-                    viewModel.loadDocuments();
                 }
             });
     }
@@ -516,37 +483,14 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private boolean isPublicImportRunning(List<WorkInfo> workInfos) {
-        if (workInfos == null || workInfos.isEmpty()) return false;
-        for (WorkInfo workInfo : workInfos) {
-            if (workInfo == null) continue;
-            WorkInfo.State state = workInfo.getState();
-            if (state == WorkInfo.State.RUNNING || state == WorkInfo.State.ENQUEUED) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void updateIndexingUi(boolean appIndexing) {
-        boolean showBanner = appIndexing || publicImportRunning;
+        boolean showBanner = appIndexing;
         layoutIndexingProgress.setVisibility(showBanner ? View.VISIBLE : View.GONE);
         if (!showBanner) {
             progressIndexing.setIndeterminate(false);
             progressIndexing.setProgress(0);
             txtIndexingStage.setText("");
             txtIndexingDoc.setText("");
-            return;
-        }
-
-        if (publicImportRunning && !appIndexing) {
-            progressIndexing.setIndeterminate(true);
-            txtIndexingStage.setText(
-                getString(R.string.home_public_import_running_title)
-            );
-            txtIndexingDoc.setText(
-                getString(R.string.home_public_import_running_body)
-            );
             return;
         }
 

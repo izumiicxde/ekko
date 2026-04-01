@@ -30,8 +30,6 @@ import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.home.HomeViewModel;
 import com.semantic.ekko.util.PrefsManager;
-import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -98,23 +96,6 @@ public class SettingsFragment extends Fragment {
                 homeViewModel.addFolderAndIndex(uri);
             }
         );
-    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
-        registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                View root = getView();
-                if (root == null) return;
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(requireContext());
-                    Snackbar.make(
-                        root,
-                        "Public folder import started in the background.",
-                        Snackbar.LENGTH_LONG
-                    ).show();
-                }
-            }
-        );
-
     @Nullable
     @Override
     public View onCreateView(

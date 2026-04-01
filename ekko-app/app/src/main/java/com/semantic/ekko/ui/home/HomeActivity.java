@@ -25,8 +25,6 @@ import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchActivity;
 import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
-import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -50,20 +48,6 @@ public class HomeActivity extends AppCompatActivity {
     private ChipGroup chipGroupFilters;
     private View searchBar;
     private Map<Long, String> currentFolderNames = new HashMap<>();
-    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
-        registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(this);
-                    Snackbar.make(
-                        recyclerDocuments,
-                        "Public folder import started in the background.",
-                        Snackbar.LENGTH_LONG
-                    ).show();
-                }
-            }
-        );
 
     // =========================
     // FOLDER PICKER

@@ -24,8 +24,6 @@ import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
-import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.Arrays;
 import java.util.List;
 
@@ -41,15 +39,6 @@ public class OnboardingActivity extends AppCompatActivity {
     private PrefsManager prefsManager;
     private FolderRepository folderRepository;
     private boolean hasRequiredFolder = false;
-    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
-        registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                refreshAccessState();
-                btnNext.setEnabled(true);
-                updateUiForPage(viewPager.getCurrentItem());
-            }
-        );
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
             new ActivityResultContracts.OpenDocumentTree(),
@@ -108,15 +97,12 @@ public class OnboardingActivity extends AppCompatActivity {
         bindViews();
         buildPages();
         applyWindowInsets();
-        refreshAccessState();
 
         viewPager.setAdapter(new OnboardingPagerAdapter(pages));
         folderRepository
             .getAllLive()
             .observe(this, folders -> {
-                hasRequiredFolder =
-                    StorageAccessHelper.hasAllFilesAccess() ||
-                    (folders != null && !folders.isEmpty());
+                hasRequiredFolder = folders != null && !folders.isEmpty();
                 updateUiForPage(viewPager.getCurrentItem());
             });
         createIndicators();
@@ -138,23 +124,6 @@ public class OnboardingActivity extends AppCompatActivity {
         btnNext.setOnClickListener(v -> {
             int nextPosition = viewPager.getCurrentItem() + 1;
             if (viewPager.getCurrentItem() == pages.size() - 1) {
-                if (
-                    StorageAccessHelper.supportsAllFilesAccess() &&
-                    !StorageAccessHelper.hasAllFilesAccess()
-                ) {
-                    btnNext.setEnabled(false);
-                    manageStorageAccessLauncher.launch(
-                        StorageAccessHelper.createManageAllFilesAccessIntent(
-                            this
-                        )
-                    );
-                    return;
-                }
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(this);
-                    completeOnboarding();
-                    return;
-                }
                 if (!hasRequiredFolder) {
                     btnNext.setEnabled(false);
                     folderPicker.launch(null);
@@ -191,7 +160,6 @@ public class OnboardingActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        refreshAccessState();
         if (viewPager != null) {
             updateUiForPage(viewPager.getCurrentItem());
         }
@@ -319,20 +287,11 @@ public class OnboardingActivity extends AppCompatActivity {
         btnSkip.setVisibility(lastPage ? View.INVISIBLE : View.VISIBLE);
         btnSkip.setText(R.string.onboarding_skip_setup);
         if (lastPage) {
-            if (
-                StorageAccessHelper.supportsAllFilesAccess() &&
-                !StorageAccessHelper.hasAllFilesAccess()
-            ) {
-                btnNext.setText(R.string.onboarding_allow_storage_access);
-            } else if (StorageAccessHelper.hasAllFilesAccess()) {
-                btnNext.setText(R.string.onboarding_continue);
-            } else {
-                btnNext.setText(
-                    hasRequiredFolder
-                        ? R.string.onboarding_start
-                        : R.string.onboarding_choose_folder
-                );
-            }
+            btnNext.setText(
+                hasRequiredFolder
+                    ? R.string.onboarding_start
+                    : R.string.onboarding_choose_folder
+            );
         } else {
             btnNext.setText(R.string.onboarding_next);
         }
@@ -349,10 +308,6 @@ public class OnboardingActivity extends AppCompatActivity {
     private void completeOnboarding() {
         prefsManager.setOnboardingDone(true);
         launchMain();
-    }
-
-    private void refreshAccessState() {
-        hasRequiredFolder = StorageAccessHelper.hasAllFilesAccess();
     }
 
     private void launchMain() {

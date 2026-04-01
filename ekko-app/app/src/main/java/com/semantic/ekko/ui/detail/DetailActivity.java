@@ -2,7 +2,6 @@ package com.semantic.ekko.ui.detail;
 
 import android.content.ClipData;
 import android.content.Intent;
-import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -29,7 +28,6 @@ import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.ui.pdf.PdfViewerActivity;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.util.FileUtils;
-import com.semantic.ekko.util.StorageAccessHelper;
 import io.noties.markwon.Markwon;
 import java.util.List;
 
@@ -63,11 +61,6 @@ public class DetailActivity extends AppCompatActivity {
     private boolean backendReady = false;
     private DocumentEntity pendingOpenDoc;
     private FolderEntity pendingOpenFolder;
-    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
-        registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> retryPendingOpen()
-        );
     private final ActivityResultLauncher<Uri> folderAccessLauncher =
         registerForActivityResult(
             new ActivityResultContracts.OpenDocumentTree(),
@@ -441,18 +434,6 @@ public class DetailActivity extends AppCompatActivity {
         pendingOpenDoc = doc;
         pendingOpenFolder = folder;
 
-        Uri storedUri = Uri.parse(doc.uri);
-        if (
-            "file".equalsIgnoreCase(storedUri.getScheme()) &&
-            StorageAccessHelper.supportsAllFilesAccess() &&
-            !StorageAccessHelper.hasAllFilesAccess()
-        ) {
-            manageStorageAccessLauncher.launch(
-                StorageAccessHelper.createManageAllFilesAccessIntent(this)
-            );
-            return;
-        }
-
         if (
             folder != null &&
             folder.uri != null &&
@@ -491,21 +472,6 @@ public class DetailActivity extends AppCompatActivity {
         String mimeType
     ) {
         Intent intent = buildViewIntent(docName, openUri, mimeType);
-        List<ResolveInfo> matches = getPackageManager()
-            .queryIntentActivities(intent, 0);
-        if (matches == null || matches.isEmpty()) {
-            return false;
-        }
-
-        for (ResolveInfo match : matches) {
-            if (match.activityInfo == null) continue;
-            grantUriPermission(
-                match.activityInfo.packageName,
-                openUri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            );
-        }
-
         Intent chooser = Intent.createChooser(intent, "Open with");
         chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         chooser.setClipData(ClipData.newUri(getContentResolver(), docName, openUri));
