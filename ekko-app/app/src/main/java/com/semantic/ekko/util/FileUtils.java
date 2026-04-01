@@ -218,15 +218,154 @@ public class FileUtils {
         if (permissions == null) return false;
 
         for (UriPermission permission : permissions) {
-            if (
-                permission != null &&
-                permission.isReadPermission() &&
-                uri.toString().startsWith(permission.getUri().toString())
-            ) {
-                return true;
-            }
+            if (!isReadPermissionMatch(context, permission, uri)) continue;
+            return true;
         }
         return false;
+    }
+
+    private static boolean isReadPermissionMatch(
+        Context context,
+        UriPermission permission,
+        Uri targetUri
+    ) {
+        if (
+            permission == null ||
+            !permission.isReadPermission() ||
+            permission.getUri() == null
+        ) {
+            return false;
+        }
+
+        Uri persistedUri = permission.getUri();
+        if (targetUri.toString().startsWith(persistedUri.toString())) {
+            return true;
+        }
+
+        try {
+            if (DocumentsContract.isTreeUri(persistedUri)) {
+                String treeDocumentId = DocumentsContract.getTreeDocumentId(
+                    persistedUri
+                );
+                String targetDocumentId = DocumentsContract.isDocumentUri(
+                    context,
+                    targetUri
+                )
+                    ? DocumentsContract.getDocumentId(targetUri)
+                    : DocumentsContract.getTreeDocumentId(targetUri);
+                return (
+                    treeDocumentId != null &&
+                    targetDocumentId != null &&
+                    (
+                        targetDocumentId.equals(treeDocumentId) ||
+                        targetDocumentId.startsWith(treeDocumentId + "/")
+                    )
+                );
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+
+        return false;
+    }
+
+    public static boolean canReadUri(Context context, Uri uri) {
+        if (context == null || uri == null) return false;
+        try (
+            InputStream inputStream = openInputStream(context, uri)
+        ) {
+            if (inputStream == null) {
+                return false;
+            }
+            inputStream.read(new byte[1], 0, 0);
+                return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    public static Uri resolveDocumentUriFromTree(
+        Context context,
+        Uri treeUri,
+        String relativePath
+    ) {
+        if (context == null || treeUri == null) return null;
+
+        String treeDocumentId;
+        try {
+            treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri);
+        } catch (Exception e) {
+            return null;
+        }
+
+        if (
+            relativePath == null ||
+            relativePath.trim().isEmpty() ||
+            "Unknown".equalsIgnoreCase(relativePath.trim())
+        ) {
+            return DocumentsContract.buildDocumentUriUsingTree(
+                treeUri,
+                treeDocumentId
+            );
+        }
+
+        String[] segments = relativePath.split("/");
+        String currentDocumentId = treeDocumentId;
+        for (String rawSegment : segments) {
+            String segment = rawSegment != null ? rawSegment.trim() : "";
+            if (segment.isEmpty()) continue;
+
+            String childDocumentId = findChildDocumentId(
+                context,
+                treeUri,
+                currentDocumentId,
+                segment
+            );
+            if (childDocumentId == null) {
+                return null;
+            }
+            currentDocumentId = childDocumentId;
+        }
+
+        return DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            currentDocumentId
+        );
+    }
+
+    private static String findChildDocumentId(
+        Context context,
+        Uri treeUri,
+        String parentDocumentId,
+        String childName
+    ) {
+        Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            treeUri,
+            parentDocumentId
+        );
+        String[] projection = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+        };
+
+        try (
+            Cursor cursor = context
+                .getContentResolver()
+                .query(childrenUri, projection, null, null, null)
+        ) {
+            if (cursor == null) return null;
+            while (cursor.moveToNext()) {
+                String documentId = cursor.getString(0);
+                String displayName = cursor.getString(1);
+                if (childName.equals(displayName)) {
+                    return documentId;
+                }
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+
+        return null;
     }
 
     /**

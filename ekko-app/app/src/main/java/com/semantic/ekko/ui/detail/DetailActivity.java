@@ -7,6 +7,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.core.graphics.Insets;
@@ -21,10 +23,13 @@ import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.ui.pdf.PdfViewerActivity;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.util.FileUtils;
+import com.semantic.ekko.util.StorageAccessHelper;
 import io.noties.markwon.Markwon;
 import java.util.List;
 
@@ -33,6 +38,7 @@ public class DetailActivity extends AppCompatActivity {
     public static final String EXTRA_DOCUMENT_ID = "document_id";
 
     private DetailViewModel viewModel;
+    private FolderRepository folderRepository;
     private DocumentEntity currentDoc;
 
     private TextView txtDocName;
@@ -55,6 +61,43 @@ public class DetailActivity extends AppCompatActivity {
     private Markwon markwon;
     private boolean mlReady = false;
     private boolean backendReady = false;
+    private DocumentEntity pendingOpenDoc;
+    private FolderEntity pendingOpenFolder;
+    private final ActivityResultLauncher<Intent> manageStorageAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> retryPendingOpen()
+        );
+    private final ActivityResultLauncher<Uri> folderAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.OpenDocumentTree(),
+            uri -> {
+                if (uri == null) {
+                    showOpenFileError();
+                    return;
+                }
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    );
+                } catch (SecurityException | IllegalArgumentException e) {
+                    try {
+                        getContentResolver().takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        );
+                    } catch (
+                        SecurityException | IllegalArgumentException ignored
+                    ) {
+                        showOpenFileError();
+                        return;
+                    }
+                }
+                retryPendingOpen();
+            }
+        );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +105,7 @@ public class DetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
         markwon = Markwon.create(this);
+        folderRepository = new FolderRepository(this);
 
         bindViews();
         applyInsets();
@@ -330,69 +374,168 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void openFile(DocumentEntity doc) {
+        folderRepository.getById(doc.folderId, folder ->
+            runOnUiThread(() -> openResolvedFile(doc, folder))
+        );
+    }
+
+    private void openResolvedFile(DocumentEntity doc, FolderEntity folder) {
         try {
-            Uri sourceUri = Uri.parse(doc.uri);
-            if (!FileUtils.hasPersistedReadPermission(this, sourceUri)) {
-                throw new SecurityException("Missing read permission for source");
-            }
+            Uri sourceUri = resolveSourceUri(doc, folder);
             String mimeType = FileUtils.resolveMimeType(this, sourceUri, doc.name);
-            Uri openUri = "content".equalsIgnoreCase(sourceUri.getScheme())
-                ? sourceUri
-                : FileUtils.copyToViewerCache(this, sourceUri, doc.name);
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(
-                openUri,
-                mimeType != null ? mimeType : "*/*"
-            );
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.setClipData(
-                ClipData.newUri(getContentResolver(), doc.name, openUri)
-            );
+            Uri openUri = FileUtils.copyToViewerCache(this, sourceUri, doc.name);
 
-            List<ResolveInfo> matches = getPackageManager()
-                .queryIntentActivities(intent, 0);
-            if (matches == null || matches.isEmpty()) {
-                if ("application/pdf".equalsIgnoreCase(mimeType)) {
-                    Intent fallbackIntent = new Intent(
-                        this,
-                        PdfViewerActivity.class
-                    );
-                    fallbackIntent.putExtra(
-                        PdfViewerActivity.EXTRA_PDF_URI,
-                        openUri.toString()
-                    );
-                    fallbackIntent.putExtra(
-                        PdfViewerActivity.EXTRA_TITLE,
-                        doc.name
-                    );
-                    startActivity(fallbackIntent);
-                    return;
-                }
-                throw new IllegalStateException("No viewer available");
+            if (tryOpenInNativeApp(doc.name, openUri, mimeType)) {
+                return;
             }
 
-            for (ResolveInfo match : matches) {
-                if (match.activityInfo == null) continue;
-                grantUriPermission(
-                    match.activityInfo.packageName,
-                    openUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                );
+            if (isPdfDocument(mimeType, doc.name)) {
+                openPdfFallback(doc.name, openUri);
+                return;
             }
 
-            Intent chooser = Intent.createChooser(intent, "Open with");
-            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            chooser.setClipData(
-                ClipData.newUri(getContentResolver(), doc.name, openUri)
-            );
-            startActivity(chooser);
+            throw new IllegalStateException("No viewer available");
+        } catch (SecurityException e) {
+            recoverMissingAccess(doc, folder);
         } catch (Exception e) {
-            Snackbar.make(
-                btnOpenFile,
-                "Could not open file. Re-select the source folder if access was revoked.",
-                Snackbar.LENGTH_SHORT
-            ).show();
+            showOpenFileError();
         }
+    }
+
+    private Uri resolveSourceUri(DocumentEntity doc, FolderEntity folder) {
+        Uri storedUri = Uri.parse(doc.uri);
+        if (FileUtils.canReadUri(this, storedUri)) {
+            return storedUri;
+        }
+
+        Uri fallbackUri = resolveUriFromFolderTree(doc, folder);
+        if (fallbackUri != null && FileUtils.canReadUri(this, fallbackUri)) {
+            return fallbackUri;
+        }
+
+        if (FileUtils.hasPersistedReadPermission(this, storedUri)) {
+            return storedUri;
+        }
+
+        throw new SecurityException("Missing read permission for source");
+    }
+
+    private Uri resolveUriFromFolderTree(DocumentEntity doc, FolderEntity folder) {
+        if (folder == null || folder.uri == null || folder.uri.trim().isEmpty()) {
+            return null;
+        }
+
+        Uri treeUri = Uri.parse(folder.uri);
+        if (!FileUtils.hasPersistedReadPermission(this, treeUri)) {
+            return null;
+        }
+
+        return FileUtils.resolveDocumentUriFromTree(
+            this,
+            treeUri,
+            doc.relativePath
+        );
+    }
+
+    private void recoverMissingAccess(DocumentEntity doc, FolderEntity folder) {
+        pendingOpenDoc = doc;
+        pendingOpenFolder = folder;
+
+        Uri storedUri = Uri.parse(doc.uri);
+        if (
+            "file".equalsIgnoreCase(storedUri.getScheme()) &&
+            StorageAccessHelper.supportsAllFilesAccess() &&
+            !StorageAccessHelper.hasAllFilesAccess()
+        ) {
+            manageStorageAccessLauncher.launch(
+                StorageAccessHelper.createManageAllFilesAccessIntent(this)
+            );
+            return;
+        }
+
+        if (
+            folder != null &&
+            folder.uri != null &&
+            !folder.uri.trim().isEmpty() &&
+            "content".equalsIgnoreCase(Uri.parse(folder.uri).getScheme())
+        ) {
+            folderAccessLauncher.launch(Uri.parse(folder.uri));
+            return;
+        }
+
+        showOpenFileError();
+    }
+
+    private void retryPendingOpen() {
+        if (pendingOpenDoc == null) {
+            return;
+        }
+        DocumentEntity doc = pendingOpenDoc;
+        FolderEntity folder = pendingOpenFolder;
+        pendingOpenDoc = null;
+        pendingOpenFolder = null;
+        openResolvedFile(doc, folder);
+    }
+
+    private void showOpenFileError() {
+        Snackbar.make(
+            btnOpenFile,
+            "Could not open file. Re-select the source folder if access was revoked.",
+            Snackbar.LENGTH_SHORT
+        ).show();
+    }
+
+    private boolean tryOpenInNativeApp(
+        String docName,
+        Uri openUri,
+        String mimeType
+    ) {
+        Intent intent = buildViewIntent(docName, openUri, mimeType);
+        List<ResolveInfo> matches = getPackageManager()
+            .queryIntentActivities(intent, 0);
+        if (matches == null || matches.isEmpty()) {
+            return false;
+        }
+
+        for (ResolveInfo match : matches) {
+            if (match.activityInfo == null) continue;
+            grantUriPermission(
+                match.activityInfo.packageName,
+                openUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        }
+
+        Intent chooser = Intent.createChooser(intent, "Open with");
+        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        chooser.setClipData(ClipData.newUri(getContentResolver(), docName, openUri));
+
+        try {
+            startActivity(chooser);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private Intent buildViewIntent(String docName, Uri openUri, String mimeType) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(openUri, mimeType != null ? mimeType : "*/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setClipData(ClipData.newUri(getContentResolver(), docName, openUri));
+        return intent;
+    }
+
+    private boolean isPdfDocument(String mimeType, String docName) {
+        return "application/pdf".equalsIgnoreCase(mimeType) ||
+        "pdf".equalsIgnoreCase(FileUtils.getExtension(docName));
+    }
+
+    private void openPdfFallback(String docName, Uri openUri) {
+        Intent fallbackIntent = new Intent(this, PdfViewerActivity.class);
+        fallbackIntent.putExtra(PdfViewerActivity.EXTRA_PDF_URI, openUri.toString());
+        fallbackIntent.putExtra(PdfViewerActivity.EXTRA_TITLE, docName);
+        startActivity(fallbackIntent);
     }
 
     private void preselectCorrection(String category) {

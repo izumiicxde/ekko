@@ -238,26 +238,6 @@ public class SettingsFragment extends Fragment {
                     ).show();
                     return;
                 }
-                if (
-                    StorageAccessHelper.supportsAllFilesAccess() &&
-                    !StorageAccessHelper.hasAllFilesAccess()
-                ) {
-                    manageStorageAccessLauncher.launch(
-                        StorageAccessHelper.createManageAllFilesAccessIntent(
-                            requireContext()
-                        )
-                    );
-                    return;
-                }
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(requireContext());
-                    Snackbar.make(
-                        view,
-                        "Public folder import started in the background.",
-                        Snackbar.LENGTH_LONG
-                    ).show();
-                    return;
-                }
                 folderPicker.launch(null);
             });
 

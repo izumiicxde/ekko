@@ -234,24 +234,6 @@ public class HomeActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
         findViewById(R.id.fabAddFolder).setOnClickListener(v -> {
-            if (
-                StorageAccessHelper.supportsAllFilesAccess() &&
-                !StorageAccessHelper.hasAllFilesAccess()
-            ) {
-                manageStorageAccessLauncher.launch(
-                    StorageAccessHelper.createManageAllFilesAccessIntent(this)
-                );
-                return;
-            }
-            if (StorageAccessHelper.hasAllFilesAccess()) {
-                PublicStorageImportWorker.enqueue(this);
-                Snackbar.make(
-                    recyclerDocuments,
-                    "Public folder import started in the background.",
-                    Snackbar.LENGTH_LONG
-                ).show();
-                return;
-            }
             folderPicker.launch(null);
         });
 

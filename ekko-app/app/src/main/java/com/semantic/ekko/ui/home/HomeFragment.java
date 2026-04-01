@@ -291,26 +291,6 @@ public class HomeFragment extends Fragment {
         root
             .findViewById(R.id.btnEmptyAddFolder)
             .setOnClickListener(v -> {
-                if (
-                    StorageAccessHelper.supportsAllFilesAccess() &&
-                    !StorageAccessHelper.hasAllFilesAccess()
-                ) {
-                    manageStorageAccessLauncher.launch(
-                        StorageAccessHelper.createManageAllFilesAccessIntent(
-                            requireContext()
-                        )
-                    );
-                    return;
-                }
-                if (StorageAccessHelper.hasAllFilesAccess()) {
-                    PublicStorageImportWorker.enqueue(requireContext());
-                    Snackbar.make(
-                        root,
-                        "Public folder import started in the background.",
-                        Snackbar.LENGTH_LONG
-                    ).show();
-                    return;
-                }
                 folderPicker.launch(null);
             });
 
