@@ -43,6 +43,10 @@ public class RagRepository {
     private static final int CHUNKS_PER_DOC = 5;
     private static final int MIN_CHUNKS = 3;
     private static final int SCORE_TOP_N = 3; // was 3
+    private static final String GENERIC_QA_UNAVAILABLE =
+        "The assistant is temporarily unavailable. Please try again in a moment.";
+    private static final String GENERIC_SUMMARY_UNAVAILABLE =
+        "Summary is temporarily unavailable. Please try again in a moment.";
 
     // Minimum average chunk score required to proceed with a query.
     // Below this threshold the query is considered irrelevant to the
@@ -69,6 +73,10 @@ public class RagRepository {
         void onToken(String token);
         void onComplete(String sourceDocumentName);
         void onError(String message);
+    }
+
+    public static String getGenericSummaryErrorMessage() {
+        return GENERIC_SUMMARY_UNAVAILABLE;
     }
 
     public RagRepository(Context context, EmbeddingEngine embeddingEngine) {
@@ -454,9 +462,7 @@ public class RagRepository {
 
                 try (Response response = call.execute()) {
                     if (!response.isSuccessful() || response.body() == null) {
-                        callback.onError(
-                            "Backend returned an error. Is the server running?"
-                        );
+                        callback.onError(GENERIC_QA_UNAVAILABLE);
                         return;
                     }
                     BufferedReader reader = new BufferedReader(
@@ -476,7 +482,7 @@ public class RagRepository {
                                 callback.onComplete(selection.sourceDocName);
                                 break;
                             } else if (json.has("error")) {
-                                callback.onError(json.getString("error"));
+                                callback.onError(GENERIC_QA_UNAVAILABLE);
                                 break;
                             }
                         } catch (Exception e) {
@@ -491,9 +497,7 @@ public class RagRepository {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Stream failed: " + e.getMessage(), e);
-                callback.onError(
-                    "Could not reach the Q&A server. Make sure it is running on port 8000."
-                );
+                callback.onError(GENERIC_QA_UNAVAILABLE);
             }
         })
             .start();
@@ -562,7 +566,7 @@ public class RagRepository {
                                         ans == null || ans.trim().isEmpty()
                                     ) callback.onError("Empty answer.");
                                     else callback.onAnswer(ans.trim(), src);
-                                } else callback.onError("Backend error.");
+                                } else callback.onError(GENERIC_QA_UNAVAILABLE);
                             }
 
                             @Override
@@ -570,14 +574,12 @@ public class RagRepository {
                                 retrofit2.Call<RagResponse> call,
                                 Throwable t
                             ) {
-                                callback.onError(
-                                    "Could not reach the Q&A server."
-                                );
+                                callback.onError(GENERIC_QA_UNAVAILABLE);
                             }
                         }
                     );
             } catch (Exception e) {
-                callback.onError("Something went wrong.");
+                callback.onError(GENERIC_QA_UNAVAILABLE);
             }
         })
             .start();
@@ -649,7 +651,9 @@ public class RagRepository {
                                         sourceName
                                     );
                                 } else {
-                                    callback.onError("Backend error.");
+                                    callback.onError(
+                                        GENERIC_SUMMARY_UNAVAILABLE
+                                    );
                                 }
                             }
 
@@ -658,14 +662,12 @@ public class RagRepository {
                                 retrofit2.Call<SummaryResponse> call,
                                 Throwable t
                             ) {
-                                callback.onError(
-                                    "Could not reach the summary server."
-                                );
+                                callback.onError(GENERIC_SUMMARY_UNAVAILABLE);
                             }
                         }
                     );
             } catch (Exception e) {
-                callback.onError("Something went wrong.");
+                callback.onError(GENERIC_SUMMARY_UNAVAILABLE);
             }
         })
             .start();
@@ -728,7 +730,7 @@ public class RagRepository {
                                         ans == null || ans.trim().isEmpty()
                                     ) callback.onError("Empty answer.");
                                     else callback.onAnswer(ans.trim(), src);
-                                } else callback.onError("Backend error.");
+                                } else callback.onError(GENERIC_QA_UNAVAILABLE);
                             }
 
                             @Override
@@ -736,14 +738,12 @@ public class RagRepository {
                                 retrofit2.Call<RagResponse> call,
                                 Throwable t
                             ) {
-                                callback.onError(
-                                    "Could not reach the Q&A server."
-                                );
+                                callback.onError(GENERIC_QA_UNAVAILABLE);
                             }
                         }
                     );
             } catch (Exception e) {
-                callback.onError("Something went wrong.");
+                callback.onError(GENERIC_QA_UNAVAILABLE);
             }
         })
             .start();

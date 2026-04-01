@@ -24,6 +24,9 @@ import java.util.Set;
 public class QAViewModel extends AndroidViewModel {
 
     public static final long NO_DOCUMENT = -1;
+    private static final int MAX_STREAMING_CHARS = 24000;
+    private static final String STREAM_TRUNCATED_NOTICE =
+        "\n\n[Response truncated to keep the app responsive.]";
 
     public static class UiEvent {
 
@@ -93,6 +96,7 @@ public class QAViewModel extends AndroidViewModel {
     private boolean flushScheduled = false;
     private volatile boolean cancelled = false;
     private boolean bubbleAdded = false;
+    private boolean streamTruncated = false;
 
     private final StringBuilder streamingBuffer = new StringBuilder();
 
@@ -101,8 +105,10 @@ public class QAViewModel extends AndroidViewModel {
         if (pendingTokens.length() > 0 && !cancelled) {
             String batch = pendingTokens.toString();
             pendingTokens.setLength(0);
-            streamingBuffer.append(batch);
-            uiEvent.setValue(UiEvent.updateToken(batch));
+            String safeBatch = appendToStreamingBuffer(batch);
+            if (!safeBatch.isEmpty()) {
+                uiEvent.setValue(UiEvent.updateToken(safeBatch));
+            }
         }
     };
 
@@ -159,6 +165,7 @@ public class QAViewModel extends AndroidViewModel {
                 : chatStore.getGlobalStreamBuf();
         streamingBuffer.setLength(0);
         streamingBuffer.append(buf);
+        streamTruncated = buf.length() >= MAX_STREAMING_CHARS;
     }
 
     public String getStreamingBuffer() {
@@ -188,6 +195,7 @@ public class QAViewModel extends AndroidViewModel {
         pendingTokens.setLength(0);
         streamingBuffer.setLength(0);
         flushScheduled = false;
+        streamTruncated = false;
         saveStreamBuf("");
 
         QAMessage userMsg = new QAMessage(
@@ -230,7 +238,7 @@ public class QAViewModel extends AndroidViewModel {
             new RagRepository.RagStreamCallback() {
                 @Override
                 public void onToken(String token) {
-                    if (cancelled) return;
+                    if (cancelled || streamTruncated) return;
                     synchronized (pendingTokens) {
                         pendingTokens.append(token);
                     }
@@ -259,15 +267,18 @@ public class QAViewModel extends AndroidViewModel {
                         mainHandler.removeCallbacks(flushRunnable);
                         flushScheduled = false;
                         synchronized (pendingTokens) {
-                            if (pendingTokens.length() > 0 && !cancelled) {
-                                streamingBuffer.append(
+                            if (
+                                pendingTokens.length() > 0 &&
+                                !cancelled
+                            ) {
+                                String safeBatch = appendToStreamingBuffer(
                                     pendingTokens.toString()
                                 );
-                                uiEvent.setValue(
-                                    UiEvent.updateToken(
-                                        pendingTokens.toString()
-                                    )
-                                );
+                                if (!safeBatch.isEmpty()) {
+                                    uiEvent.setValue(
+                                        UiEvent.updateToken(safeBatch)
+                                    );
+                                }
                                 pendingTokens.setLength(0);
                             }
                         }
@@ -573,6 +584,29 @@ public class QAViewModel extends AndroidViewModel {
         }
         super.onCleared();
         mainHandler.removeCallbacks(flushRunnable);
+    }
+
+    private String appendToStreamingBuffer(String chunk) {
+        if (chunk == null || chunk.isEmpty()) {
+            return "";
+        }
+        if (streamTruncated) {
+            return "";
+        }
+        int remaining = MAX_STREAMING_CHARS - streamingBuffer.length();
+        if (remaining <= 0) {
+            streamingBuffer.append(STREAM_TRUNCATED_NOTICE);
+            streamTruncated = true;
+            return STREAM_TRUNCATED_NOTICE;
+        }
+        if (chunk.length() <= remaining) {
+            streamingBuffer.append(chunk);
+            return chunk;
+        }
+        String clipped = chunk.substring(0, remaining) + STREAM_TRUNCATED_NOTICE;
+        streamingBuffer.append(clipped);
+        streamTruncated = true;
+        return clipped;
     }
 
     public interface FileNamesCallback {

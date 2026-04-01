@@ -54,14 +54,17 @@ public class EmbeddingEngine {
     }
 
     private MappedByteBuffer loadModelFile(Context context) throws IOException {
-        AssetFileDescriptor fd = context.getAssets().openFd(MODEL_PATH);
-        FileInputStream stream = new FileInputStream(fd.getFileDescriptor());
-        FileChannel channel = stream.getChannel();
-        return channel.map(
-            FileChannel.MapMode.READ_ONLY,
-            fd.getStartOffset(),
-            fd.getDeclaredLength()
-        );
+        try (
+            AssetFileDescriptor fd = context.getAssets().openFd(MODEL_PATH);
+            FileInputStream stream = new FileInputStream(fd.getFileDescriptor());
+            FileChannel channel = stream.getChannel()
+        ) {
+            return channel.map(
+                FileChannel.MapMode.READ_ONLY,
+                fd.getStartOffset(),
+                fd.getDeclaredLength()
+            );
+        }
     }
 
     private void loadVocab(Context context) throws IOException {

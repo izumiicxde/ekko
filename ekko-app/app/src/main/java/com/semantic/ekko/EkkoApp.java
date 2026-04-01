@@ -20,6 +20,8 @@ import java.util.Map;
 public class EkkoApp extends Application {
 
     private static final String TAG = "EkkoApp";
+    private static final int MAX_CHAT_MESSAGES = 80;
+    private static final int MAX_STREAM_BUFFER_CHARS = 24000;
     private static EkkoApp instance;
 
     private EmbeddingEngine embeddingEngine;
@@ -52,6 +54,7 @@ public class EkkoApp extends Application {
 
         public void addGlobalMessage(QAMessage message) {
             globalHistory.add(message);
+            trimHistory(globalHistory);
         }
 
         public void updateLastGlobalMessage(QAMessage message) {
@@ -71,7 +74,7 @@ public class EkkoApp extends Application {
         }
 
         public void setGlobalStreamBuf(String buf) {
-            globalStreamBuf = buf != null ? buf : "";
+            globalStreamBuf = trimBuffer(buf);
         }
 
         public List<QAMessage> getDocHistory(long docId) {
@@ -87,6 +90,7 @@ public class EkkoApp extends Application {
                 new ArrayList<>()
             );
             docHistories.get(docId).add(message);
+            trimHistory(docHistories.get(docId));
         }
 
         public void updateLastDocMessage(long docId, QAMessage message) {
@@ -108,7 +112,24 @@ public class EkkoApp extends Application {
         }
 
         public void setDocStreamBuf(long docId, String buf) {
-            docStreamBufs.put(docId, buf != null ? buf : "");
+            docStreamBufs.put(docId, trimBuffer(buf));
+        }
+
+        private void trimHistory(List<QAMessage> history) {
+            if (history == null) {
+                return;
+            }
+            while (history.size() > MAX_CHAT_MESSAGES) {
+                history.remove(0);
+            }
+        }
+
+        private String trimBuffer(String buf) {
+            String safe = buf != null ? buf : "";
+            if (safe.length() <= MAX_STREAM_BUFFER_CHARS) {
+                return safe;
+            }
+            return safe.substring(safe.length() - MAX_STREAM_BUFFER_CHARS);
         }
     }
 

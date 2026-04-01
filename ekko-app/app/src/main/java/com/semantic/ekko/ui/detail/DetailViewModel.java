@@ -73,7 +73,7 @@ public class DetailViewModel extends AndroidViewModel {
                 public void onError(String message) {
                     summaryLoading.postValue(false);
                     errorMessage.postValue(
-                        "Could not generate summary: " + message
+                        RagRepository.getGenericSummaryErrorMessage()
                     );
                 }
             }
