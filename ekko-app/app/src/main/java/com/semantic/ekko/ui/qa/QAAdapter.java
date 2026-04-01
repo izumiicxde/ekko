@@ -104,12 +104,10 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             ((UserViewHolder) holder).txtQuestion.setText(message.text);
         } else if (holder instanceof AnswerViewHolder) {
             AnswerViewHolder h = (AnswerViewHolder) holder;
+            String renderedText = sanitizeAnswerMarkdown(message.text);
 
             // Always render markdown on bind
-            markwon.setMarkdown(
-                h.txtAnswer,
-                message.text != null ? message.text : ""
-            );
+            markwon.setMarkdown(h.txtAnswer, renderedText);
 
             h.txtSource.setVisibility(View.GONE);
             h.txtSource.setText("");
@@ -170,7 +168,10 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             new QAMessage(existing.type, fullText, existing.sourceDocumentName)
         );
         if (activeHolder != null) {
-            markwon.setMarkdown(activeHolder.txtAnswer, fullText);
+            markwon.setMarkdown(
+                activeHolder.txtAnswer,
+                sanitizeAnswerMarkdown(fullText)
+            );
         }
     }
 
@@ -189,7 +190,10 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         );
 
         if (activeHolder != null) {
-            markwon.setMarkdown(activeHolder.txtAnswer, fullText);
+            markwon.setMarkdown(
+                activeHolder.txtAnswer,
+                sanitizeAnswerMarkdown(fullText)
+            );
             if (sourceDocumentName != null && !sourceDocumentName.isEmpty()) {
                 activeHolder.txtSource.setText("From: " + sourceDocumentName);
                 activeHolder.txtSource.setVisibility(View.VISIBLE);
@@ -215,5 +219,14 @@ public class QAAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         int size = messages.size();
         messages.clear();
         notifyItemRangeRemoved(0, size);
+    }
+
+    private String sanitizeAnswerMarkdown(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return text
+            .replaceAll("(?<!\\*)\\*([^*\\n]+)\\*(?!\\*)", "$1")
+            .replaceAll("(?<!_)_([^_\\n]+)_(?!_)", "$1");
     }
 }

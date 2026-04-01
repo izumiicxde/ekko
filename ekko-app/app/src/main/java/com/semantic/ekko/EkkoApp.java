@@ -20,6 +20,9 @@ import java.util.Map;
 public class EkkoApp extends Application {
 
     private static final String TAG = "EkkoApp";
+    private static final long BACKEND_CHECK_INTERVAL_HEALTHY_MS = 15_000L;
+    private static final long BACKEND_CHECK_INTERVAL_UNHEALTHY_MS = 3_000L;
+    private static final int BACKEND_FAILURES_BEFORE_OFFLINE = 2;
     private static final int MAX_CHAT_MESSAGES = 80;
     private static final int MAX_STREAM_BUFFER_CHARS = 24000;
     private static EkkoApp instance;
@@ -30,12 +33,13 @@ public class EkkoApp extends Application {
     private boolean mlReady = false;
     private boolean backendReachable = false;
     private volatile boolean backendCheckInFlight = false;
+    private int consecutiveBackendFailures = 0;
     private long lastBackendCheckAt = 0L;
     private final MutableLiveData<Boolean> mlReadyState = new MutableLiveData<>(
         false
     );
     private final MutableLiveData<Boolean> backendReachableState =
-        new MutableLiveData<>(false);
+        new MutableLiveData<>(null);
 
     // =========================
     // CHAT STORE
@@ -47,6 +51,8 @@ public class EkkoApp extends Application {
         private final Map<Long, List<QAMessage>> docHistories = new HashMap<>();
         private final Map<Long, String> docStreamBufs = new HashMap<>();
         private String globalStreamBuf = "";
+        private boolean globalStreamingActive = false;
+        private final Map<Long, Boolean> docStreamingActive = new HashMap<>();
 
         public List<QAMessage> getGlobalHistory() {
             return Collections.unmodifiableList(globalHistory);
@@ -67,6 +73,7 @@ public class EkkoApp extends Application {
         public void clearGlobal() {
             globalHistory.clear();
             globalStreamBuf = "";
+            globalStreamingActive = false;
         }
 
         public String getGlobalStreamBuf() {
@@ -75,6 +82,14 @@ public class EkkoApp extends Application {
 
         public void setGlobalStreamBuf(String buf) {
             globalStreamBuf = trimBuffer(buf);
+        }
+
+        public boolean isGlobalStreamingActive() {
+            return globalStreamingActive;
+        }
+
+        public void setGlobalStreamingActive(boolean active) {
+            globalStreamingActive = active;
         }
 
         public List<QAMessage> getDocHistory(long docId) {
@@ -104,6 +119,7 @@ public class EkkoApp extends Application {
         public void clearDoc(long docId) {
             docHistories.remove(docId);
             docStreamBufs.remove(docId);
+            docStreamingActive.remove(docId);
         }
 
         public String getDocStreamBuf(long docId) {
@@ -113,6 +129,15 @@ public class EkkoApp extends Application {
 
         public void setDocStreamBuf(long docId, String buf) {
             docStreamBufs.put(docId, trimBuffer(buf));
+        }
+
+        public boolean isDocStreamingActive(long docId) {
+            Boolean active = docStreamingActive.get(docId);
+            return active != null && active;
+        }
+
+        public void setDocStreamingActive(long docId, boolean active) {
+            docStreamingActive.put(docId, active);
         }
 
         private void trimHistory(List<QAMessage> history) {
@@ -189,7 +214,10 @@ public class EkkoApp extends Application {
 
     public void refreshBackendHealthAsync(boolean force) {
         long now = System.currentTimeMillis();
-        if (!force && (now - lastBackendCheckAt) < 15_000L) {
+        long minInterval = backendReachable
+            ? BACKEND_CHECK_INTERVAL_HEALTHY_MS
+            : BACKEND_CHECK_INTERVAL_UNHEALTHY_MS;
+        if (!force && (now - lastBackendCheckAt) < minInterval) {
             return;
         }
         if (backendCheckInFlight) {
@@ -198,17 +226,28 @@ public class EkkoApp extends Application {
         backendCheckInFlight = true;
         lastBackendCheckAt = now;
         new Thread(() -> {
-            boolean healthy = false;
+            boolean requestSucceeded = false;
             try {
                 retrofit2.Response<Void> response = RagClient.getInstance()
                     .health()
                     .execute();
-                healthy = response.isSuccessful();
+                requestSucceeded = response.isSuccessful();
             } catch (Exception e) {
                 Log.d(TAG, "Backend health check failed: " + e.getMessage());
             } finally {
-                backendReachable = healthy;
-                backendReachableState.postValue(healthy);
+                boolean resolvedState;
+                if (requestSucceeded) {
+                    consecutiveBackendFailures = 0;
+                    resolvedState = true;
+                } else {
+                    consecutiveBackendFailures++;
+                    resolvedState =
+                        backendReachable &&
+                        consecutiveBackendFailures <
+                        BACKEND_FAILURES_BEFORE_OFFLINE;
+                }
+                backendReachable = resolvedState;
+                backendReachableState.postValue(resolvedState);
                 backendCheckInFlight = false;
             }
         })

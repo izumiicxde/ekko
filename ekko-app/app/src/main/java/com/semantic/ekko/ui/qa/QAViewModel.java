@@ -107,10 +107,24 @@ public class QAViewModel extends AndroidViewModel {
             pendingTokens.setLength(0);
             String safeBatch = appendToStreamingBuffer(batch);
             if (!safeBatch.isEmpty()) {
+                saveStreamBuf(streamingBuffer.toString());
                 uiEvent.setValue(UiEvent.updateToken(safeBatch));
             }
         }
     };
+    private final Runnable restorePollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isTrackedSessionActive()) {
+                stopRestorePolling();
+                syncFromChatStore();
+                return;
+            }
+            syncFromChatStore();
+            mainHandler.postDelayed(this, 180L);
+        }
+    };
+    private boolean restorePolling = false;
 
     public QAViewModel(@NonNull Application application) {
         super(application);
@@ -150,22 +164,14 @@ public class QAViewModel extends AndroidViewModel {
     // =========================
 
     public void restoreIfNeeded() {
-        List<QAMessage> history =
-            documentId != NO_DOCUMENT
-                ? chatStore.getDocHistory(documentId)
-                : chatStore.getGlobalHistory();
-
-        if (!history.isEmpty()) {
-            post(UiEvent.restore(new ArrayList<>(history)));
+        syncFromChatStore();
+        boolean active = isTrackedSessionActive();
+        isLoading.postValue(active);
+        if (active) {
+            startRestorePolling();
+        } else {
+            stopRestorePolling();
         }
-
-        String buf =
-            documentId != NO_DOCUMENT
-                ? chatStore.getDocStreamBuf(documentId)
-                : chatStore.getGlobalStreamBuf();
-        streamingBuffer.setLength(0);
-        streamingBuffer.append(buf);
-        streamTruncated = buf.length() >= MAX_STREAMING_CHARS;
     }
 
     public String getStreamingBuffer() {
@@ -196,6 +202,7 @@ public class QAViewModel extends AndroidViewModel {
         streamingBuffer.setLength(0);
         flushScheduled = false;
         streamTruncated = false;
+        markSessionStreaming(true);
         saveStreamBuf("");
 
         QAMessage userMsg = new QAMessage(
@@ -213,7 +220,8 @@ public class QAViewModel extends AndroidViewModel {
             new ScopeResolutionCallback() {
                 @Override
                 public void onResolved(ScopedQuestion scopedQuestion) {
-                    if (scopedQuestion.error != null) {
+                        if (scopedQuestion.error != null) {
+                        markSessionStreaming(false);
                         QAMessage err = new QAMessage(
                             QAMessage.TYPE_ERROR,
                             scopedQuestion.error,
@@ -294,6 +302,7 @@ public class QAViewModel extends AndroidViewModel {
                                 UiEvent.updateSource(sourceDocumentName)
                             );
                         }
+                        markSessionStreaming(false);
                         isLoading.setValue(false);
                     });
                 }
@@ -318,6 +327,7 @@ public class QAViewModel extends AndroidViewModel {
                                 uiEvent.setValue(UiEvent.add(errMsg));
                             }
                         }
+                        markSessionStreaming(false);
                         isLoading.setValue(false);
                     });
                 }
@@ -541,6 +551,7 @@ public class QAViewModel extends AndroidViewModel {
         flushScheduled = false;
         pendingTokens.setLength(0);
         if (ragRepository != null) ragRepository.cancelStream();
+        markSessionStreaming(false);
         isLoading.postValue(false);
     }
 
@@ -579,11 +590,9 @@ public class QAViewModel extends AndroidViewModel {
     @Override
     protected void onCleared() {
         cancelled = true;
-        if (ragRepository != null) {
-            ragRepository.cancelStream();
-        }
-        super.onCleared();
         mainHandler.removeCallbacks(flushRunnable);
+        stopRestorePolling();
+        super.onCleared();
     }
 
     private String appendToStreamingBuffer(String chunk) {
@@ -656,5 +665,63 @@ public class QAViewModel extends AndroidViewModel {
 
     public LiveData<Boolean> getIsLoading() {
         return isLoading;
+    }
+
+    private void markSessionStreaming(boolean active) {
+        if (documentId != NO_DOCUMENT) {
+            chatStore.setDocStreamingActive(documentId, active);
+        } else {
+            chatStore.setGlobalStreamingActive(active);
+        }
+    }
+
+    private boolean isTrackedSessionActive() {
+        return documentId != NO_DOCUMENT
+            ? chatStore.isDocStreamingActive(documentId)
+            : chatStore.isGlobalStreamingActive();
+    }
+
+    private void startRestorePolling() {
+        if (restorePolling) {
+            return;
+        }
+        restorePolling = true;
+        mainHandler.post(restorePollRunnable);
+    }
+
+    private void stopRestorePolling() {
+        restorePolling = false;
+        mainHandler.removeCallbacks(restorePollRunnable);
+    }
+
+    private void syncFromChatStore() {
+        List<QAMessage> history =
+            documentId != NO_DOCUMENT
+                ? chatStore.getDocHistory(documentId)
+                : chatStore.getGlobalHistory();
+        String buf =
+            documentId != NO_DOCUMENT
+                ? chatStore.getDocStreamBuf(documentId)
+                : chatStore.getGlobalStreamBuf();
+
+        List<QAMessage> displayHistory = new ArrayList<>(history);
+        if (!displayHistory.isEmpty() && isTrackedSessionActive()) {
+            int lastIndex = displayHistory.size() - 1;
+            QAMessage last = displayHistory.get(lastIndex);
+            if (last.type == QAMessage.TYPE_ANSWER && last.sourceDocumentName == null) {
+                displayHistory.set(
+                    lastIndex,
+                    new QAMessage(QAMessage.TYPE_ANSWER, buf, null)
+                );
+            }
+        }
+
+        if (!displayHistory.isEmpty()) {
+            post(UiEvent.restore(displayHistory));
+        }
+
+        streamingBuffer.setLength(0);
+        streamingBuffer.append(buf);
+        streamTruncated = buf.length() >= MAX_STREAMING_CHARS;
     }
 }

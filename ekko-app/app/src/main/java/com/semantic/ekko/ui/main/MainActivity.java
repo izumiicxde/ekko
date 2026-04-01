@@ -169,11 +169,14 @@ public class MainActivity extends AppCompatActivity {
                 Insets insets = windowInsets.getInsets(
                     WindowInsetsCompat.Type.systemBars()
                 );
+                Insets imeInsets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.ime()
+                );
                 view.setPadding(
                     view.getPaddingLeft(),
                     baseTop + insets.top,
                     view.getPaddingRight(),
-                    baseBottom + insets.bottom
+                    baseBottom + Math.max(insets.bottom, imeInsets.bottom)
                 );
                 return windowInsets;
             }

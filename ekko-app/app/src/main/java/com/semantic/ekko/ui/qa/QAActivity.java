@@ -62,6 +62,7 @@ public class QAActivity extends AppCompatActivity {
     private static final int MODE_SLASH_COMMAND = 3;
     private boolean mlReady = false;
     private boolean backendReady = false;
+    private boolean backendStatusKnown = false;
 
     private final StringBuilder streamingBuffer = new StringBuilder();
 
@@ -84,7 +85,7 @@ public class QAActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        EkkoApp.getInstance().refreshBackendHealthAsync();
+        EkkoApp.getInstance().refreshBackendHealthAsync(true);
         streamingBuffer.setLength(0);
         streamingBuffer.append(viewModel.getStreamingBuffer());
         viewModel.restoreIfNeeded();
@@ -116,11 +117,12 @@ public class QAActivity extends AppCompatActivity {
             Insets systemBars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars()
             );
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
             view.setPadding(
                 view.getPaddingLeft(),
                 baseTop + systemBars.top,
                 view.getPaddingRight(),
-                baseBottom + systemBars.bottom
+                baseBottom + Math.max(systemBars.bottom, ime.bottom)
             );
             return insets;
         });
@@ -146,39 +148,7 @@ public class QAActivity extends AppCompatActivity {
         }
 
         String docName = getIntent().getStringExtra(EXTRA_DOCUMENT_NAME);
-        if (viewModel.isDocumentMode() && docName != null) {
-            txtQaTitle.setText(docName);
-            txtQaSubtitle.setText("Document-specific answers");
-            txtEmptyTitle.setText("Ask about this document");
-            txtEmptySubtitle.setText(
-                "Answers are generated only from this file's content."
-            );
-            editQuestion.setHint("Ask anything about this document...");
-            setupSuggestions(
-                new String[] {
-                    "Summarize this document",
-                    "What are the key topics?",
-                    "What should I review first?",
-                }
-            );
-        } else {
-            txtQaTitle.setText("Ekko Bot");
-            txtQaSubtitle.setText(
-                "Grounded answers from your indexed material"
-            );
-            txtEmptyTitle.setText("Start with a grounded question");
-            txtEmptySubtitle.setText(
-                "Ask across your vault, or target a single file with @filename: for tighter context."
-            );
-            editQuestion.setHint("Ask anything or use @filename: question");
-            setupSuggestions(
-                new String[] {
-                    "Summarize my latest file",
-                    "What should I review first?",
-                    "@latest: list key points",
-                }
-            );
-        }
+        applyDefaultReadyCopy(docName);
 
         viewModel
             .getUiEvent()
@@ -267,6 +237,7 @@ public class QAActivity extends AppCompatActivity {
         app
             .getBackendReachableState()
             .observe(this, ready -> {
+                backendStatusKnown = ready != null;
                 backendReady = ready != null && ready;
                 updateReadinessUi();
             });
@@ -274,6 +245,7 @@ public class QAActivity extends AppCompatActivity {
     }
 
     private void updateReadinessUi() {
+        boolean backendChecking = mlReady && !backendStatusKnown;
         boolean ready = mlReady && backendReady;
         if (editQuestion == null || btnSend == null || btnStop == null) {
             return;
@@ -294,19 +266,72 @@ public class QAActivity extends AppCompatActivity {
             editQuestion.setHint(
                 !mlReady
                     ? "Assistant becomes available when local models finish loading"
-                    : "Assistant is unavailable until the backend reconnects"
+                    : backendChecking
+                        ? "Checking backend connection..."
+                        : "Assistant is unavailable until the backend reconnects"
             );
             txtEmptyTitle.setText(
-                !mlReady ? "Assistant is preparing" : "Backend unavailable"
+                !mlReady
+                    ? "Assistant is preparing"
+                    : backendChecking
+                        ? "Checking backend"
+                        : "Backend unavailable"
             );
             txtEmptySubtitle.setText(
                 !mlReady
                     ? "Local models are still loading."
-                    : "The Ask page needs the local backend connection before it can answer."
+                    : backendChecking
+                        ? "Verifying the local backend connection for Ask."
+                        : "The Ask page needs the local backend connection before it can answer."
             );
-        } else if (adapter.getItemCount() == 0) {
+        } else {
+            applyDefaultReadyCopy(
+                getIntent().getStringExtra(EXTRA_DOCUMENT_NAME)
+            );
+        }
+        if (ready && adapter.getItemCount() == 0) {
             chipGroupSuggestions.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void applyDefaultReadyCopy(String docName) {
+        if (
+            viewModel != null &&
+            viewModel.isDocumentMode() &&
+            docName != null &&
+            !docName.trim().isEmpty()
+        ) {
+            txtQaTitle.setText(docName);
+            txtQaSubtitle.setText("Document-specific answers");
+            txtEmptyTitle.setText("Ask about this document");
+            txtEmptySubtitle.setText(
+                "Answers are generated only from this file's content."
+            );
+            editQuestion.setHint("Ask anything about this document...");
+            setupSuggestions(
+                new String[] {
+                    "Summarize this document",
+                    "What are the key topics?",
+                    "What should I review first?",
+                }
+            );
+            return;
+        }
+
+        txtQaTitle.setText("Ekko Bot");
+        txtQaSubtitle.setText("Grounded answers from your indexed material");
+        txtEmptyTitle.setText("Start with a grounded question");
+        txtEmptySubtitle.setText(
+            "Ask across your vault, or target a single file with @filename: for tighter context."
+        );
+        editQuestion.setHint("Ask anything or use @filename: question");
+        setupSuggestions(
+            new String[] {
+                "Summarize my latest file",
+                "What should I review first?",
+                "@latest: list key points",
+            }
+        );
     }
 
     private void setupSuggestions(String[] suggestions) {

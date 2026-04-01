@@ -41,10 +41,16 @@
         <activity android:name=".ui.home.HomeActivity" />
         <activity android:name=".ui.detail.DetailActivity" />
         <activity android:name=".ui.pdf.PdfViewerActivity" />
-        <activity android:name=".ui.search.SearchActivity" />
+        <activity
+            android:name=".ui.search.SearchActivity"
+            android:windowSoftInputMode="adjustResize"
+        />
         <activity android:name=".ui.settings.SettingsActivity" />
         <activity android:name=".ui.statistics.StatisticsActivity" />
-        <activity android:name=".ui.qa.QAActivity" />
+        <activity
+            android:name=".ui.qa.QAActivity"
+            android:windowSoftInputMode="adjustResize"
+        />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
