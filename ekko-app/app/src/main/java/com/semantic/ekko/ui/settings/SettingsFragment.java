@@ -32,7 +32,7 @@ import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.home.HomeViewModel;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
+import com.semantic.ekko.work.BackgroundIndexWorker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -60,8 +60,6 @@ public class SettingsFragment extends Fragment {
     private LinearProgressIndicator progressReindex;
     private boolean mlReady = false;
     private boolean isAppIndexing = false;
-    private boolean isPublicImportRunning = false;
-
     private List<FolderEntity> currentFolders = new ArrayList<>();
     private boolean foldersExpanded = false;
 
@@ -198,44 +196,6 @@ public class SettingsFragment extends Fragment {
                 refreshFolderUi();
             });
 
-        homeViewModel
-            .getIsIndexing()
-            .observe(getViewLifecycleOwner(), indexing -> {
-                boolean running = indexing != null && indexing;
-                isAppIndexing = running;
-                layoutReindexProgress.setVisibility(
-                    (running || isPublicImportRunning) ? View.VISIBLE : View.GONE
-                );
-                if (!isPublicImportRunning) {
-                    updateActionButtons(running);
-                } else {
-                    updateActionButtons(true);
-                }
-            });
-
-        homeViewModel
-            .getIndexingStage()
-            .observe(getViewLifecycleOwner(), stage -> {
-                if (stage != null && !stage.isEmpty()) {
-                    txtReindexStage.setText(stage);
-                }
-            });
-
-        homeViewModel
-            .getIndexingProgress()
-            .observe(getViewLifecycleOwner(), progress -> {
-                if (progress == null) return;
-                progressReindex.setMax(progress.total);
-                progressReindex.setProgress(progress.current);
-                txtReindexStage.setText(
-                    progress.current +
-                        " / " +
-                        progress.total +
-                        "  •  " +
-                        progress.docName
-                );
-            });
-
         setupThemeToggle(view);
         setupFolderSection();
 
@@ -293,9 +253,9 @@ public class SettingsFragment extends Fragment {
                 }
             });
 
-        PublicStorageImportWorker
+        BackgroundIndexWorker
             .getWorkInfoLiveData(requireContext())
-            .observe(getViewLifecycleOwner(), this::handlePublicImportState);
+            .observe(getViewLifecycleOwner(), this::handleBackgroundIndexState);
     }
 
     private void observeReadiness() {
@@ -364,13 +324,16 @@ public class SettingsFragment extends Fragment {
                 " hidden"
         );
         applyFolderExpansionState();
-        updateActionButtons(isAppIndexing || isPublicImportRunning);
+        updateActionButtons(isAppIndexing);
     }
 
-    private void handlePublicImportState(List<WorkInfo> workInfos) {
+    private void handleBackgroundIndexState(List<WorkInfo> workInfos) {
         boolean running = false;
         boolean finished = false;
-        boolean success = false;
+        String stage = "";
+        String docName = "";
+        int current = 0;
+        int total = 0;
 
         if (workInfos != null) {
             for (WorkInfo workInfo : workInfos) {
@@ -384,32 +347,55 @@ public class SettingsFragment extends Fragment {
                     state == WorkInfo.State.BLOCKED
                 ) {
                     running = true;
+                    stage = workInfo.getProgress().getString(
+                        BackgroundIndexWorker.KEY_STAGE
+                    );
+                    docName = workInfo.getProgress().getString(
+                        BackgroundIndexWorker.KEY_DOC_NAME
+                    );
+                    current = workInfo.getProgress().getInt(
+                        BackgroundIndexWorker.KEY_CURRENT,
+                        0
+                    );
+                    total = workInfo.getProgress().getInt(
+                        BackgroundIndexWorker.KEY_TOTAL,
+                        0
+                    );
                 }
                 if (state.isFinished()) {
                     finished = true;
-                    if (state == WorkInfo.State.SUCCEEDED) {
-                        success = true;
-                    }
                 }
             }
         }
 
-        isPublicImportRunning = running;
+        isAppIndexing = running;
         layoutReindexProgress.setVisibility(
-            (isAppIndexing || running) ? View.VISIBLE : View.GONE
+            running ? View.VISIBLE : View.GONE
         );
-        if (running && !isAppIndexing) {
-            progressReindex.setIndeterminate(true);
-            txtReindexStage.setText("Indexing shared folders...");
+        if (running) {
+            if (total > 0) {
+                progressReindex.setIndeterminate(false);
+                progressReindex.setMax(total);
+                progressReindex.setProgress(current);
+                txtReindexStage.setText(
+                    current + " / " + total + "  •  " + (docName == null ? "" : docName)
+                );
+            } else {
+                progressReindex.setIndeterminate(true);
+                txtReindexStage.setText(
+                    stage == null || stage.isEmpty() ? "Preparing indexing..." : stage
+                );
+            }
+            homeViewModel.loadDocuments();
         }
-        updateActionButtons(isAppIndexing || running);
+        updateActionButtons(running);
 
         if (finished && !running) {
             homeViewModel.loadDocuments();
-            if (success && getView() != null) {
+            if (getView() != null) {
                 Snackbar.make(
                     getView(),
-                    "Shared folders indexed.",
+                    "Indexing finished.",
                     Snackbar.LENGTH_SHORT
                 ).show();
             }

@@ -32,7 +32,7 @@ import com.semantic.ekko.ui.graph.GraphActivity;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
+import com.semantic.ekko.work.BackgroundIndexWorker;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -63,7 +63,6 @@ public class HomeFragment extends Fragment {
     private PrefsManager prefsManager;
     private boolean hasIncludedFolders = false;
     private boolean isAppIndexing = false;
-    private boolean isPublicImportRunning = false;
     private String latestIndexingStage = "";
     private String latestIndexingDoc = "";
     private int latestIndexCurrent = 0;
@@ -242,31 +241,6 @@ public class HomeFragment extends Fragment {
             .observe(getViewLifecycleOwner(), adapter::submitFolderNames);
 
         viewModel
-            .getIsIndexing()
-            .observe(getViewLifecycleOwner(), indexing -> {
-                isAppIndexing = indexing != null && indexing;
-                updateIndexingUi();
-            });
-
-        viewModel
-            .getIndexingStage()
-            .observe(getViewLifecycleOwner(), stage -> {
-                latestIndexingStage = stage == null ? "" : stage;
-                renderIndexingState();
-            });
-
-        viewModel
-            .getIndexingProgress()
-            .observe(getViewLifecycleOwner(), progress -> {
-                if (progress == null) return;
-                latestIndexCurrent = progress.current;
-                latestIndexTotal = progress.total;
-                latestIndexingDoc = progress.docName == null ? "" : progress.docName;
-                hasDeterminateIndexingProgress = progress.total > 0;
-                renderIndexingState();
-            });
-
-        viewModel
             .getErrorMessage()
             .observe(getViewLifecycleOwner(), msg -> {
                 if (msg != null && !msg.isEmpty()) {
@@ -278,9 +252,9 @@ public class HomeFragment extends Fragment {
                 }
             });
 
-        PublicStorageImportWorker
+        BackgroundIndexWorker
             .getWorkInfoLiveData(requireContext())
-            .observe(getViewLifecycleOwner(), this::handlePublicImportState);
+            .observe(getViewLifecycleOwner(), this::handleBackgroundIndexState);
     }
 
     private void setupClickListeners(View root) {
@@ -563,7 +537,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void updateIndexingUi() {
-        boolean showBanner = isAppIndexing || isPublicImportRunning;
+        boolean showBanner = isAppIndexing;
         layoutIndexingProgress.setVisibility(showBanner ? View.VISIBLE : View.GONE);
         if (!showBanner) {
             latestIndexingStage = "";
@@ -582,12 +556,6 @@ public class HomeFragment extends Fragment {
 
     private void renderIndexingState() {
         if (!isAdded()) {
-            return;
-        }
-        if (isPublicImportRunning && !isAppIndexing) {
-            progressIndexing.setIndeterminate(true);
-            txtIndexingStage.setText("Indexing shared folders...");
-            txtIndexingDoc.setText("Scanning public storage");
             return;
         }
         if (!isAppIndexing) {
@@ -612,10 +580,13 @@ public class HomeFragment extends Fragment {
         txtIndexingDoc.setText("Getting documents ready");
     }
 
-    private void handlePublicImportState(List<WorkInfo> workInfos) {
+    private void handleBackgroundIndexState(List<WorkInfo> workInfos) {
         boolean running = false;
         boolean finished = false;
-        boolean success = false;
+        String stage = "";
+        String docName = "";
+        int current = 0;
+        int total = 0;
 
         if (workInfos != null) {
             for (WorkInfo workInfo : workInfos) {
@@ -629,26 +600,46 @@ public class HomeFragment extends Fragment {
                     state == WorkInfo.State.BLOCKED
                 ) {
                     running = true;
+                    stage = workInfo.getProgress().getString(
+                        BackgroundIndexWorker.KEY_STAGE
+                    );
+                    docName = workInfo.getProgress().getString(
+                        BackgroundIndexWorker.KEY_DOC_NAME
+                    );
+                    current = workInfo.getProgress().getInt(
+                        BackgroundIndexWorker.KEY_CURRENT,
+                        0
+                    );
+                    total = workInfo.getProgress().getInt(
+                        BackgroundIndexWorker.KEY_TOTAL,
+                        0
+                    );
                 }
                 if (state.isFinished()) {
                     finished = true;
-                    if (state == WorkInfo.State.SUCCEEDED) {
-                        success = true;
-                    }
                 }
             }
         }
 
-        isPublicImportRunning = running;
+        isAppIndexing = running;
+        latestIndexingStage = stage == null ? "" : stage;
+        latestIndexingDoc = docName == null ? "" : docName;
+        latestIndexCurrent = current;
+        latestIndexTotal = total;
+        hasDeterminateIndexingProgress = total > 0;
         updateIndexingUi();
+        if (running) {
+            viewModel.loadDocuments();
+        }
 
         if (finished && !running) {
+            isAppIndexing = false;
             viewModel.loadDocuments();
             refreshFolderAvailabilityState();
-            if (success && getView() != null) {
+            if (getView() != null) {
                 Snackbar.make(
                     getView(),
-                    "Shared folders indexed.",
+                    "Indexing finished.",
                     Snackbar.LENGTH_SHORT
                 ).show();
             }

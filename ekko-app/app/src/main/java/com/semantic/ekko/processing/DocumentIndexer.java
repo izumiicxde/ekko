@@ -85,15 +85,15 @@ public class DocumentIndexer {
 
                 DocumentEntity doc = documents.get(i);
                 DocumentEntity existing = documentDao.getByUri(doc.uri);
-                if (listener != null) listener.onDocumentProcessed(
-                    i + 1,
-                    total,
-                    doc.name
-                );
 
                 try {
                     if (shouldSkipReindex(existing, doc)) {
                         indexed.incrementAndGet();
+                        if (listener != null) listener.onDocumentProcessed(
+                            indexed.get(),
+                            total,
+                            doc.name
+                        );
                         continue;
                     }
 
@@ -210,6 +210,11 @@ public class DocumentIndexer {
                     }
 
                     indexed.incrementAndGet();
+                    if (listener != null) listener.onDocumentProcessed(
+                        indexed.get(),
+                        total,
+                        doc.name
+                    );
                     SystemClock.sleep(PER_DOCUMENT_COOLDOWN_MS);
                 } catch (Exception e) {
                     failed.incrementAndGet();

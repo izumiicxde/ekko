@@ -26,7 +26,7 @@ import com.semantic.ekko.ui.search.SearchFragment;
 import com.semantic.ekko.ui.settings.SettingsFragment;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
+import com.semantic.ekko.work.BackgroundIndexWorker;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -170,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
             StorageAccessHelper.supportsAllFilesAccess() &&
             StorageAccessHelper.hasAllFilesAccess()
         ) {
-            PublicStorageImportWorker.enqueue(this);
+            BackgroundIndexWorker.enqueueAll(this);
             prefsManager.setPublicImportPending(false);
         }
     }

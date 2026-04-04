@@ -26,7 +26,7 @@ import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
-import com.semantic.ekko.work.PublicStorageImportWorker;
+import com.semantic.ekko.work.BackgroundIndexWorker;
 import java.util.Arrays;
 import java.util.List;
 
@@ -375,7 +375,7 @@ public class OnboardingActivity extends AppCompatActivity {
             StorageAccessHelper.hasAllFilesAccess()
         ) {
             prefsManager.setPublicImportPending(true);
-            PublicStorageImportWorker.enqueue(this);
+            BackgroundIndexWorker.enqueueAll(this);
         }
         prefsManager.setOnboardingDone(true);
         launchMain();

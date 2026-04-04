@@ -18,6 +18,7 @@ import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.util.UserFacingMessages;
+import com.semantic.ekko.work.BackgroundIndexWorker;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -142,23 +143,6 @@ public class HomeViewModel extends AndroidViewModel {
     // =========================
 
     public void addFolderAndIndex(Uri folderUri) {
-        if (isIndexing.getValue() == Boolean.TRUE) return;
-
-        if (!EkkoApp.getInstance().isMlReady()) {
-            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
-            return;
-        }
-
-        if (indexer == null) {
-            initMl();
-            if (indexer == null) {
-                errorMessage.postValue(UserFacingMessages.GENERIC_ERROR);
-                return;
-            }
-        }
-
-        isIndexing.postValue(true);
-
         String folderName = FileUtils.getFolderDisplayPath(folderUri);
         FolderEntity folder = new FolderEntity(
             folderUri.toString(),
@@ -169,55 +153,21 @@ public class HomeViewModel extends AndroidViewModel {
             folder,
             (folderId, alreadyExists) -> {
                 if (alreadyExists) {
-                    isIndexing.postValue(false);
                     errorMessage.postValue(
                         "This folder has already been added."
                     );
                     return;
                 }
-
-                folder.id = folderId;
-
-                List<Uri> uris = Collections.singletonList(folderUri);
-                List<Long> ids = Collections.singletonList(folderId);
-                DocumentScanner.ScanResult scanResult =
-                    DocumentScanner.scanFolders(getApplication(), uris, ids);
-
-                if (scanResult.documents.isEmpty()) {
-                    isIndexing.postValue(false);
-                    errorMessage.postValue(
-                        "No supported documents found in this folder."
-                    );
-                    return;
-                }
-
-                startIndexing(scanResult.documents);
+                enqueueBackgroundIndex(Collections.singletonList(folderId));
             }
         );
     }
 
     public void addFilesystemFoldersAndIndex(List<File> folderFiles) {
-        if (isIndexing.getValue() == Boolean.TRUE) return;
         if (folderFiles == null || folderFiles.isEmpty()) {
             errorMessage.postValue("No shared folders selected.");
             return;
         }
-
-        if (!EkkoApp.getInstance().isMlReady()) {
-            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
-            return;
-        }
-
-        if (indexer == null) {
-            initMl();
-            if (indexer == null) {
-                errorMessage.postValue(UserFacingMessages.GENERIC_ERROR);
-                return;
-            }
-        }
-
-        isIndexing.postValue(true);
-        indexingStage.postValue("Preparing shared folders...");
 
         folderRepository.getAll(existingFolders -> {
             Set<String> existingUris = new HashSet<>();
@@ -249,7 +199,6 @@ public class HomeViewModel extends AndroidViewModel {
             }
 
             folderRepository.resolveOrInsert(folderEntities, resolvedFolders -> {
-                List<File> scanFolders = new ArrayList<>();
                 List<Long> folderIds = new ArrayList<>();
                 List<FolderEntity> safeFolders =
                     resolvedFolders == null
@@ -264,42 +213,16 @@ public class HomeViewModel extends AndroidViewModel {
                     ) {
                         continue;
                     }
-                    try {
-                        scanFolders.add(new File(Uri.parse(folder.uri).getPath()));
-                        folderIds.add(folder.id);
-                    } catch (Exception ignored) {}
+                    folderIds.add(folder.id);
                 }
 
-                if (scanFolders.isEmpty()) {
-                    isIndexing.postValue(false);
-                    indexingStage.postValue("");
-                    loadDocuments();
+                if (folderIds.isEmpty()) {
                     errorMessage.postValue(
                         "No included shared folders are available to refresh."
                     );
                     return;
                 }
-
-                DocumentScanner.ScanResult scanResult =
-                    DocumentScanner.scanFilesystemFolders(
-                        getApplication(),
-                        scanFolders,
-                        folderIds
-                    );
-
-                syncScannedDocuments(folderIds, scanResult.documents, () -> {
-                    if (scanResult.documents.isEmpty()) {
-                        isIndexing.postValue(false);
-                        indexingStage.postValue("");
-                        loadDocuments();
-                        errorMessage.postValue(
-                            "No supported documents found in included shared folders."
-                        );
-                        return;
-                    }
-
-                    startIndexing(scanResult.documents);
-                });
+                enqueueBackgroundIndex(folderIds);
             });
         });
     }
@@ -316,64 +239,25 @@ public class HomeViewModel extends AndroidViewModel {
     }
 
     public void reindexFolders(List<FolderEntity> folders) {
-        if (isIndexing.getValue() == Boolean.TRUE) return;
         if (folders == null || folders.isEmpty()) {
             errorMessage.postValue(
                 "No included folders available to re-index."
             );
             return;
         }
-
-        if (!EkkoApp.getInstance().isMlReady()) {
-            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
-            return;
-        }
-
-        if (indexer == null) {
-            initMl();
-            if (indexer == null) {
-                errorMessage.postValue(UserFacingMessages.GENERIC_ERROR);
-                return;
-            }
-        }
-
-        List<Uri> uris = new ArrayList<>();
         List<Long> folderIds = new ArrayList<>();
         for (FolderEntity folder : folders) {
             if (
                 folder == null || folder.uri == null || folder.uri.isEmpty()
             ) continue;
-            uris.add(Uri.parse(folder.uri));
             folderIds.add(folder.id);
         }
 
-        if (uris.isEmpty()) {
+        if (folderIds.isEmpty()) {
             errorMessage.postValue("No valid folders found to re-index.");
             return;
         }
-
-        isIndexing.postValue(true);
-        indexingStage.postValue("Preparing re-index...");
-
-        DocumentScanner.ScanResult scanResult = DocumentScanner.scanFolders(
-            getApplication(),
-            uris,
-            folderIds
-        );
-
-        syncScannedDocuments(folderIds, scanResult.documents, () -> {
-            if (scanResult.documents.isEmpty()) {
-                isIndexing.postValue(false);
-                indexingStage.postValue("");
-                loadDocuments();
-                errorMessage.postValue(
-                    "No supported documents found in selected folders."
-                );
-                return;
-            }
-
-            startIndexing(scanResult.documents);
-        });
+        enqueueBackgroundIndex(folderIds);
     }
 
     public void setFolderIncluded(FolderEntity folder, boolean included) {
@@ -585,6 +469,14 @@ public class HomeViewModel extends AndroidViewModel {
                 }
             }
         );
+    }
+
+    private void enqueueBackgroundIndex(List<Long> folderIds) {
+        isIndexing.postValue(true);
+        indexingStage.postValue("Queued for background indexing...");
+        indexingProgress.postValue(new IndexingProgress(0, 0, ""));
+        BackgroundIndexWorker.enqueue(getApplication(), folderIds);
+        loadDocuments();
     }
 
     // =========================
