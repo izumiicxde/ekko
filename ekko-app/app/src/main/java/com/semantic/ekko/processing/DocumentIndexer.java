@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DocumentIndexer {
 
     private static final String TAG = "DocumentIndexer";
-    private static final long PER_DOCUMENT_COOLDOWN_MS = 120L;
+    private static final int MAX_CHUNKS_TO_EMBED = 24;
 
     public interface ProgressListener {
         void onStageChanged(String stage);
@@ -185,7 +185,9 @@ public class DocumentIndexer {
                         "Chunking for Q&A..."
                     );
                     try {
-                        List<String> chunks = ChunkUtils.chunk(cleanedText);
+                        List<String> chunks = limitChunksForEmbedding(
+                            ChunkUtils.chunk(cleanedText)
+                        );
                         List<ChunkEntity> chunkEntities = new ArrayList<>();
                         for (int c = 0; c < chunks.size(); c++) {
                             String chunkText = chunks.get(c);
@@ -215,7 +217,6 @@ public class DocumentIndexer {
                         total,
                         doc.name
                     );
-                    SystemClock.sleep(PER_DOCUMENT_COOLDOWN_MS);
                 } catch (Exception e) {
                     failed.incrementAndGet();
                     failedNames.add(doc.name + " (error)");
@@ -309,6 +310,21 @@ public class DocumentIndexer {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    private List<String> limitChunksForEmbedding(List<String> chunks) {
+        if (chunks == null || chunks.size() <= MAX_CHUNKS_TO_EMBED) {
+            return chunks != null ? chunks : new ArrayList<>();
+        }
+
+        List<String> limited = new ArrayList<>();
+        double step = (double) (chunks.size() - 1) / (MAX_CHUNKS_TO_EMBED - 1);
+        for (int i = 0; i < MAX_CHUNKS_TO_EMBED; i++) {
+            int index = (int) Math.round(i * step);
+            index = Math.max(0, Math.min(index, chunks.size() - 1));
+            limited.add(chunks.get(index));
+        }
+        return limited;
     }
 
     public void shutdown() {

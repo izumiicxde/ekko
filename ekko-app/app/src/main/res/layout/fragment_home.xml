@@ -90,6 +90,19 @@
                     android:indeterminate="false"
                     app:trackCornerRadius="10dp"
                 />
+
+                <TextView
+                    android:id="@+id/txtIndexingRecent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:text="• lecture_notes_week_4.pdf&#10;• module_2_summary.docx&#10;• operating_systems_unit_5.pdf"
+                />
             </LinearLayout>
 
             <HorizontalScrollView

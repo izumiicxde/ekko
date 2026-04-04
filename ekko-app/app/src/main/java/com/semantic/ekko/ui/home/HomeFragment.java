@@ -50,6 +50,7 @@ public class HomeFragment extends Fragment {
     private LinearLayout layoutFolderNavigation;
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
+    private TextView txtIndexingRecent;
     private TextView txtDocCount;
     private TextView txtDocMeta;
     private TextView txtFolderPath;
@@ -190,6 +191,7 @@ public class HomeFragment extends Fragment {
         layoutFolderNavigation = view.findViewById(R.id.layoutFolderNavigation);
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
+        txtIndexingRecent = view.findViewById(R.id.txtIndexingRecent);
         txtDocCount = view.findViewById(R.id.txtDocCount);
         txtDocMeta = view.findViewById(R.id.txtDocMeta);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
@@ -234,6 +236,7 @@ public class HomeFragment extends Fragment {
                 updateEmptyState(safeDocs);
                 updateDocCount(safeDocs.size());
                 buildFilterChips(safeDocs);
+                updateRecentIndexedFiles(safeDocs);
             });
 
         viewModel
@@ -549,9 +552,45 @@ public class HomeFragment extends Fragment {
             progressIndexing.setProgress(0);
             txtIndexingStage.setText("");
             txtIndexingDoc.setText("");
+            txtIndexingRecent.setText("");
+            txtIndexingRecent.setVisibility(View.GONE);
             return;
         }
         renderIndexingState();
+    }
+
+    private void updateRecentIndexedFiles(List<DocumentEntity> docs) {
+        if (txtIndexingRecent == null || !isAppIndexing) {
+            return;
+        }
+        List<DocumentEntity> safeDocs = docs == null ? new ArrayList<>() : docs;
+        if (safeDocs.isEmpty()) {
+            txtIndexingRecent.setText("");
+            txtIndexingRecent.setVisibility(View.GONE);
+            return;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        int limit = Math.min(4, safeDocs.size());
+        for (int i = 0; i < limit; i++) {
+            DocumentEntity doc = safeDocs.get(i);
+            if (doc == null || doc.name == null || doc.name.trim().isEmpty()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append("• ").append(doc.name);
+        }
+
+        if (builder.length() == 0) {
+            txtIndexingRecent.setText("");
+            txtIndexingRecent.setVisibility(View.GONE);
+            return;
+        }
+
+        txtIndexingRecent.setText(builder.toString());
+        txtIndexingRecent.setVisibility(View.VISIBLE);
     }
 
     private void renderIndexingState() {
