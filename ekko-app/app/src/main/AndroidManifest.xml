@@ -43,6 +43,11 @@
             android:name=".ui.main.MainActivity"
             android:windowSoftInputMode="adjustResize"
         />
+        <activity
+            android:name=".ui.crash.CrashRecoveryActivity"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Ekko"
+        />
         <activity android:name=".ui.graph.GraphActivity" />
         <activity android:name=".ui.home.HomeActivity" />
         <activity android:name=".ui.detail.DetailActivity" />

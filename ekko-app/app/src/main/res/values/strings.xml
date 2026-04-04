@@ -76,6 +76,10 @@
     <string name="pdf_viewer_previous">Previous</string>
     <string name="pdf_viewer_next">Next</string>
     <string name="pdf_viewer_open_error">Could not open this PDF.</string>
+    <string name="crash_recovery_title">Ekko recovered safely</string>
+    <string name="crash_recovery_body">Something went wrong, so the app restarted into a safe screen. You can reopen the app and continue from there.</string>
+    <string name="crash_recovery_restart">Reopen app</string>
+    <string name="crash_recovery_close">Close</string>
     <string name="launcher_routing_message">Preparing your workspace</string>
     <string name="launcher_title">Ekko</string>
     <string

@@ -1,7 +1,9 @@
 package com.semantic.ekko.util;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Context;
-import android.util.Log;
+import android.content.Intent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -9,12 +11,13 @@ import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import com.semantic.ekko.ui.crash.CrashRecoveryActivity;
 
 public final class CrashLogger {
 
-    private static final String TAG = "CrashLogger";
     private static final String CRASH_DIR = "crash_logs";
     private static final String LATEST_FILE = "latest_crash.txt";
+    private static volatile boolean handlingCrash = false;
 
     private CrashLogger() {}
 
@@ -22,14 +25,18 @@ public final class CrashLogger {
         if (context == null) {
             return;
         }
-        Thread.UncaughtExceptionHandler previous =
-            Thread.getDefaultUncaughtExceptionHandler();
         Context appContext = context.getApplicationContext();
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-            writeCrash(appContext, thread, throwable);
-            if (previous != null) {
-                previous.uncaughtException(thread, throwable);
+            if (handlingCrash) {
+                android.os.Process.killProcess(android.os.Process.myPid());
+                System.exit(10);
+                return;
             }
+            handlingCrash = true;
+            writeCrash(appContext, thread, throwable);
+            scheduleRecovery(appContext);
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(10);
         });
     }
 
@@ -81,8 +88,23 @@ public final class CrashLogger {
                 );
                 writer.write(stackWriter.toString());
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to write crash log", e);
+        } catch (Exception ignored) {
+            // no-op
+        }
+    }
+
+    private static void scheduleRecovery(Context context) {
+        Intent intent = new Intent(context, CrashRecoveryActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            context,
+            404,
+            intent,
+            PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.set(AlarmManager.RTC, System.currentTimeMillis() + 160L, pendingIntent);
         }
     }
 }
