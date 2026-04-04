@@ -28,14 +28,24 @@
     <string
         name="onboarding_body_3"
     >Choose folders, keep private spaces excluded, or let Ekko import your public storage folders in the background.</string>
-    <string name="onboarding_title_4">Grant access to one source folder</string>
+    <string name="onboarding_title_4">Set up document access</string>
     <string
         name="onboarding_body_4"
     >On supported phones, Ekko can use wider shared storage access to discover public folders automatically. Otherwise it falls back to the folder picker.</string>
+    <string name="onboarding_title_4_storage">Allow shared storage access</string>
+    <string
+        name="onboarding_body_4_storage"
+    >Ekko can scan your public folders in the background when you allow shared storage access on supported Android versions.</string>
+    <string name="onboarding_title_4_folder">Choose a source folder</string>
+    <string
+        name="onboarding_body_4_folder"
+    >This Android version uses the folder picker, so Ekko will only ask for the folder you choose.</string>
     <string name="onboarding_highlight_1">Organize mixed file types</string>
     <string name="onboarding_highlight_2">Search, summarize, and chat</string>
     <string name="onboarding_highlight_3">Control what gets indexed</string>
-    <string name="onboarding_highlight_4">Required secure folder access</string>
+    <string name="onboarding_highlight_4">Required secure access</string>
+    <string name="onboarding_highlight_4_storage">Background shared-folder import</string>
+    <string name="onboarding_highlight_4_folder">Secure folder-based import</string>
     <string
         name="onboarding_tip_1"
     >PDFs, docs, text, and slides stay together in one reading space.</string>
@@ -48,6 +58,12 @@
     <string
         name="onboarding_tip_4"
     >Ekko indexes supported documents in a background queue and uses one worker to limit heat and battery drain.</string>
+    <string
+        name="onboarding_tip_4_storage"
+    >Ekko will discover readable public folders automatically and index them in one background worker.</string>
+    <string
+        name="onboarding_tip_4_folder"
+    >Ekko will only index the folder you select, which keeps the permission request smaller on older Android devices.</string>
     <string name="onboarding_choose_folder">Choose folder</string>
     <string name="onboarding_allow_storage_access">Allow storage access</string>
     <string name="onboarding_continue">Continue</string>

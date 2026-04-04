@@ -18,12 +18,14 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.StorageAccessHelper;
 import java.util.Arrays;
 import java.util.List;
 
@@ -80,6 +82,26 @@ public class OnboardingActivity extends AppCompatActivity {
                 );
             }
         );
+    private final ActivityResultLauncher<Intent> allFilesAccessLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (StorageAccessHelper.hasAllFilesAccess()) {
+                    hasRequiredFolder = true;
+                    prefsManager.setPublicImportPending(true);
+                    btnNext.setEnabled(true);
+                    updateUiForPage(viewPager.getCurrentItem());
+                    return;
+                }
+                btnNext.setEnabled(true);
+                Snackbar.make(
+                    btnNext,
+                    "Allow full storage access to index shared folders at once.",
+                    Snackbar.LENGTH_LONG
+                ).show();
+                updateUiForPage(viewPager.getCurrentItem());
+            }
+        );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,7 +124,13 @@ public class OnboardingActivity extends AppCompatActivity {
         folderRepository
             .getAllLive()
             .observe(this, folders -> {
-                hasRequiredFolder = folders != null && !folders.isEmpty();
+                boolean hasFolders = folders != null && !folders.isEmpty();
+                hasRequiredFolder =
+                    hasFolders ||
+                    (
+                        StorageAccessHelper.supportsAllFilesAccess() &&
+                        StorageAccessHelper.hasAllFilesAccess()
+                    );
                 updateUiForPage(viewPager.getCurrentItem());
             });
         createIndicators();
@@ -126,7 +154,7 @@ public class OnboardingActivity extends AppCompatActivity {
             if (viewPager.getCurrentItem() == pages.size() - 1) {
                 if (!hasRequiredFolder) {
                     btnNext.setEnabled(false);
-                    folderPicker.launch(null);
+                    launchFolderImport();
                     return;
                 }
                 completeOnboarding();
@@ -175,6 +203,7 @@ public class OnboardingActivity extends AppCompatActivity {
     }
 
     private void buildPages() {
+        boolean allFilesMode = StorageAccessHelper.supportsAllFilesAccess();
         pages = Arrays.asList(
             new OnboardingPagerAdapter.OnboardingPage(
                 R.string.onboarding_step_one,
@@ -202,10 +231,18 @@ public class OnboardingActivity extends AppCompatActivity {
             ),
             new OnboardingPagerAdapter.OnboardingPage(
                 R.string.onboarding_step_four,
-                R.string.onboarding_title_4,
-                R.string.onboarding_body_4,
-                R.string.onboarding_highlight_4,
-                R.string.onboarding_tip_4,
+                allFilesMode
+                    ? R.string.onboarding_title_4_storage
+                    : R.string.onboarding_title_4_folder,
+                allFilesMode
+                    ? R.string.onboarding_body_4_storage
+                    : R.string.onboarding_body_4_folder,
+                allFilesMode
+                    ? R.string.onboarding_highlight_4_storage
+                    : R.string.onboarding_highlight_4_folder,
+                allFilesMode
+                    ? R.string.onboarding_tip_4_storage
+                    : R.string.onboarding_tip_4_folder,
                 R.drawable.ic_folder_open
             )
         );
@@ -287,11 +324,13 @@ public class OnboardingActivity extends AppCompatActivity {
         btnSkip.setVisibility(lastPage ? View.INVISIBLE : View.VISIBLE);
         btnSkip.setText(R.string.onboarding_skip_setup);
         if (lastPage) {
-            btnNext.setText(
-                hasRequiredFolder
-                    ? R.string.onboarding_start
-                    : R.string.onboarding_choose_folder
-            );
+            if (hasRequiredFolder) {
+                btnNext.setText(R.string.onboarding_start);
+            } else if (StorageAccessHelper.supportsAllFilesAccess()) {
+                btnNext.setText(R.string.onboarding_allow_storage_access);
+            } else {
+                btnNext.setText(R.string.onboarding_choose_folder);
+            }
         } else {
             btnNext.setText(R.string.onboarding_next);
         }
@@ -303,6 +342,24 @@ public class OnboardingActivity extends AppCompatActivity {
                     R.drawable.ic_arrow_forward_small
                 )
         );
+        btnNext.setEnabled(true);
+        btnBack.setEnabled(true);
+    }
+
+    private void launchFolderImport() {
+        if (StorageAccessHelper.supportsAllFilesAccess()) {
+            if (StorageAccessHelper.hasAllFilesAccess()) {
+                hasRequiredFolder = true;
+                prefsManager.setPublicImportPending(true);
+                updateUiForPage(viewPager.getCurrentItem());
+            } else {
+                allFilesAccessLauncher.launch(
+                    StorageAccessHelper.createManageAllFilesAccessIntent(this)
+                );
+            }
+            return;
+        }
+        folderPicker.launch(null);
     }
 
     private void completeOnboarding() {

@@ -1,6 +1,11 @@
 package com.semantic.ekko.network;
 
 import com.semantic.ekko.BuildConfig;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -8,8 +13,12 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RagClient {
 
-    private static volatile RagApiService instance;
+    private static final ConcurrentHashMap<String, RagApiService> SERVICES =
+        new ConcurrentHashMap<>();
     private static volatile OkHttpClient streamingClient;
+    private static volatile String activeBaseUrl = normalizeBaseUrl(
+        BuildConfig.RAG_BASE_URL
+    );
 
     // Standard client for non-streaming calls
     private static OkHttpClient buildStandardClient() {
@@ -42,22 +51,46 @@ public class RagClient {
     }
 
     public static String getBaseUrl() {
-        return BuildConfig.RAG_BASE_URL;
+        return activeBaseUrl;
+    }
+
+    public static List<String> getCandidateBaseUrls() {
+        Set<String> urls = new LinkedHashSet<>();
+        urls.add(normalizeBaseUrl(BuildConfig.RAG_BASE_URL));
+        urls.add("http://127.0.0.1:8000/");
+        urls.add("http://10.0.2.2:8000/");
+        urls.add("http://localhost:8000/");
+        return new ArrayList<>(urls);
+    }
+
+    public static void setActiveBaseUrl(String baseUrl) {
+        activeBaseUrl = normalizeBaseUrl(baseUrl);
+    }
+
+    public static RagApiService getService(String baseUrl) {
+        String normalized = normalizeBaseUrl(baseUrl);
+        return SERVICES.computeIfAbsent(normalized, url -> {
+            Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(url)
+                .client(buildStandardClient())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+            return retrofit.create(RagApiService.class);
+        });
+    }
+
+    private static String normalizeBaseUrl(String baseUrl) {
+        String safe = baseUrl == null ? "" : baseUrl.trim();
+        if (safe.isEmpty()) {
+            safe = "http://127.0.0.1:8000/";
+        }
+        if (!safe.endsWith("/")) {
+            safe = safe + "/";
+        }
+        return safe;
     }
 
     public static RagApiService getInstance() {
-        if (instance == null) {
-            synchronized (RagClient.class) {
-                if (instance == null) {
-                    Retrofit retrofit = new Retrofit.Builder()
-                        .baseUrl(BuildConfig.RAG_BASE_URL)
-                        .client(buildStandardClient())
-                        .addConverterFactory(GsonConverterFactory.create())
-                        .build();
-                    instance = retrofit.create(RagApiService.class);
-                }
-            }
-        }
-        return instance;
+        return getService(activeBaseUrl);
     }
 }

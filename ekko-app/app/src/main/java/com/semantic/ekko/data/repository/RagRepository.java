@@ -41,8 +41,7 @@ public class RagRepository {
     private static final String TAG = "RagRepository";
     private static final int TOP_DOCS = 2;
     private static final int CHUNKS_PER_DOC = 5;
-    private static final int MIN_CHUNKS = 3;
-    private static final int SCORE_TOP_N = 3; // was 3
+    private static final int SCORE_TOP_N = 3;
     private static final String GENERIC_QA_UNAVAILABLE =
         "The assistant is temporarily unavailable. Please try again in a moment.";
     private static final String GENERIC_SUMMARY_UNAVAILABLE =
@@ -58,9 +57,7 @@ public class RagRepository {
     private final DocumentDao documentDao;
     private final FolderDao folderDao;
     private final PrefsManager prefsManager;
-    private final RagApiService apiService;
     private final OkHttpClient streamingClient;
-    private final String baseUrl;
 
     private volatile Call activeCall = null;
     private static volatile retrofit2.Call<SummaryResponse> activeSummaryCall =
@@ -95,9 +92,7 @@ public class RagRepository {
         this.documentDao = db.documentDao();
         this.folderDao = db.folderDao();
         this.prefsManager = new PrefsManager(context);
-        this.apiService = RagClient.getInstance();
         this.streamingClient = RagClient.getStreamingClient();
-        this.baseUrl = RagClient.getBaseUrl();
     }
 
     public void cancelStream() {
@@ -167,9 +162,45 @@ public class RagRepository {
 
     private List<String> pickTopChunks(List<ScoredChunk> scoredChunks) {
         List<String> result = new ArrayList<>();
-        int limit = Math.min(CHUNKS_PER_DOC, scoredChunks.size());
-        for (int i = 0; i < limit; i++) {
-            result.add(scoredChunks.get(i).chunk.chunkText);
+        Set<Integer> usedIndexes = new HashSet<>();
+
+        for (ScoredChunk scoredChunk : scoredChunks) {
+            if (result.size() >= CHUNKS_PER_DOC) {
+                break;
+            }
+            if (scoredChunk == null || scoredChunk.chunk == null) {
+                continue;
+            }
+
+            int chunkIndex = scoredChunk.chunk.chunkIndex;
+            boolean nearDuplicate = false;
+            for (Integer usedIndex : usedIndexes) {
+                if (Math.abs(usedIndex - chunkIndex) <= 1) {
+                    nearDuplicate = true;
+                    break;
+                }
+            }
+            if (nearDuplicate) {
+                continue;
+            }
+
+            result.add(scoredChunk.chunk.chunkText);
+            usedIndexes.add(chunkIndex);
+        }
+
+        for (ScoredChunk scoredChunk : scoredChunks) {
+            if (result.size() >= CHUNKS_PER_DOC) {
+                break;
+            }
+            if (
+                scoredChunk == null ||
+                scoredChunk.chunk == null ||
+                usedIndexes.contains(scoredChunk.chunk.chunkIndex)
+            ) {
+                continue;
+            }
+            result.add(scoredChunk.chunk.chunkText);
+            usedIndexes.add(scoredChunk.chunk.chunkIndex);
         }
         return result;
     }
@@ -228,14 +259,6 @@ public class RagRepository {
             }
             String docName = docNames.getOrDefault(docId, "Unknown");
 
-            if (docChunks.size() < MIN_CHUNKS) {
-                Log.d(
-                    TAG,
-                    "Skipping " + docName + " (" + docChunks.size() + " chunks)"
-                );
-                continue;
-            }
-
             List<ScoredChunk> scored = new ArrayList<>();
             for (ChunkEntity chunk : docChunks) {
                 if (
@@ -260,7 +283,13 @@ public class RagRepository {
             int n = Math.min(SCORE_TOP_N, scored.size());
             float sum = 0f;
             for (int i = 0; i < n; i++) sum += scored.get(i).score;
-            scoredDocs.add(new ScoredDoc(docId, docName, sum / n, scored));
+            float bestScore = scored.get(0).score;
+            float averageTopScore = sum / n;
+            float chunkPenalty = computeChunkOpportunityPenalty(scored.size());
+            float docScore =
+                ((0.72f * bestScore) + (0.28f * averageTopScore)) * chunkPenalty;
+
+            scoredDocs.add(new ScoredDoc(docId, docName, docScore, scored));
         }
 
         if (scoredDocs.isEmpty()) return null;
@@ -351,6 +380,14 @@ public class RagRepository {
 
         Collections.sort(scored, (a, b) -> Float.compare(b.score, a.score));
         float bestScore = scored.get(0).score;
+        int n = Math.min(SCORE_TOP_N, scored.size());
+        float sum = 0f;
+        for (int i = 0; i < n; i++) {
+            sum += scored.get(i).score;
+        }
+        float docScore =
+            ((0.72f * bestScore) + (0.28f * (sum / n))) *
+            computeChunkOpportunityPenalty(scored.size());
 
         List<String> selected = pickTopChunks(scored);
         Log.d(
@@ -366,7 +403,12 @@ public class RagRepository {
         );
         // In document mode we do not apply a relevance threshold since the user
         // explicitly chose this document to chat with.
-        return new SelectionResult(selected, docName, bestScore);
+        return new SelectionResult(selected, docName, docScore);
+    }
+
+    private float computeChunkOpportunityPenalty(int chunkCount) {
+        int extraChunks = Math.max(0, chunkCount - 6);
+        return 1f / (1f + (extraChunks * 0.035f));
     }
 
     // =========================
@@ -401,8 +443,8 @@ public class RagRepository {
         if (
             embeddingEngine == null ||
             streamingClient == null ||
-            baseUrl == null ||
-            baseUrl.isEmpty()
+            RagClient.getBaseUrl() == null ||
+            RagClient.getBaseUrl().isEmpty()
         ) {
             callback.onError(
                 "Q&A is not ready yet. Please try again in a moment."
@@ -449,6 +491,7 @@ public class RagRepository {
                     return;
                 }
 
+                String baseUrl = RagClient.getBaseUrl();
                 JSONObject body = new JSONObject();
                 body.put("question", question.trim());
                 body.put("document_name", selection.sourceDocName);
@@ -525,7 +568,7 @@ public class RagRepository {
             callback.onError("Question cannot be empty.");
             return;
         }
-        if (embeddingEngine == null || apiService == null) {
+        if (embeddingEngine == null) {
             callback.onError(
                 "Q&A is not ready yet. Please try again in a moment."
             );
@@ -556,6 +599,7 @@ public class RagRepository {
                     selection.sourceDocName
                 );
                 final String src = selection.sourceDocName;
+                RagApiService apiService = RagClient.getInstance();
 
                 apiService
                     .ask(req)
@@ -599,7 +643,7 @@ public class RagRepository {
             callback.onError("Document not loaded.");
             return;
         }
-        if (apiService == null) {
+        if (RagClient.getBaseUrl() == null || RagClient.getBaseUrl().isEmpty()) {
             callback.onError("Summary service is not ready yet.");
             return;
         }
@@ -639,6 +683,7 @@ public class RagRepository {
                 SummaryRequest request = new SummaryRequest(context, doc.name);
                 final String sourceName =
                     doc.name != null ? doc.name : "Document";
+                RagApiService apiService = RagClient.getInstance();
 
                 retrofit2.Call<SummaryResponse> call = apiService.summarize(
                     request
@@ -713,7 +758,7 @@ public class RagRepository {
             callback.onError("Question cannot be empty.");
             return;
         }
-        if (embeddingEngine == null || apiService == null) {
+        if (embeddingEngine == null) {
             callback.onError(
                 "Q&A is not ready yet. Please try again in a moment."
             );
@@ -746,6 +791,7 @@ public class RagRepository {
                     selection.sourceDocName
                 );
                 final String src = selection.sourceDocName;
+                RagApiService apiService = RagClient.getInstance();
 
                 apiService
                     .ask(req)

@@ -2,6 +2,7 @@ package com.semantic.ekko.ui.detail;
 
 import android.content.ClipData;
 import android.content.Intent;
+import android.content.ClipboardManager;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
@@ -11,6 +12,7 @@ import android.view.View;
 import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.core.graphics.Insets;
@@ -68,6 +70,7 @@ public class DetailActivity extends AppCompatActivity {
     private boolean summaryExpanded = false;
     private boolean entitiesExpanded = false;
     private List<String> currentEntities = new ArrayList<>();
+    private String lastOpenDebugInfo;
     private DocumentEntity pendingOpenDoc;
     private FolderEntity pendingOpenFolder;
     private final ActivityResultLauncher<Uri> folderAccessLauncher =
@@ -289,7 +292,7 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void updateActionReadiness() {
-        boolean ready = mlReady && backendReady;
+        boolean ready = mlReady;
         boolean loading =
             viewModel != null &&
             Boolean.TRUE.equals(viewModel.getSummaryLoading().getValue());
@@ -311,6 +314,17 @@ public class DetailActivity extends AppCompatActivity {
                 !mlReady
                     ? "Summary tools will unlock after local models finish loading"
                     : "Summary tools are waiting for the backend connection"
+            );
+        } else if (
+            ready &&
+            !backendReady &&
+            txtSummaryHint != null &&
+            (currentDoc == null ||
+                currentDoc.summary == null ||
+                currentDoc.summary.isEmpty())
+        ) {
+            txtSummaryHint.setText(
+                "Backend health looks stale, but summary requests can still be attempted"
             );
         }
     }
@@ -422,10 +436,13 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void openResolvedFile(DocumentEntity doc, FolderEntity folder) {
+        Uri sourceUri = null;
+        Uri openUri = null;
+        String mimeType = null;
         try {
-            Uri sourceUri = resolveSourceUri(doc, folder);
-            String mimeType = FileUtils.resolveMimeType(this, sourceUri, doc.name);
-            Uri openUri = FileUtils.copyToViewerCache(this, sourceUri, doc.name);
+            sourceUri = resolveSourceUri(doc, folder);
+            mimeType = FileUtils.resolveMimeType(this, sourceUri, doc.name);
+            openUri = FileUtils.copyToViewerCache(this, sourceUri, doc.name);
 
             if (tryOpenInNativeApp(doc.name, openUri, mimeType)) {
                 return;
@@ -438,9 +455,11 @@ public class DetailActivity extends AppCompatActivity {
 
             throw new IllegalStateException("No viewer available");
         } catch (SecurityException e) {
+            captureOpenDebugInfo(doc, sourceUri, openUri, mimeType, e);
             recoverMissingAccess(doc, folder);
         } catch (Exception e) {
-            showOpenFileError();
+            captureOpenDebugInfo(doc, sourceUri, openUri, mimeType, e);
+            showOpenFileError(true);
         }
     }
 
@@ -508,11 +527,90 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void showOpenFileError() {
-        Snackbar.make(
+        showOpenFileError(false);
+    }
+
+    private void showOpenFileError(boolean includeDebugAction) {
+        Snackbar snackbar = Snackbar.make(
             btnOpenFile,
             "Could not open file. Re-select the source folder if access was revoked.",
-            Snackbar.LENGTH_SHORT
-        ).show();
+            Snackbar.LENGTH_LONG
+        );
+        if (
+            includeDebugAction &&
+            lastOpenDebugInfo != null &&
+            !lastOpenDebugInfo.trim().isEmpty()
+        ) {
+            snackbar.setAction("Details", v -> showOpenDebugDialog());
+        }
+        snackbar.show();
+    }
+
+    private void captureOpenDebugInfo(
+        DocumentEntity doc,
+        Uri sourceUri,
+        Uri openUri,
+        String mimeType,
+        Exception error
+    ) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("File: ")
+            .append(doc != null ? doc.name : "unknown")
+            .append('\n');
+        builder.append("Stored URI: ")
+            .append(doc != null ? doc.uri : "null")
+            .append('\n');
+        builder.append("Source URI: ")
+            .append(sourceUri != null ? sourceUri : "null")
+            .append('\n');
+        builder.append("Source Scheme: ")
+            .append(sourceUri != null ? sourceUri.getScheme() : "null")
+            .append('\n');
+        builder.append("Viewer URI: ")
+            .append(openUri != null ? openUri : "null")
+            .append('\n');
+        builder.append("Viewer Scheme: ")
+            .append(openUri != null ? openUri.getScheme() : "null")
+            .append('\n');
+        builder.append("MIME: ")
+            .append(mimeType != null ? mimeType : "null")
+            .append('\n');
+        builder.append("Error: ")
+            .append(error != null ? error.getClass().getSimpleName() : "unknown")
+            .append('\n');
+        builder.append("Message: ")
+            .append(
+                error != null && error.getMessage() != null
+                    ? error.getMessage()
+                    : "none"
+            );
+        lastOpenDebugInfo = builder.toString();
+    }
+
+    private void showOpenDebugDialog() {
+        if (lastOpenDebugInfo == null || lastOpenDebugInfo.trim().isEmpty()) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("Open file debug info")
+            .setMessage(lastOpenDebugInfo)
+            .setNegativeButton("Close", null)
+            .setPositiveButton("Copy", (dialog, which) -> copyOpenDebugInfo())
+            .show();
+    }
+
+    private void copyOpenDebugInfo() {
+        ClipboardManager clipboard = getSystemService(ClipboardManager.class);
+        if (clipboard != null && lastOpenDebugInfo != null) {
+            clipboard.setPrimaryClip(
+                ClipData.newPlainText("open_debug_info", lastOpenDebugInfo)
+            );
+            Snackbar.make(
+                btnOpenFile,
+                "Open debug info copied.",
+                Snackbar.LENGTH_SHORT
+            ).show();
+        }
     }
 
     private boolean tryOpenInNativeApp(
@@ -520,39 +618,44 @@ public class DetailActivity extends AppCompatActivity {
         Uri openUri,
         String mimeType
     ) {
-        Intent intent = buildViewIntent(docName, openUri, mimeType);
-        List<ResolveInfo> handlers = getPackageManager().queryIntentActivities(
-            intent,
-            PackageManager.MATCH_DEFAULT_ONLY
-        );
-        if (handlers == null || handlers.isEmpty()) {
-            return false;
-        }
+        String[] mimeCandidates = new String[] {
+            mimeType != null && !mimeType.trim().isEmpty() ? mimeType : "*/*",
+            "*/*",
+        };
 
-        grantReadAccessToHandlers(openUri, handlers);
-
-        Intent launchIntent = intent;
-        if (handlers.size() > 1) {
-            Intent chooser = Intent.createChooser(intent, "Open with");
-            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            chooser.setClipData(
-                ClipData.newUri(getContentResolver(), docName, openUri)
+        for (String candidateMime : mimeCandidates) {
+            Intent intent = buildViewIntent(docName, openUri, candidateMime);
+            List<ResolveInfo> handlers = getPackageManager().queryIntentActivities(
+                intent,
+                PackageManager.MATCH_DEFAULT_ONLY
             );
-            launchIntent = chooser;
-        }
+            grantReadAccessToHandlers(openUri, handlers);
 
-        try {
-            startActivity(launchIntent);
-            return true;
-        } catch (Exception ignored) {
-            return false;
+            Intent launchIntent = intent;
+            if (handlers != null && handlers.size() > 1) {
+                Intent chooser = Intent.createChooser(intent, "Open with");
+                chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                chooser.setClipData(
+                    ClipData.newUri(getContentResolver(), docName, openUri)
+                );
+                launchIntent = chooser;
+            }
+
+            try {
+                startActivity(launchIntent);
+                return true;
+            } catch (Exception ignored) {
+                // Try the next MIME candidate before giving up.
+            }
         }
+        return false;
     }
 
     private Intent buildViewIntent(String docName, Uri openUri, String mimeType) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(openUri, mimeType != null ? mimeType : "*/*");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
         intent.setClipData(ClipData.newUri(getContentResolver(), docName, openUri));
         return intent;
     }

@@ -19,6 +19,8 @@ public class PrefsManager {
     private static final String KEY_SORT_ORDER = "sort_order";
     private static final String KEY_FILTER_FILE_TYPE = "filter_file_type";
     private static final String KEY_EXCLUDED_FOLDERS = "excluded_folders";
+    private static final String KEY_PENDING_PUBLIC_IMPORT =
+        "pending_public_import";
 
     private final SharedPreferences prefs;
 
@@ -94,6 +96,14 @@ public class PrefsManager {
 
     public void setLastIndexedAt(long timestamp) {
         prefs.edit().putLong(KEY_LAST_INDEXED_AT, timestamp).apply();
+    }
+
+    public boolean isPublicImportPending() {
+        return prefs.getBoolean(KEY_PENDING_PUBLIC_IMPORT, false);
+    }
+
+    public void setPublicImportPending(boolean pending) {
+        prefs.edit().putBoolean(KEY_PENDING_PUBLIC_IMPORT, pending).apply();
     }
 
     // =========================

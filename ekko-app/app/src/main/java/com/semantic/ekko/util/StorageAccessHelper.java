@@ -30,7 +30,15 @@ public final class StorageAccessHelper {
             Uri.parse("package:" + context.getPackageName())
         );
         appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        return appIntent;
+        if (appIntent.resolveActivity(context.getPackageManager()) != null) {
+            return appIntent;
+        }
+
+        Intent fallbackIntent = new Intent(
+            Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+        );
+        fallbackIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return fallbackIntent;
     }
 
     public static List<File> discoverAccessiblePublicFolders(Context context) {

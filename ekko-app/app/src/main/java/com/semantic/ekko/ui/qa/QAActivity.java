@@ -246,7 +246,8 @@ public class QAActivity extends AppCompatActivity {
 
     private void updateReadinessUi() {
         boolean backendChecking = mlReady && !backendStatusKnown;
-        boolean ready = mlReady && backendReady;
+        boolean ready = mlReady;
+        boolean backendOffline = mlReady && backendStatusKnown && !backendReady;
         if (editQuestion == null || btnSend == null || btnStop == null) {
             return;
         }
@@ -288,6 +289,14 @@ public class QAActivity extends AppCompatActivity {
             applyDefaultReadyCopy(
                 getIntent().getStringExtra(EXTRA_DOCUMENT_NAME)
             );
+            if (backendOffline) {
+                txtQaSubtitle.setText("Backend health check is stale, but you can still try");
+                txtEmptySubtitle.setText(
+                    "The last health probe failed. If the backend is up, questions can still go through."
+                );
+            } else if (backendChecking) {
+                txtQaSubtitle.setText("Checking backend in the background");
+            }
         }
         if (ready && adapter.getItemCount() == 0) {
             chipGroupSuggestions.setVisibility(View.VISIBLE);

@@ -25,6 +25,8 @@ import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchFragment;
 import com.semantic.ekko.ui.settings.SettingsFragment;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -61,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         folderRepository
             .getAllLive()
             .observe(this, folders -> refreshFolderAvailability());
+        maybeStartPendingPublicImport();
 
         if (savedInstanceState == null) {
             showFragment(TAG_HOME);
@@ -133,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        maybeStartPendingPublicImport();
         refreshFolderAvailability();
         syncNavToCurrentTag();
     }
@@ -156,6 +160,19 @@ public class MainActivity extends AppCompatActivity {
         navSearch = findViewById(R.id.navSearch);
         navAsk = findViewById(R.id.navAsk);
         navSettings = findViewById(R.id.navSettings);
+    }
+
+    private void maybeStartPendingPublicImport() {
+        if (
+            prefsManager == null ||
+            !prefsManager.isPublicImportPending() ||
+            !StorageAccessHelper.supportsAllFilesAccess() ||
+            !StorageAccessHelper.hasAllFilesAccess()
+        ) {
+            return;
+        }
+        prefsManager.setPublicImportPending(false);
+        PublicStorageImportWorker.enqueue(this);
     }
 
     private void applyWindowInsets() {

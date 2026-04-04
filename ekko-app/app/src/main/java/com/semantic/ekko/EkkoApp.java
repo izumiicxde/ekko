@@ -22,7 +22,7 @@ public class EkkoApp extends Application {
     private static final String TAG = "EkkoApp";
     private static final long BACKEND_CHECK_INTERVAL_HEALTHY_MS = 15_000L;
     private static final long BACKEND_CHECK_INTERVAL_UNHEALTHY_MS = 3_000L;
-    private static final int BACKEND_FAILURES_BEFORE_OFFLINE = 2;
+    private static final int BACKEND_FAILURES_BEFORE_OFFLINE = 4;
     private static final int MAX_CHAT_MESSAGES = 80;
     private static final int MAX_STREAM_BUFFER_CHARS = 24000;
     private static EkkoApp instance;
@@ -265,16 +265,50 @@ public class EkkoApp extends Application {
         lastBackendCheckAt = now;
         new Thread(() -> {
             boolean requestSucceeded = false;
+            String resolvedBaseUrl = null;
             try {
-                retrofit2.Response<Void> response = RagClient.getInstance()
-                    .health()
-                    .execute();
-                requestSucceeded = response.isSuccessful();
+                for (String candidateBaseUrl : RagClient.getCandidateBaseUrls()) {
+                    try {
+                        Log.d(
+                            TAG,
+                            "Checking backend health at " + candidateBaseUrl
+                        );
+                        retrofit2.Response<Void> response = RagClient.getService(
+                            candidateBaseUrl
+                        )
+                            .health()
+                            .execute();
+                        Log.d(
+                            TAG,
+                            "Health response " +
+                            response.code() +
+                            " from " +
+                            candidateBaseUrl
+                        );
+                        if (response.isSuccessful()) {
+                            requestSucceeded = true;
+                            resolvedBaseUrl = candidateBaseUrl;
+                            Log.d(
+                                TAG,
+                                "Backend reachable via " + candidateBaseUrl
+                            );
+                            break;
+                        }
+                    } catch (Exception e) {
+                        Log.d(
+                            TAG,
+                            "Backend health check failed for " +
+                            candidateBaseUrl,
+                            e
+                        );
+                    }
+                }
             } catch (Exception e) {
-                Log.d(TAG, "Backend health check failed: " + e.getMessage());
+                Log.d(TAG, "Backend health check failed", e);
             } finally {
                 boolean resolvedState;
                 if (requestSucceeded) {
+                    RagClient.setActiveBaseUrl(resolvedBaseUrl);
                     consecutiveBackendFailures = 0;
                     resolvedState = true;
                 } else {
@@ -284,6 +318,13 @@ public class EkkoApp extends Application {
                         consecutiveBackendFailures <
                         BACKEND_FAILURES_BEFORE_OFFLINE;
                 }
+                Log.d(
+                    TAG,
+                    "Backend reachable state=" +
+                    resolvedState +
+                    " activeBaseUrl=" +
+                    RagClient.getBaseUrl()
+                );
                 backendReachable = resolvedState;
                 backendReachableState.postValue(resolvedState);
                 backendCheckInFlight = false;
