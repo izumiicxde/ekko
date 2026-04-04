@@ -12,7 +12,6 @@ import com.semantic.ekko.ml.EmbeddingEngine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -171,11 +170,12 @@ public class DocumentRepository {
                 documentDao.getAllEmbeddings();
             List<SearchResult> results = new ArrayList<>();
 
-            String normalizedQuery = normalizeSearchText(rawQuery);
-            String[] queryTerms = tokenizeQuery(normalizedQuery);
+            String normalizedQuery = SearchTextMatcher.normalize(rawQuery);
+            String[] queryTerms = SearchTextMatcher.tokenize(normalizedQuery);
 
             for (DocumentDao.DocumentEmbeddingRow row : rows) {
-                boolean obviousTextMatch = hasAnyFieldMatch(
+                SearchTextMatcher.Signals docSignals = SearchTextMatcher.analyze(
+                    normalizedQuery,
                     queryTerms,
                     row.name,
                     row.relative_path,
@@ -183,14 +183,8 @@ public class DocumentRepository {
                     row.summary,
                     row.raw_text
                 );
-                boolean exactPhraseMatch = hasPhraseMatch(
-                    normalizedQuery,
-                    row.name,
-                    row.relative_path,
-                    row.keywords,
-                    row.summary,
-                    row.raw_text
-                );
+                boolean obviousTextMatch = docSignals.hasAnyMatch();
+                boolean exactPhraseMatch = docSignals.phraseMatch;
                 if (row.word_count < 20 && !obviousTextMatch) continue;
                 float embeddingScore = 0f;
                 if (row.embedding != null) {
@@ -203,26 +197,23 @@ public class DocumentRepository {
                     );
                 }
 
-                float keywordScore = computeFieldScore(
+                float keywordScore = SearchTextMatcher.fieldScore(
                     row.keywords,
                     queryTerms
                 );
-                float summaryScore = computeFieldScore(row.summary, queryTerms);
-                float fullTextScore = computeFieldScore(
+                float summaryScore = SearchTextMatcher.fieldScore(
+                    row.summary,
+                    queryTerms
+                );
+                float fullTextScore = SearchTextMatcher.fieldScore(
                     row.raw_text,
                     queryTerms
                 );
                 float filenameScore = Math.max(
-                    computeFieldScore(row.name, queryTerms),
-                    computeFieldScore(row.relative_path, queryTerms)
+                    SearchTextMatcher.fieldScore(row.name, queryTerms),
+                    SearchTextMatcher.fieldScore(row.relative_path, queryTerms)
                 );
-                float phraseScore = computePhraseScore(
-                    normalizedQuery,
-                    row.name,
-                    row.relative_path,
-                    row.summary,
-                    row.raw_text
-                );
+                float phraseScore = exactPhraseMatch ? 1f : 0f;
                 ChunkSearchSignals chunkSignals = computeChunkSignals(
                     row.id,
                     queryEmbedding,
@@ -232,28 +223,41 @@ public class DocumentRepository {
                 float chunkOpportunityPenalty = computeChunkOpportunityPenalty(
                     chunkSignals.chunkCount
                 );
+                float lexicalCoverage = Math.max(
+                    docSignals.coverageScore(),
+                    chunkSignals.coverageScore
+                );
+                float semanticCoverageMultiplier =
+                    computeSemanticCoverageMultiplier(queryTerms, lexicalCoverage);
 
                 float finalScore =
-                    0.24f * embeddingScore +
-                    0.18f * (chunkSignals.embeddingScore * chunkOpportunityPenalty) +
-                    0.08f * (chunkSignals.averageEmbeddingScore * chunkOpportunityPenalty) +
-                    0.14f * keywordScore +
-                    0.10f * summaryScore +
-                    0.14f * fullTextScore +
-                    0.06f * filenameScore +
-                    0.10f * phraseScore;
+                    semanticCoverageMultiplier *
+                    (
+                        0.24f * embeddingScore +
+                        0.18f * (chunkSignals.embeddingScore * chunkOpportunityPenalty) +
+                        0.08f * (chunkSignals.averageEmbeddingScore * chunkOpportunityPenalty) +
+                        0.14f * keywordScore +
+                        0.10f * summaryScore +
+                        0.14f * fullTextScore +
+                        0.06f * filenameScore +
+                        0.10f * phraseScore
+                    );
 
                 finalScore = Math.max(
                     finalScore,
                     0.18f * (chunkSignals.lexicalScore * chunkOpportunityPenalty)
                 );
+                finalScore = Math.max(
+                    finalScore,
+                    0.16f * lexicalCoverage
+                );
 
-                if (obviousTextMatch || chunkSignals.obviousTextMatch) {
+                if (docSignals.hasStrongMatch() || chunkSignals.hasStrongMatch) {
                     finalScore = Math.max(
                         finalScore,
                         exactPhraseMatch || chunkSignals.phraseMatch
-                            ? 0.28f
-                            : 0.14f
+                            ? 0.34f
+                            : 0.22f
                     );
                 }
 
@@ -277,62 +281,6 @@ public class DocumentRepository {
         });
     }
 
-    /**
-     * Returns the proportion of query terms found in the given field text.
-     * A term must be at least 2 characters. Returns a value in [0.0, 1.0].
-     */
-    private float computeFieldScore(String fieldText, String[] queryTerms) {
-        if (
-            fieldText == null || fieldText.isEmpty() || queryTerms.length == 0
-        ) {
-            return 0f;
-        }
-        String lowerField = normalizeSearchText(fieldText);
-        int matches = 0;
-        int validTerms = 0;
-        for (String term : queryTerms) {
-            if (term.length() < 2) continue;
-            validTerms++;
-            if (lowerField.contains(term)) matches++;
-        }
-        if (validTerms == 0) return 0f;
-        return (float) matches / validTerms;
-    }
-
-    private boolean hasAnyFieldMatch(String[] queryTerms, String... fieldTexts) {
-        if (queryTerms == null || queryTerms.length == 0 || fieldTexts == null) {
-            return false;
-        }
-        for (String fieldText : fieldTexts) {
-            if (fieldText == null || fieldText.isEmpty()) continue;
-            String lowerField = normalizeSearchText(fieldText);
-            for (String term : queryTerms) {
-                if (term == null || term.length() < 2) continue;
-                if (lowerField.contains(term)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean hasPhraseMatch(String query, String... fieldTexts) {
-        if (query == null || query.isEmpty() || fieldTexts == null) {
-            return false;
-        }
-        for (String fieldText : fieldTexts) {
-            if (fieldText == null || fieldText.isEmpty()) continue;
-            if (normalizeSearchText(fieldText).contains(query)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private float computePhraseScore(String query, String... fieldTexts) {
-        return hasPhraseMatch(query, fieldTexts) ? 1f : 0f;
-    }
-
     private ChunkSearchSignals computeChunkSignals(
         long documentId,
         float[] queryEmbedding,
@@ -348,8 +296,10 @@ public class DocumentRepository {
         float totalChunkEmbedding = 0f;
         int embeddingCount = 0;
         float bestChunkLexical = 0f;
+        float bestCoverage = 0f;
         boolean obviousTextMatch = false;
         boolean phraseMatch = false;
+        boolean strongMatch = false;
         int chunkCount = 0;
 
         for (ChunkEntity chunk : chunks) {
@@ -357,6 +307,11 @@ public class DocumentRepository {
                 continue;
             }
             chunkCount++;
+            SearchTextMatcher.Signals chunkTextSignals = SearchTextMatcher.analyze(
+                normalizedQuery,
+                queryTerms,
+                chunk.chunkText
+            );
 
             if (queryEmbedding != null && chunk.chunkEmbedding != null) {
                 float[] chunkEmbedding = EmbeddingEngine.fromBytes(
@@ -376,14 +331,15 @@ public class DocumentRepository {
                 }
             }
 
-            float lexicalScore = computeFieldScore(chunk.chunkText, queryTerms);
+            float lexicalScore = SearchTextMatcher.fieldScore(
+                chunk.chunkText,
+                queryTerms
+            );
             bestChunkLexical = Math.max(bestChunkLexical, lexicalScore);
-            if (!obviousTextMatch) {
-                obviousTextMatch = hasAnyFieldMatch(queryTerms, chunk.chunkText);
-            }
-            if (!phraseMatch) {
-                phraseMatch = hasPhraseMatch(normalizedQuery, chunk.chunkText);
-            }
+            bestCoverage = Math.max(bestCoverage, chunkTextSignals.coverageScore());
+            obviousTextMatch = obviousTextMatch || chunkTextSignals.hasAnyMatch();
+            phraseMatch = phraseMatch || chunkTextSignals.phraseMatch;
+            strongMatch = strongMatch || chunkTextSignals.hasStrongMatch();
         }
 
         return new ChunkSearchSignals(
@@ -392,30 +348,25 @@ public class DocumentRepository {
             bestChunkLexical,
             obviousTextMatch,
             phraseMatch,
+            bestCoverage,
+            strongMatch,
             chunkCount
         );
-    }
-
-    private String[] tokenizeQuery(String normalizedQuery) {
-        if (normalizedQuery == null || normalizedQuery.isEmpty()) {
-            return new String[0];
-        }
-        return normalizedQuery.split("\\s+");
-    }
-
-    private String normalizeSearchText(String text) {
-        if (text == null) {
-            return "";
-        }
-        return text
-            .toLowerCase(Locale.ROOT)
-            .replaceAll("[^a-z0-9]+", " ")
-            .trim();
     }
 
     private float computeChunkOpportunityPenalty(int chunkCount) {
         int extraChunks = Math.max(0, chunkCount - 6);
         return 1f / (1f + (extraChunks * 0.04f));
+    }
+
+    private float computeSemanticCoverageMultiplier(
+        String[] queryTerms,
+        float lexicalCoverage
+    ) {
+        if (queryTerms == null || queryTerms.length <= 1) {
+            return 1f;
+        }
+        return 0.35f + (0.65f * lexicalCoverage);
     }
 
     private static class ChunkSearchSignals {
@@ -425,6 +376,8 @@ public class DocumentRepository {
         final float lexicalScore;
         final boolean obviousTextMatch;
         final boolean phraseMatch;
+        final float coverageScore;
+        final boolean hasStrongMatch;
         final int chunkCount;
 
         ChunkSearchSignals(
@@ -433,6 +386,8 @@ public class DocumentRepository {
             float lexicalScore,
             boolean obviousTextMatch,
             boolean phraseMatch,
+            float coverageScore,
+            boolean hasStrongMatch,
             int chunkCount
         ) {
             this.embeddingScore = embeddingScore;
@@ -440,11 +395,13 @@ public class DocumentRepository {
             this.lexicalScore = lexicalScore;
             this.obviousTextMatch = obviousTextMatch;
             this.phraseMatch = phraseMatch;
+            this.coverageScore = coverageScore;
+            this.hasStrongMatch = hasStrongMatch;
             this.chunkCount = chunkCount;
         }
 
         static ChunkSearchSignals empty() {
-            return new ChunkSearchSignals(0f, 0f, 0f, false, false, 0);
+            return new ChunkSearchSignals(0f, 0f, 0f, false, false, 0f, false, 0);
         }
     }
 
