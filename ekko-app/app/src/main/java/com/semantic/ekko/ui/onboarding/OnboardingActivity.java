@@ -35,9 +35,11 @@ public class OnboardingActivity extends AppCompatActivity {
     private ViewPager2 viewPager;
     private MaterialButton btnBack;
     private MaterialButton btnNext;
+    private MaterialButton btnSecondaryAction;
     private TextView btnSkip;
     private TextView txtPageCounter;
     private LinearLayout indicatorLayout;
+    private View layoutSecondaryAction;
     private List<OnboardingPagerAdapter.OnboardingPage> pages;
     private PrefsManager prefsManager;
     private FolderRepository folderRepository;
@@ -77,7 +79,11 @@ public class OnboardingActivity extends AppCompatActivity {
                     (id, alreadyExists) ->
                         runOnUiThread(() -> {
                             hasRequiredFolder = true;
+                            BackgroundIndexWorker.enqueueAll(this);
                             btnNext.setEnabled(true);
+                            if (btnSecondaryAction != null) {
+                                btnSecondaryAction.setEnabled(true);
+                            }
                             updateUiForPage(viewPager.getCurrentItem());
                         })
                 );
@@ -90,9 +96,15 @@ public class OnboardingActivity extends AppCompatActivity {
                 if (StorageAccessHelper.hasAllFilesAccess()) {
                     refreshRequirementState();
                     btnNext.setEnabled(true);
+                    if (btnSecondaryAction != null) {
+                        btnSecondaryAction.setEnabled(true);
+                    }
                     return;
                 }
                 btnNext.setEnabled(true);
+                if (btnSecondaryAction != null) {
+                    btnSecondaryAction.setEnabled(true);
+                }
                 Snackbar.make(
                     btnNext,
                     "Allow full storage access to index shared folders at once.",
@@ -157,6 +169,11 @@ public class OnboardingActivity extends AppCompatActivity {
             viewPager.setCurrentItem(pages.size() - 1, true)
         );
 
+        btnSecondaryAction.setOnClickListener(v -> {
+            btnSecondaryAction.setEnabled(false);
+            folderPicker.launch(null);
+        });
+
         getOnBackPressedDispatcher().addCallback(
             this,
             new OnBackPressedCallback(true) {
@@ -187,9 +204,15 @@ public class OnboardingActivity extends AppCompatActivity {
         viewPager = findViewById(R.id.viewPagerOnboarding);
         btnBack = findViewById(R.id.btnOnboardingBack);
         btnNext = findViewById(R.id.btnOnboardingNext);
+        btnSecondaryAction = findViewById(
+            R.id.btnOnboardingSecondaryAction
+        );
         btnSkip = findViewById(R.id.btnOnboardingSkip);
         txtPageCounter = findViewById(R.id.txtOnboardingCounter);
         indicatorLayout = findViewById(R.id.layoutIndicators);
+        layoutSecondaryAction = findViewById(
+            R.id.layoutOnboardingSecondaryAction
+        );
     }
 
     private void buildPages() {
@@ -313,6 +336,12 @@ public class OnboardingActivity extends AppCompatActivity {
         btnBack.setVisibility(firstPage ? View.INVISIBLE : View.VISIBLE);
         btnSkip.setVisibility(lastPage ? View.INVISIBLE : View.VISIBLE);
         btnSkip.setText(R.string.onboarding_skip_setup);
+        layoutSecondaryAction.setVisibility(
+            lastPage && StorageAccessHelper.supportsAllFilesAccess()
+                ? View.VISIBLE
+                : View.GONE
+        );
+        btnSecondaryAction.setEnabled(true);
         if (lastPage) {
             if (hasRequiredFolder) {
                 btnNext.setText(R.string.onboarding_start);
@@ -358,14 +387,16 @@ public class OnboardingActivity extends AppCompatActivity {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
                 prefsManager.setPublicImportPending(true);
+                BackgroundIndexWorker.enqueueAll(this);
                 refreshRequirementState();
-                } else {
+            } else {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(this)
                 );
             }
             return;
         }
+        btnSecondaryAction.setEnabled(false);
         folderPicker.launch(null);
     }
 

@@ -65,6 +65,7 @@
         name="onboarding_tip_4_folder"
     >Ekko will only index the folder you select, which keeps the permission request smaller on older Android devices.</string>
     <string name="onboarding_choose_folder">Choose folder</string>
+    <string name="onboarding_choose_folder_manually">Choose folder manually</string>
     <string name="onboarding_allow_storage_access">Allow storage access</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_import_public_folders">Import public folders</string>

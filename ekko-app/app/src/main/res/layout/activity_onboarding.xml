@@ -119,6 +119,26 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/layoutOnboardingSecondaryAction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="gone"
+    >
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOnboardingSecondaryAction"
+            style="@style/Widget.Ekko.Button.Outlined"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:minWidth="0dp"
+            android:text="@string/onboarding_choose_folder_manually"
+        />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"

@@ -147,6 +147,17 @@
                         app:iconTint="?attr/colorOnPrimaryContainer"
                     />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnIncludeAllFolders"
+                        style="@style/Widget.Ekko.Button.Outlined"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="8dp"
+                        android:text="Include all folders"
+                        app:icon="@drawable/ic_folder_open"
+                        app:iconTint="?attr/colorPrimary"
+                    />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

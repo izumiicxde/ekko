@@ -54,6 +54,7 @@ public class SettingsFragment extends Fragment {
     private ImageView imgFolderSectionToggle;
     private MaterialButtonToggleGroup toggleTheme;
     private MaterialButton btnAddFolder;
+    private MaterialButton btnIncludeAllFolders;
     private MaterialButton btnResetExcluded;
     private MaterialButton btnReindexIncluded;
     private View layoutReindexProgress;
@@ -159,6 +160,7 @@ public class SettingsFragment extends Fragment {
         imgFolderSectionToggle = view.findViewById(R.id.imgFolderSectionToggle);
         toggleTheme = view.findViewById(R.id.toggleTheme);
         btnAddFolder = view.findViewById(R.id.btnAddFolder);
+        btnIncludeAllFolders = view.findViewById(R.id.btnIncludeAllFolders);
         btnResetExcluded = view.findViewById(R.id.btnResetExcluded);
         btnReindexIncluded = view.findViewById(R.id.btnReindexIncluded);
         layoutReindexProgress = view.findViewById(R.id.layoutReindexProgress);
@@ -211,6 +213,20 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
                 launchFolderImport();
+            });
+
+        view
+            .findViewById(R.id.btnIncludeAllFolders)
+            .setOnClickListener(v -> {
+                if (!mlReady) {
+                    Snackbar.make(
+                        view,
+                        "Indexing tools are still loading. Please wait a moment.",
+                        Snackbar.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+                launchIncludeAllFolders();
             });
 
         view
@@ -276,12 +292,44 @@ public class SettingsFragment extends Fragment {
         if (btnAddFolder == null) {
             return;
         }
+        boolean includeAllSupported = StorageAccessHelper.supportsAllFilesAccess();
         btnAddFolder.setEnabled(mlReady && !indexing);
+        btnIncludeAllFolders.setVisibility(
+            includeAllSupported ? View.VISIBLE : View.GONE
+        );
+        btnIncludeAllFolders.setEnabled(
+            includeAllSupported && mlReady && !indexing
+        );
         btnReindexIncluded.setEnabled(mlReady && !indexing);
         btnResetExcluded.setEnabled(!indexing && hasExcludedFolders());
         btnAddFolder.setAlpha(mlReady ? 1f : 0.55f);
+        btnIncludeAllFolders.setAlpha(
+            includeAllSupported && mlReady ? 1f : 0.55f
+        );
         btnReindexIncluded.setAlpha(mlReady ? 1f : 0.55f);
         btnResetExcluded.setAlpha(hasExcludedFolders() ? 1f : 0.55f);
+    }
+
+    private void launchIncludeAllFolders() {
+        if (!StorageAccessHelper.supportsAllFilesAccess()) {
+            return;
+        }
+        if (StorageAccessHelper.hasAllFilesAccess()) {
+            homeViewModel.importDetectedPublicFolders();
+            if (getView() != null) {
+                Snackbar.make(
+                    getView(),
+                    "Including detectable public folders.",
+                    Snackbar.LENGTH_SHORT
+                ).show();
+            }
+            return;
+        }
+        allFilesAccessLauncher.launch(
+            StorageAccessHelper.createManageAllFilesAccessIntent(
+                requireContext()
+            )
+        );
     }
 
     private void launchFolderImport() {
