@@ -30,6 +30,7 @@ import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
 import com.semantic.ekko.ui.graph.GraphActivity;
 import com.semantic.ekko.ui.main.MainActivity;
+import com.semantic.ekko.util.NotificationPermissionHelper;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.BackgroundIndexWorker;
@@ -45,12 +46,11 @@ public class HomeFragment extends Fragment {
     private DocumentAdapter adapter;
 
     private RecyclerView recyclerDocuments;
-    private LinearLayout layoutIndexingProgress;
+    private View layoutIndexingProgress;
     private LinearLayout layoutEmptyState;
     private LinearLayout layoutFolderNavigation;
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
-    private TextView txtIndexingRecent;
     private TextView txtDocCount;
     private TextView txtDocMeta;
     private TextView txtFolderPath;
@@ -103,6 +103,7 @@ public class HomeFragment extends Fragment {
                         return;
                     }
                 }
+                requestIndexingNotificationsIfNeeded();
                 viewModel.addFolderAndIndex(uri);
             }
         );
@@ -115,6 +116,7 @@ public class HomeFragment extends Fragment {
                     return;
                 }
                 if (StorageAccessHelper.hasAllFilesAccess()) {
+                    requestIndexingNotificationsIfNeeded();
                     viewModel.importDetectedPublicFolders();
                     return;
                 }
@@ -127,6 +129,11 @@ public class HomeFragment extends Fragment {
                     ).show();
                 }
             }
+        );
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            granted -> {}
         );
 
     @Nullable
@@ -191,7 +198,6 @@ public class HomeFragment extends Fragment {
         layoutFolderNavigation = view.findViewById(R.id.layoutFolderNavigation);
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
-        txtIndexingRecent = view.findViewById(R.id.txtIndexingRecent);
         txtDocCount = view.findViewById(R.id.txtDocCount);
         txtDocMeta = view.findViewById(R.id.txtDocMeta);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
@@ -236,7 +242,6 @@ public class HomeFragment extends Fragment {
                 updateEmptyState(safeDocs);
                 updateDocCount(safeDocs.size());
                 buildFilterChips(safeDocs);
-                updateRecentIndexedFiles(safeDocs);
             });
 
         viewModel
@@ -293,6 +298,7 @@ public class HomeFragment extends Fragment {
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
+                requestIndexingNotificationsIfNeeded();
                 viewModel.importDetectedPublicFolders();
             } else if (getContext() != null) {
                 allFilesAccessLauncher.launch(
@@ -552,45 +558,9 @@ public class HomeFragment extends Fragment {
             progressIndexing.setProgress(0);
             txtIndexingStage.setText("");
             txtIndexingDoc.setText("");
-            txtIndexingRecent.setText("");
-            txtIndexingRecent.setVisibility(View.GONE);
             return;
         }
         renderIndexingState();
-    }
-
-    private void updateRecentIndexedFiles(List<DocumentEntity> docs) {
-        if (txtIndexingRecent == null || !isAppIndexing) {
-            return;
-        }
-        List<DocumentEntity> safeDocs = docs == null ? new ArrayList<>() : docs;
-        if (safeDocs.isEmpty()) {
-            txtIndexingRecent.setText("");
-            txtIndexingRecent.setVisibility(View.GONE);
-            return;
-        }
-
-        StringBuilder builder = new StringBuilder();
-        int limit = Math.min(4, safeDocs.size());
-        for (int i = 0; i < limit; i++) {
-            DocumentEntity doc = safeDocs.get(i);
-            if (doc == null || doc.name == null || doc.name.trim().isEmpty()) {
-                continue;
-            }
-            if (builder.length() > 0) {
-                builder.append('\n');
-            }
-            builder.append("• ").append(doc.name);
-        }
-
-        if (builder.length() == 0) {
-            txtIndexingRecent.setText("");
-            txtIndexingRecent.setVisibility(View.GONE);
-            return;
-        }
-
-        txtIndexingRecent.setText(builder.toString());
-        txtIndexingRecent.setVisibility(View.VISIBLE);
     }
 
     private void renderIndexingState() {
@@ -608,7 +578,7 @@ public class HomeFragment extends Fragment {
                 latestIndexingDoc.isEmpty() ? latestIndexingStage : latestIndexingDoc
             );
             txtIndexingDoc.setText(
-                latestIndexCurrent + " / " + latestIndexTotal
+                latestIndexCurrent + " of " + latestIndexTotal
             );
             return;
         }
@@ -616,7 +586,20 @@ public class HomeFragment extends Fragment {
         txtIndexingStage.setText(
             latestIndexingStage.isEmpty() ? "Preparing index..." : latestIndexingStage
         );
-        txtIndexingDoc.setText("Getting documents ready");
+        txtIndexingDoc.setText("Runs in background");
+    }
+
+    private void requestIndexingNotificationsIfNeeded() {
+        if (
+            isAdded() &&
+            NotificationPermissionHelper.shouldRequestNotificationPermission(
+                requireContext()
+            )
+        ) {
+            notificationPermissionLauncher.launch(
+                android.Manifest.permission.POST_NOTIFICATIONS
+            );
+        }
     }
 
     private void handleBackgroundIndexState(List<WorkInfo> workInfos) {

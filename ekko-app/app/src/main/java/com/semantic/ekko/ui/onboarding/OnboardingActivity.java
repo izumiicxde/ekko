@@ -24,6 +24,7 @@ import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.FileUtils;
+import com.semantic.ekko.util.NotificationPermissionHelper;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.BackgroundIndexWorker;
@@ -44,6 +45,7 @@ public class OnboardingActivity extends AppCompatActivity {
     private PrefsManager prefsManager;
     private FolderRepository folderRepository;
     private boolean hasRequiredFolder = false;
+    private boolean pendingOnboardingCompletion = false;
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
             new ActivityResultContracts.OpenDocumentTree(),
@@ -118,6 +120,16 @@ public class OnboardingActivity extends AppCompatActivity {
                     Snackbar.LENGTH_LONG
                 ).show();
                 updateUiForPage(viewPager.getCurrentItem());
+            }
+        );
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            granted -> {
+                if (pendingOnboardingCompletion) {
+                    pendingOnboardingCompletion = false;
+                    continueOnboardingCompletion();
+                }
             }
         );
 
@@ -408,6 +420,17 @@ public class OnboardingActivity extends AppCompatActivity {
     }
 
     private void completeOnboarding() {
+        if (NotificationPermissionHelper.shouldRequestNotificationPermission(this)) {
+            pendingOnboardingCompletion = true;
+            notificationPermissionLauncher.launch(
+                android.Manifest.permission.POST_NOTIFICATIONS
+            );
+            return;
+        }
+        continueOnboardingCompletion();
+    }
+
+    private void continueOnboardingCompletion() {
         if (
             StorageAccessHelper.supportsAllFilesAccess() &&
             StorageAccessHelper.hasAllFilesAccess()

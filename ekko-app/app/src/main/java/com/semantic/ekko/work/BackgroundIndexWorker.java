@@ -3,11 +3,14 @@ package com.semantic.ekko.work;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Data;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.ForegroundInfo;
@@ -27,7 +30,9 @@ import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.processing.DocumentIndexer;
 import com.semantic.ekko.processing.DocumentScanner;
+import com.semantic.ekko.ui.launcher.LauncherActivity;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.NotificationPermissionHelper;
 import com.semantic.ekko.util.StorageAccessHelper;
 import java.io.File;
 import java.util.ArrayList;
@@ -47,6 +52,7 @@ public class BackgroundIndexWorker extends Worker {
     public static final String KEY_TOTAL = "total";
     private static final String CHANNEL_ID = "ekko_indexing";
     private static final int NOTIFICATION_ID = 4102;
+    private static final int COMPLETE_NOTIFICATION_ID = 4103;
 
     public BackgroundIndexWorker(
         @NonNull Context context,
@@ -103,7 +109,13 @@ public class BackgroundIndexWorker extends Worker {
         }
 
         setForegroundAsync(
-            createForegroundInfo("Preparing indexing", "Getting files ready")
+            createForegroundInfo(
+                "Preparing indexing",
+                "Getting files ready",
+                0,
+                0,
+                false
+            )
         );
         setProgressAsync(buildProgressData("Preparing indexing", "", 0, 0));
 
@@ -166,7 +178,13 @@ public class BackgroundIndexWorker extends Worker {
                                 ? "Indexing"
                                 : stage;
                         setForegroundAsync(
-                            createForegroundInfo(safeStage, "Working in background")
+                            createForegroundInfo(
+                                safeStage,
+                                "Working in background",
+                                0,
+                                scanBundle.scanResult.documents.size(),
+                                false
+                            )
                         );
                         setProgressAsync(
                             buildProgressData(safeStage, "", 0, scanBundle.scanResult.documents.size())
@@ -184,8 +202,11 @@ public class BackgroundIndexWorker extends Worker {
                             createForegroundInfo(
                                 "Indexing files",
                                 safeName.isEmpty()
-                                    ? current + " / " + total
-                                    : safeName
+                                    ? current + " of " + total
+                                    : safeName,
+                                current,
+                                total,
+                                true
                             )
                         );
                         setProgressAsync(
@@ -205,6 +226,7 @@ public class BackgroundIndexWorker extends Worker {
                         List<String> failedNames
                     ) {
                         hadFailures[0] = failed > 0;
+                        showCompletionNotification(indexed, failed);
                         indexLatch.countDown();
                     }
                 }
@@ -371,7 +393,13 @@ public class BackgroundIndexWorker extends Worker {
             .build();
     }
 
-    private ForegroundInfo createForegroundInfo(String title, String text) {
+    private ForegroundInfo createForegroundInfo(
+        String title,
+        String text,
+        int current,
+        int total,
+        boolean determinate
+    ) {
         ensureNotificationChannel();
         Notification notification = new NotificationCompat.Builder(
             getApplicationContext(),
@@ -380,12 +408,34 @@ public class BackgroundIndexWorker extends Worker {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(text)
+            .setContentIntent(createContentIntent())
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setShowWhen(false)
             .setForegroundServiceBehavior(
                 NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
             )
             .build();
+        if (determinate && total > 0) {
+            notification =
+                new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setContentIntent(createContentIntent())
+                    .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                    .setOngoing(true)
+                    .setOnlyAlertOnce(true)
+                    .setSilent(true)
+                    .setShowWhen(false)
+                    .setProgress(total, current, false)
+                    .setForegroundServiceBehavior(
+                        NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE
+                    )
+                    .build();
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             return new ForegroundInfo(
@@ -414,6 +464,47 @@ public class BackgroundIndexWorker extends Worker {
         );
         channel.setDescription("Shows progress while Ekko indexes your files.");
         manager.createNotificationChannel(channel);
+    }
+
+    private PendingIntent createContentIntent() {
+        Intent intent = new Intent(getApplicationContext(), LauncherActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        return PendingIntent.getActivity(
+            getApplicationContext(),
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    private void showCompletionNotification(int indexed, int failed) {
+        if (
+            NotificationPermissionHelper.shouldRequestNotificationPermission(
+                getApplicationContext()
+            )
+        ) {
+            return;
+        }
+        String title = failed > 0 ? "Indexing finished with issues" : "Indexing finished";
+        String text =
+            indexed + " file" + (indexed == 1 ? "" : "s") + " ready in Ekko";
+        if (failed > 0) {
+            text += " • " + failed + " skipped";
+        }
+        Notification notification = new NotificationCompat.Builder(
+            getApplicationContext(),
+            CHANNEL_ID
+        )
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(createContentIntent())
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build();
+        NotificationManagerCompat
+            .from(getApplicationContext())
+            .notify(COMPLETE_NOTIFICATION_ID, notification);
     }
 
     private static class ScanBundle {

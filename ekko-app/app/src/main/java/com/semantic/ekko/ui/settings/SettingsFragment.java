@@ -30,6 +30,7 @@ import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ui.home.HomeViewModel;
+import com.semantic.ekko.util.NotificationPermissionHelper;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.BackgroundIndexWorker;
@@ -122,6 +123,11 @@ public class SettingsFragment extends Fragment {
                 }
             }
         );
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+        registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            granted -> {}
+        );
     @Nullable
     @Override
     public View onCreateView(
@@ -212,6 +218,7 @@ public class SettingsFragment extends Fragment {
                     ).show();
                     return;
                 }
+                requestIndexingNotificationsIfNeeded();
                 launchFolderImport();
             });
 
@@ -226,6 +233,7 @@ public class SettingsFragment extends Fragment {
                     ).show();
                     return;
                 }
+                requestIndexingNotificationsIfNeeded();
                 launchIncludeAllFolders();
             });
 
@@ -244,6 +252,7 @@ public class SettingsFragment extends Fragment {
                     StorageAccessHelper.supportsAllFilesAccess() &&
                     StorageAccessHelper.hasAllFilesAccess()
                 ) {
+                    requestIndexingNotificationsIfNeeded();
                     homeViewModel.importDetectedPublicFolders();
                     Snackbar.make(
                         view,
@@ -260,6 +269,7 @@ public class SettingsFragment extends Fragment {
                         ).show();
                         return;
                     }
+                    requestIndexingNotificationsIfNeeded();
                     homeViewModel.reindexFolders(included);
                     Snackbar.make(
                         view,
@@ -330,6 +340,19 @@ public class SettingsFragment extends Fragment {
                 requireContext()
             )
         );
+    }
+
+    private void requestIndexingNotificationsIfNeeded() {
+        if (
+            isAdded() &&
+            NotificationPermissionHelper.shouldRequestNotificationPermission(
+                requireContext()
+            )
+        ) {
+            notificationPermissionLauncher.launch(
+                android.Manifest.permission.POST_NOTIFICATIONS
+            );
+        }
     }
 
     private void launchFolderImport() {
