@@ -24,8 +24,8 @@
         <item name="android:colorBackground">#0B110F</item>
         <item name="colorOnBackground">#F1F4EF</item>
 
-        <item name="colorOutline">#5C736A</item>
-        <item name="colorOutlineVariant">#22312C</item>
+        <item name="colorOutline">@android:color/transparent</item>
+        <item name="colorOutlineVariant">@android:color/transparent</item>
 
         <item name="colorError">#FFB4AB</item>
         <item name="colorOnError">#690005</item>

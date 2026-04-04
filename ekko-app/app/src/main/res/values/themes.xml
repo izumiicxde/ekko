@@ -23,8 +23,8 @@
         <item name="android:colorBackground">#EDF4F1</item>
         <item name="colorOnBackground">#1B1A18</item>
 
-        <item name="colorOutline">#9FB2AB</item>
-        <item name="colorOutlineVariant">#D3E1DB</item>
+        <item name="colorOutline">@android:color/transparent</item>
+        <item name="colorOutlineVariant">@android:color/transparent</item>
 
         <item name="colorError">#B42318</item>
         <item name="colorOnError">#FFFFFF</item>

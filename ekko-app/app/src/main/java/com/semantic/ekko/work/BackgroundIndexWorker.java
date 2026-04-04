@@ -88,6 +88,10 @@ public class BackgroundIndexWorker extends Worker {
         enqueue(context, Collections.emptyList());
     }
 
+    public static void cancel(Context context) {
+        WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME);
+    }
+
     public static LiveData<List<WorkInfo>> getWorkInfoLiveData(Context context) {
         return WorkManager
             .getInstance(context)
@@ -153,6 +157,10 @@ public class BackgroundIndexWorker extends Worker {
         });
 
         try {
+            if (isStopped()) {
+                entityExtractor.close();
+                return Result.success();
+            }
             prepareLatch.await();
             if (!prepareSuccess[0]) {
                 entityExtractor.close();
@@ -168,6 +176,11 @@ public class BackgroundIndexWorker extends Worker {
             );
             CountDownLatch indexLatch = new CountDownLatch(1);
             final boolean[] hadFailures = { false };
+            if (isStopped()) {
+                indexer.shutdown();
+                entityExtractor.close();
+                return Result.success();
+            }
             indexer.indexDocuments(
                 scanBundle.scanResult.documents,
                 new DocumentIndexer.ProgressListener() {
@@ -313,11 +326,29 @@ public class BackgroundIndexWorker extends Worker {
         List<DocumentEntity> allDocs = new ArrayList<>();
         List<Long> folderIds = new ArrayList<>();
         int skipped = 0;
+        int totalFolders = folders == null ? 0 : folders.size();
+        int currentFolder = 0;
 
         for (FolderEntity folder : folders) {
+            if (isStopped()) {
+                break;
+            }
             if (folder == null || folder.uri == null) {
                 continue;
             }
+            currentFolder++;
+            String folderName =
+                folder.name == null || folder.name.trim().isEmpty()
+                    ? "Scanning folders"
+                    : folder.name;
+            String stage =
+                "Scanning folders " + currentFolder + " of " + totalFolders;
+            setForegroundAsync(
+                createForegroundInfo(stage, folderName, currentFolder, totalFolders, true)
+            );
+            setProgressAsync(
+                buildProgressData(stage, folderName, currentFolder, totalFolders)
+            );
             Uri uri = Uri.parse(folder.uri);
             try {
                 DocumentScanner.ScanResult result;

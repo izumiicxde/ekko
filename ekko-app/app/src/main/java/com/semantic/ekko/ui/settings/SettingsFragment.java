@@ -449,12 +449,12 @@ public class SettingsFragment extends Fragment {
                 progressReindex.setMax(total);
                 progressReindex.setProgress(current);
                 txtReindexStage.setText(
-                    current + " / " + total + "  •  " + (docName == null ? "" : docName)
+                    current + " of " + total + "  •  " + (docName == null ? "" : docName)
                 );
             } else {
                 progressReindex.setIndeterminate(true);
                 txtReindexStage.setText(
-                    stage == null || stage.isEmpty() ? "Preparing indexing..." : stage
+                    stage == null || stage.isEmpty() ? "Scanning folders..." : stage
                 );
             }
             homeViewModel.loadDocuments();
@@ -528,6 +528,9 @@ public class SettingsFragment extends Fragment {
             )
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Remove", (dialog, which) -> {
+                if (isAppIndexing) {
+                    cancelBackgroundIndexing();
+                }
                 // Hide related files immediately while delete runs in background.
                 prefsManager.setFolderExcluded(folder.uri, true);
                 for (int i = currentFolders.size() - 1; i >= 0; i--) {
@@ -551,6 +554,16 @@ public class SettingsFragment extends Fragment {
                 });
             })
             .show();
+    }
+
+    private void cancelBackgroundIndexing() {
+        BackgroundIndexWorker.cancel(requireContext());
+        isAppIndexing = false;
+        layoutReindexProgress.setVisibility(View.GONE);
+        progressReindex.setIndeterminate(false);
+        progressReindex.setProgress(0);
+        txtReindexStage.setText("");
+        updateActionButtons(false);
     }
 
     private void setupThemeToggle(View root) {
