@@ -17,8 +17,8 @@ import org.json.JSONException;
  */
 public class ChunkUtils {
 
-    private static final int CHUNK_SIZE = 100;
-    private static final int CHUNK_OVERLAP = 20;
+    private static final int CHUNK_SIZE = 120;
+    private static final int CHUNK_OVERLAP = 30;
 
     // =========================
     // CHUNKING
@@ -32,31 +32,113 @@ public class ChunkUtils {
         List<String> chunks = new ArrayList<>();
         if (text == null || text.trim().isEmpty()) return chunks;
 
-        String[] words = text.trim().split("\\s+");
-        if (words.length == 0) return chunks;
-
-        // If the text is shorter than one chunk, return it as a single chunk
-        if (words.length <= CHUNK_SIZE) {
-            chunks.add(String.join(" ", words));
+        List<String> segments = splitIntoSegments(text);
+        if (segments.isEmpty()) {
             return chunks;
         }
 
-        int step = CHUNK_SIZE - CHUNK_OVERLAP;
-        int start = 0;
-
-        while (start < words.length) {
-            int end = Math.min(start + CHUNK_SIZE, words.length);
-            StringBuilder sb = new StringBuilder();
-            for (int i = start; i < end; i++) {
-                if (i > start) sb.append(" ");
-                sb.append(words[i]);
+        List<String> currentWords = new ArrayList<>();
+        for (String segment : segments) {
+            if (segment == null || segment.trim().isEmpty()) {
+                continue;
             }
-            chunks.add(sb.toString());
-            if (end == words.length) break;
-            start += step;
+
+            String[] segmentWords = segment.trim().split("\\s+");
+            if (segmentWords.length == 0) {
+                continue;
+            }
+
+            if (segmentWords.length > CHUNK_SIZE) {
+                flushChunk(chunks, currentWords);
+                addOversizedSegmentChunks(chunks, segmentWords);
+                currentWords.clear();
+                continue;
+            }
+
+            if (
+                !currentWords.isEmpty() &&
+                currentWords.size() + segmentWords.length > CHUNK_SIZE
+            ) {
+                flushChunk(chunks, currentWords);
+                currentWords = overlapTail(currentWords);
+            }
+
+            for (String word : segmentWords) {
+                currentWords.add(word);
+            }
         }
 
+        flushChunk(chunks, currentWords);
         return chunks;
+    }
+
+    private static List<String> splitIntoSegments(String text) {
+        List<String> segments = new ArrayList<>();
+        String normalized = text.trim();
+        if (normalized.isEmpty()) {
+            return segments;
+        }
+
+        String[] paragraphs = normalized.split("\\n\\s*\\n");
+        for (String paragraph : paragraphs) {
+            if (paragraph == null) {
+                continue;
+            }
+            String compact = paragraph.replaceAll("\\s+", " ").trim();
+            if (compact.isEmpty()) {
+                continue;
+            }
+
+            String[] sentences = compact.split(
+                "(?<=[.!?])\\s+|(?<=[:;])\\s+(?=[A-Z0-9])"
+            );
+            for (String sentence : sentences) {
+                String trimmed = sentence.trim();
+                if (!trimmed.isEmpty()) {
+                    segments.add(trimmed);
+                }
+            }
+        }
+        return segments;
+    }
+
+    private static void addOversizedSegmentChunks(
+        List<String> chunks,
+        String[] words
+    ) {
+        int step = CHUNK_SIZE - CHUNK_OVERLAP;
+        int start = 0;
+        while (start < words.length) {
+            int end = Math.min(start + CHUNK_SIZE, words.length);
+            List<String> window = new ArrayList<>();
+            for (int i = start; i < end; i++) {
+                window.add(words[i]);
+            }
+            flushChunk(chunks, window);
+            if (end == words.length) {
+                break;
+            }
+            start += step;
+        }
+    }
+
+    private static void flushChunk(List<String> chunks, List<String> words) {
+        if (words == null || words.isEmpty()) {
+            return;
+        }
+
+        String chunk = String.join(" ", words).trim();
+        if (!chunk.isEmpty()) {
+            chunks.add(chunk);
+        }
+    }
+
+    private static List<String> overlapTail(List<String> words) {
+        if (words == null || words.isEmpty()) {
+            return new ArrayList<>();
+        }
+        int start = Math.max(0, words.size() - CHUNK_OVERLAP);
+        return new ArrayList<>(words.subList(start, words.size()));
     }
 
     // =========================

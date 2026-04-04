@@ -241,16 +241,17 @@ public class HomeViewModel extends AndroidViewModel {
         isIndexing.postValue(true);
         indexingStage.postValue("Preparing re-index...");
 
-        documentRepository.deleteByFolderIds(folderIds, () -> {
-            DocumentScanner.ScanResult scanResult = DocumentScanner.scanFolders(
-                getApplication(),
-                uris,
-                folderIds
-            );
+        DocumentScanner.ScanResult scanResult = DocumentScanner.scanFolders(
+            getApplication(),
+            uris,
+            folderIds
+        );
 
+        syncScannedDocuments(folderIds, scanResult.documents, () -> {
             if (scanResult.documents.isEmpty()) {
                 isIndexing.postValue(false);
                 indexingStage.postValue("");
+                loadDocuments();
                 errorMessage.postValue(
                     "No supported documents found in selected folders."
                 );
@@ -259,6 +260,49 @@ public class HomeViewModel extends AndroidViewModel {
 
             startIndexing(scanResult.documents);
         });
+    }
+
+    private void syncScannedDocuments(
+        List<Long> folderIds,
+        List<DocumentEntity> scannedDocs,
+        Runnable onComplete
+    ) {
+        Map<Long, List<String>> urisByFolder = new HashMap<>();
+        if (folderIds != null) {
+            for (Long folderId : folderIds) {
+                if (folderId != null) {
+                    urisByFolder.put(folderId, new ArrayList<>());
+                }
+            }
+        }
+        if (scannedDocs != null) {
+            for (DocumentEntity doc : scannedDocs) {
+                if (doc == null || doc.uri == null) continue;
+                List<String> folderUris = urisByFolder.get(doc.folderId);
+                if (folderUris != null) {
+                    folderUris.add(doc.uri);
+                }
+            }
+        }
+        syncFoldersSequentially(new ArrayList<>(urisByFolder.keySet()), urisByFolder, 0, onComplete);
+    }
+
+    private void syncFoldersSequentially(
+        List<Long> folderIds,
+        Map<Long, List<String>> urisByFolder,
+        int index,
+        Runnable onComplete
+    ) {
+        if (index >= folderIds.size()) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+        long folderId = folderIds.get(index);
+        documentRepository.deleteMissingByFolderId(
+            folderId,
+            urisByFolder.get(folderId),
+            () -> syncFoldersSequentially(folderIds, urisByFolder, index + 1, onComplete)
+        );
     }
 
     // =========================

@@ -31,7 +31,15 @@ public class PdfTextExtractor {
 
                 PDFTextStripper stripper = new PDFTextStripper();
                 stripper.setSortByPosition(true);
-                return stripper.getText(document);
+                stripper.setLineSeparator("\n");
+                stripper.setParagraphStart("");
+                stripper.setParagraphEnd("\n\n");
+                stripper.setPageStart("");
+                stripper.setPageEnd("\n\n");
+                stripper.setWordSeparator(" ");
+                return ExtractedTextSanitizer.normalize(
+                    stripper.getText(document)
+                );
             }
 
         } catch (IOException e) {

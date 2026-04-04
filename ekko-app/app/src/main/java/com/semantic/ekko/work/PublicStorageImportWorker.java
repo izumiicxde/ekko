@@ -53,6 +53,34 @@ public class PublicStorageImportWorker extends Worker {
             .getWorkInfosForUniqueWorkLiveData(UNIQUE_WORK_NAME);
     }
 
+    private void syncScannedDocuments(
+        DocumentDao documentDao,
+        List<Long> folderIds,
+        List<com.semantic.ekko.data.model.DocumentEntity> scannedDocs
+    ) {
+        java.util.Map<Long, java.util.List<String>> urisByFolder = new java.util.HashMap<>();
+        for (Long folderId : folderIds) {
+            if (folderId != null) {
+                urisByFolder.put(folderId, new java.util.ArrayList<>());
+            }
+        }
+        for (com.semantic.ekko.data.model.DocumentEntity doc : scannedDocs) {
+            if (doc == null || doc.uri == null) continue;
+            java.util.List<String> uris = urisByFolder.get(doc.folderId);
+            if (uris != null) {
+                uris.add(doc.uri);
+            }
+        }
+        for (java.util.Map.Entry<Long, java.util.List<String>> entry : urisByFolder.entrySet()) {
+            java.util.List<String> uris = entry.getValue();
+            if (uris == null || uris.isEmpty()) {
+                documentDao.deleteByFolderId(entry.getKey());
+            } else {
+                documentDao.deleteMissingByFolderId(entry.getKey(), uris);
+            }
+        }
+    }
+
     @NonNull
     @Override
     public Result doWork() {
@@ -98,7 +126,6 @@ public class PublicStorageImportWorker extends Worker {
                 );
                 folderId = folderDao.insert(folder);
             }
-            documentDao.deleteByFolderId(folderId);
             scanFolders.add(folderFile);
             folderIds.add(folderId);
         }
@@ -109,6 +136,7 @@ public class PublicStorageImportWorker extends Worker {
                 scanFolders,
                 folderIds
             );
+        syncScannedDocuments(documentDao, folderIds, scanResult.documents);
         if (scanResult.documents.isEmpty()) {
             return Result.success();
         }

@@ -20,7 +20,7 @@ public class DocxTextExtractor {
 
             try (XWPFDocument document = new XWPFDocument(is);
                  XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
-                return extractor.getText();
+                return ExtractedTextSanitizer.normalize(extractor.getText());
             }
 
         } catch (IOException e) {

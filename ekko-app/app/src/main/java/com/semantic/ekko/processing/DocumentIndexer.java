@@ -6,9 +6,9 @@ import android.os.SystemClock;
 import android.util.Log;
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.ChunkDao;
+import com.semantic.ekko.data.db.DocumentDao;
 import com.semantic.ekko.data.model.ChunkEntity;
 import com.semantic.ekko.data.model.DocumentEntity;
-import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.ml.DocumentClassifier;
 import com.semantic.ekko.ml.EmbeddingEngine;
 import com.semantic.ekko.ml.EntityExtractorHelper;
@@ -40,9 +40,11 @@ public class DocumentIndexer {
     private final DocumentClassifier classifier;
     private final TextSummarizer summarizer;
     private final EntityExtractorHelper entityExtractor;
-    private final DocumentRepository repository;
+    private final AppDatabase database;
+    private final DocumentDao documentDao;
     private final ChunkDao chunkDao;
     private final ExecutorService executor;
+    private volatile boolean cancelled = false;
 
     public DocumentIndexer(
         Context context,
@@ -56,8 +58,9 @@ public class DocumentIndexer {
         this.classifier = classifier;
         this.summarizer = summarizer;
         this.entityExtractor = entityExtractor;
-        this.repository = new DocumentRepository(context);
-        this.chunkDao = AppDatabase.getInstance(context).chunkDao();
+        this.database = AppDatabase.getInstance(context);
+        this.documentDao = database.documentDao();
+        this.chunkDao = database.chunkDao();
         this.executor = Executors.newSingleThreadExecutor();
     }
 
@@ -66,6 +69,7 @@ public class DocumentIndexer {
         ProgressListener listener
     ) {
         executor.execute(() -> {
+            cancelled = false;
             int total = documents.size();
             AtomicInteger indexed = new AtomicInteger(0);
             AtomicInteger failed = new AtomicInteger(0);
@@ -76,7 +80,13 @@ public class DocumentIndexer {
             );
 
             for (int i = 0; i < total; i++) {
+                if (cancelled || Thread.currentThread().isInterrupted()) {
+                    Log.d(TAG, "Indexing interrupted.");
+                    break;
+                }
+
                 DocumentEntity doc = documents.get(i);
+                DocumentEntity existing = documentDao.getByUri(doc.uri);
                 if (listener != null) listener.onDocumentProcessed(
                     i + 1,
                     total,
@@ -84,6 +94,12 @@ public class DocumentIndexer {
                 );
 
                 try {
+                    if (shouldSkipReindex(existing, doc)) {
+                        indexed.incrementAndGet();
+                        Log.d(TAG, "Skipping unchanged document: " + doc.name);
+                        continue;
+                    }
+
                     if (listener != null) listener.onStageChanged(
                         "Extracting text..."
                     );
@@ -122,7 +138,6 @@ public class DocumentIndexer {
                     if (embedding != null) doc.embedding =
                         EmbeddingEngine.toBytes(embedding);
 
-                    // Summary is generated on-demand in Detail screen.
                     doc.summary = "";
 
                     if (listener != null) listener.onStageChanged(
@@ -156,14 +171,23 @@ public class DocumentIndexer {
                         doc.entities = "";
                     }
 
+                    if (existing != null) {
+                        doc.id = existing.id;
+                    }
+                    doc.indexedAt = System.currentTimeMillis();
+
                     if (listener != null) listener.onStageChanged("Saving...");
                     final long[] docId = { -1 };
-                    CountDownLatch insertLatch = new CountDownLatch(1);
-                    repository.insert(doc, id -> {
-                        docId[0] = id;
-                        insertLatch.countDown();
+                    database.runInTransaction(() -> {
+                        if (doc.id > 0) {
+                            documentDao.update(doc);
+                            docId[0] = doc.id;
+                        } else {
+                            docId[0] = documentDao.insert(doc);
+                            doc.id = docId[0];
+                        }
+                        chunkDao.deleteByDocumentId(docId[0]);
                     });
-                    insertLatch.await();
 
                     if (listener != null) listener.onStageChanged(
                         "Chunking for Q&A..."
@@ -189,7 +213,6 @@ public class DocumentIndexer {
                                 )
                             );
                         }
-                        chunkDao.deleteByDocumentId(docId[0]);
                         chunkDao.insertAll(chunkEntities);
                         Log.d(
                             TAG,
@@ -229,6 +252,30 @@ public class DocumentIndexer {
         });
     }
 
+    private boolean shouldSkipReindex(
+        DocumentEntity existing,
+        DocumentEntity scanned
+    ) {
+        if (existing == null) return false;
+        if (existing.sourceSize != scanned.sourceSize) return false;
+        if (
+            scanned.sourceModifiedAt > 0 &&
+            existing.sourceModifiedAt != scanned.sourceModifiedAt
+        ) {
+            return false;
+        }
+        if (existing.rawText == null || existing.rawText.trim().isEmpty()) {
+            return false;
+        }
+        if (existing.embedding == null || existing.embedding.length == 0) {
+            return false;
+        }
+        if (existing.wordCount < 20) {
+            return false;
+        }
+        return chunkDao.getCountByDocumentId(existing.id) > 0;
+    }
+
     private String buildEmbeddingInput(String name, String text) {
         String title = name
             .replaceAll("\\.[^.]+$", "")
@@ -236,15 +283,34 @@ public class DocumentIndexer {
             .trim();
         String[] words = text.split("\\s+");
         int total = words.length;
-        StringBuilder sb = new StringBuilder(title).append(" ");
-        int chunk = Math.min(60, total);
-        for (int i = 0; i < chunk; i++) sb.append(words[i]).append(" ");
+        StringBuilder sb = new StringBuilder();
+        if (!title.isEmpty()) {
+            sb.append(title).append(" ");
+        }
+
+        appendWordWindow(sb, words, 0, Math.min(60, total));
+
         if (total > 120) {
-            int mid = total / 2;
-            int end = Math.min(mid + 30, total);
-            for (int i = mid; i < end; i++) sb.append(words[i]).append(" ");
+            int midStart = Math.max(0, (total / 2) - 20);
+            appendWordWindow(sb, words, midStart, Math.min(midStart + 40, total));
+        }
+
+        if (total > 220) {
+            int tailStart = Math.max(0, total - 50);
+            appendWordWindow(sb, words, tailStart, total);
         }
         return sb.toString().trim();
+    }
+
+    private void appendWordWindow(
+        StringBuilder sb,
+        String[] words,
+        int start,
+        int end
+    ) {
+        for (int i = start; i < end; i++) {
+            sb.append(words[i]).append(" ");
+        }
     }
 
     private String extractText(DocumentEntity doc) {
@@ -272,6 +338,7 @@ public class DocumentIndexer {
     }
 
     public void shutdown() {
-        executor.shutdown();
+        cancelled = true;
+        executor.shutdownNow();
     }
 }

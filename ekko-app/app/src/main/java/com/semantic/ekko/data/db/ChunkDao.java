@@ -28,6 +28,9 @@ public interface ChunkDao {
     @Query("SELECT * FROM chunks WHERE document_id = :documentId ORDER BY chunk_index ASC")
     List<ChunkEntity> getByDocumentId(long documentId);
 
+    @Query("SELECT COUNT(*) FROM chunks WHERE document_id = :documentId")
+    int getCountByDocumentId(long documentId);
+
     @Query("SELECT COUNT(*) FROM chunks")
     int getTotalCount();
 }

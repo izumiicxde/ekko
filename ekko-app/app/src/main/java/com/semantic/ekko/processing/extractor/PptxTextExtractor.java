@@ -36,7 +36,7 @@ public class PptxTextExtractor {
                     sb.append("\n");
                 }
 
-                return sb.toString();
+                return ExtractedTextSanitizer.normalize(sb.toString());
             }
 
         } catch (IOException e) {

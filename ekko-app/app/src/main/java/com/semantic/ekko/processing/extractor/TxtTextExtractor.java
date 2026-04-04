@@ -27,8 +27,7 @@ public class TxtTextExtractor {
             while ((line = reader.readLine()) != null) {
                 sb.append(line).append("\n");
             }
-
-            return sb.toString();
+            return ExtractedTextSanitizer.normalize(sb.toString());
 
         } catch (IOException e) {
             return "";

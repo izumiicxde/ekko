@@ -61,6 +61,12 @@ public class DocumentEntity {
     @ColumnInfo(name = "indexed_at")
     public long indexedAt; // System.currentTimeMillis()
 
+    @ColumnInfo(name = "source_size")
+    public long sourceSize;
+
+    @ColumnInfo(name = "source_modified_at")
+    public long sourceModifiedAt;
+
     /**
      * JSON array string of overlapping text chunks produced during indexing.
      * Used by RagRepository to find the top-k most relevant chunks for a query

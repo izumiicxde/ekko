@@ -3,7 +3,9 @@ package com.semantic.ekko.data.repository;
 import android.content.Context;
 import androidx.lifecycle.LiveData;
 import com.semantic.ekko.data.db.AppDatabase;
+import com.semantic.ekko.data.db.ChunkDao;
 import com.semantic.ekko.data.db.DocumentDao;
+import com.semantic.ekko.data.model.ChunkEntity;
 import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.model.SearchResult;
 import com.semantic.ekko.ml.EmbeddingEngine;
@@ -17,6 +19,7 @@ import java.util.concurrent.Executors;
 public class DocumentRepository {
 
     private final DocumentDao documentDao;
+    private final ChunkDao chunkDao;
     private final ExecutorService executor;
 
     // =========================
@@ -26,6 +29,7 @@ public class DocumentRepository {
     public DocumentRepository(Context context) {
         AppDatabase db = AppDatabase.getInstance(context);
         this.documentDao = db.documentDao();
+        this.chunkDao = db.chunkDao();
         this.executor = Executors.newSingleThreadExecutor();
     }
 
@@ -50,6 +54,21 @@ public class DocumentRepository {
 
     public void deleteByFolderId(long folderId) {
         executor.execute(() -> documentDao.deleteByFolderId(folderId));
+    }
+
+    public void deleteMissingByFolderId(
+        long folderId,
+        List<String> uris,
+        Runnable onComplete
+    ) {
+        executor.execute(() -> {
+            if (uris == null || uris.isEmpty()) {
+                documentDao.deleteByFolderId(folderId);
+            } else {
+                documentDao.deleteMissingByFolderId(folderId, uris);
+            }
+            if (onComplete != null) onComplete.run();
+        });
     }
 
     public void deleteByFolderIds(List<Long> folderIds, Runnable onComplete) {
@@ -204,23 +223,45 @@ public class DocumentRepository {
                     row.summary,
                     row.raw_text
                 );
+                ChunkSearchSignals chunkSignals = computeChunkSignals(
+                    row.id,
+                    queryEmbedding,
+                    normalizedQuery,
+                    queryTerms
+                );
+                float chunkOpportunityPenalty = computeChunkOpportunityPenalty(
+                    chunkSignals.chunkCount
+                );
 
                 float finalScore =
-                    0.30f * embeddingScore +
-                    0.18f * keywordScore +
-                    0.12f * summaryScore +
-                    0.18f * fullTextScore +
-                    0.10f * filenameScore +
-                    0.12f * phraseScore;
+                    0.24f * embeddingScore +
+                    0.18f * (chunkSignals.embeddingScore * chunkOpportunityPenalty) +
+                    0.08f * (chunkSignals.averageEmbeddingScore * chunkOpportunityPenalty) +
+                    0.14f * keywordScore +
+                    0.10f * summaryScore +
+                    0.14f * fullTextScore +
+                    0.06f * filenameScore +
+                    0.10f * phraseScore;
 
-                if (obviousTextMatch) {
+                finalScore = Math.max(
+                    finalScore,
+                    0.18f * (chunkSignals.lexicalScore * chunkOpportunityPenalty)
+                );
+
+                if (obviousTextMatch || chunkSignals.obviousTextMatch) {
                     finalScore = Math.max(
                         finalScore,
-                        exactPhraseMatch ? 0.24f : 0.12f
+                        exactPhraseMatch || chunkSignals.phraseMatch
+                            ? 0.28f
+                            : 0.14f
                     );
                 }
 
-                if (finalScore >= minScore || obviousTextMatch) {
+                if (
+                    finalScore >= minScore ||
+                    obviousTextMatch ||
+                    chunkSignals.obviousTextMatch
+                ) {
                     DocumentEntity doc = documentDao.getById(row.id);
                     if (doc != null) {
                         results.add(new SearchResult(doc, finalScore));
@@ -292,6 +333,69 @@ public class DocumentRepository {
         return hasPhraseMatch(query, fieldTexts) ? 1f : 0f;
     }
 
+    private ChunkSearchSignals computeChunkSignals(
+        long documentId,
+        float[] queryEmbedding,
+        String normalizedQuery,
+        String[] queryTerms
+    ) {
+        List<ChunkEntity> chunks = chunkDao.getByDocumentId(documentId);
+        if (chunks == null || chunks.isEmpty()) {
+            return ChunkSearchSignals.empty();
+        }
+
+        float bestChunkEmbedding = 0f;
+        float totalChunkEmbedding = 0f;
+        int embeddingCount = 0;
+        float bestChunkLexical = 0f;
+        boolean obviousTextMatch = false;
+        boolean phraseMatch = false;
+        int chunkCount = 0;
+
+        for (ChunkEntity chunk : chunks) {
+            if (chunk == null || chunk.chunkText == null) {
+                continue;
+            }
+            chunkCount++;
+
+            if (queryEmbedding != null && chunk.chunkEmbedding != null) {
+                float[] chunkEmbedding = EmbeddingEngine.fromBytes(
+                    chunk.chunkEmbedding
+                );
+                if (chunkEmbedding != null) {
+                    float similarity = EmbeddingEngine.cosineSimilarity(
+                        queryEmbedding,
+                        chunkEmbedding
+                    );
+                    bestChunkEmbedding = Math.max(
+                        bestChunkEmbedding,
+                        similarity
+                    );
+                    totalChunkEmbedding += similarity;
+                    embeddingCount++;
+                }
+            }
+
+            float lexicalScore = computeFieldScore(chunk.chunkText, queryTerms);
+            bestChunkLexical = Math.max(bestChunkLexical, lexicalScore);
+            if (!obviousTextMatch) {
+                obviousTextMatch = hasAnyFieldMatch(queryTerms, chunk.chunkText);
+            }
+            if (!phraseMatch) {
+                phraseMatch = hasPhraseMatch(normalizedQuery, chunk.chunkText);
+            }
+        }
+
+        return new ChunkSearchSignals(
+            bestChunkEmbedding,
+            embeddingCount > 0 ? totalChunkEmbedding / embeddingCount : 0f,
+            bestChunkLexical,
+            obviousTextMatch,
+            phraseMatch,
+            chunkCount
+        );
+    }
+
     private String[] tokenizeQuery(String normalizedQuery) {
         if (normalizedQuery == null || normalizedQuery.isEmpty()) {
             return new String[0];
@@ -307,6 +411,41 @@ public class DocumentRepository {
             .toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9]+", " ")
             .trim();
+    }
+
+    private float computeChunkOpportunityPenalty(int chunkCount) {
+        int extraChunks = Math.max(0, chunkCount - 6);
+        return 1f / (1f + (extraChunks * 0.04f));
+    }
+
+    private static class ChunkSearchSignals {
+
+        final float embeddingScore;
+        final float averageEmbeddingScore;
+        final float lexicalScore;
+        final boolean obviousTextMatch;
+        final boolean phraseMatch;
+        final int chunkCount;
+
+        ChunkSearchSignals(
+            float embeddingScore,
+            float averageEmbeddingScore,
+            float lexicalScore,
+            boolean obviousTextMatch,
+            boolean phraseMatch,
+            int chunkCount
+        ) {
+            this.embeddingScore = embeddingScore;
+            this.averageEmbeddingScore = averageEmbeddingScore;
+            this.lexicalScore = lexicalScore;
+            this.obviousTextMatch = obviousTextMatch;
+            this.phraseMatch = phraseMatch;
+            this.chunkCount = chunkCount;
+        }
+
+        static ChunkSearchSignals empty() {
+            return new ChunkSearchSignals(0f, 0f, 0f, false, false, 0);
+        }
     }
 
     // =========================

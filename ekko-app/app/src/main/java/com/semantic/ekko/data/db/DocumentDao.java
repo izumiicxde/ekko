@@ -27,6 +27,9 @@ public interface DocumentDao {
     @Query("DELETE FROM documents WHERE folder_id = :folderId")
     void deleteByFolderId(long folderId);
 
+    @Query("DELETE FROM documents WHERE folder_id = :folderId AND uri NOT IN (:uris)")
+    void deleteMissingByFolderId(long folderId, List<String> uris);
+
     @Query("DELETE FROM documents")
     void deleteAll();
 
@@ -41,6 +44,9 @@ public interface DocumentDao {
 
     @Query("SELECT * FROM documents WHERE id = :id LIMIT 1")
     DocumentEntity getById(long id);
+
+    @Query("SELECT * FROM documents WHERE uri = :uri LIMIT 1")
+    DocumentEntity getByUri(String uri);
 
     @Query(
         "SELECT * FROM documents WHERE folder_id = :folderId ORDER BY name ASC"

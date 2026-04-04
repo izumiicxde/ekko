@@ -88,6 +88,7 @@ public class DocumentScanner {
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             DocumentsContract.Document.COLUMN_MIME_TYPE,
             DocumentsContract.Document.COLUMN_SIZE,
+            DocumentsContract.Document.COLUMN_LAST_MODIFIED,
         };
 
         try (
@@ -102,6 +103,7 @@ public class DocumentScanner {
                 String name = cursor.getString(1);
                 String mime = cursor.getString(2);
                 long size = cursor.getLong(3);
+                long lastModified = cursor.isNull(4) ? 0L : cursor.getLong(4);
                 Uri docUri = DocumentsContract.buildDocumentUriUsingTree(
                     treeUri,
                     docId
@@ -140,6 +142,8 @@ public class DocumentScanner {
                     folderId,
                     fileType
                 );
+                doc.sourceSize = size;
+                doc.sourceModifiedAt = lastModified;
                 found.add(doc);
             }
         } catch (Exception e) {
@@ -315,6 +319,8 @@ public class DocumentScanner {
                 folderId,
                 FileUtils.getExtension(fileName)
             );
+            doc.sourceSize = child.length();
+            doc.sourceModifiedAt = child.lastModified();
             found.add(doc);
         }
         return skipped;
