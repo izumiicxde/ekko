@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 
 public class DocumentRepository {
 
+    private static final int MAX_SEARCH_RESULTS = 5;
     private final DocumentDao documentDao;
     private final ChunkDao chunkDao;
     private final ExecutorService executor;
@@ -335,8 +336,11 @@ public class DocumentRepository {
                 return Float.compare(b.docEmbedding, a.docEmbedding);
             });
 
+            List<RankedSearchResult> filteredResults = filterRankedResults(
+                rankedResults
+            );
             List<SearchResult> results = new ArrayList<>();
-            for (RankedSearchResult ranked : rankedResults) {
+            for (RankedSearchResult ranked : filteredResults) {
                 results.add(new SearchResult(ranked.document, ranked.score));
             }
 
@@ -382,6 +386,35 @@ public class DocumentRepository {
             return 1;
         }
         return anyMatch ? 0 : -1;
+    }
+
+    static List<RankedSearchResult> filterRankedResults(
+        List<RankedSearchResult> rankedResults
+    ) {
+        List<RankedSearchResult> filtered = new ArrayList<>();
+        if (rankedResults == null || rankedResults.isEmpty()) {
+            return filtered;
+        }
+
+        RankedSearchResult bestResult = rankedResults.get(0);
+        if (bestResult == null || bestResult.lexicalTier < 1) {
+            return filtered;
+        }
+
+        int bestTier = bestResult.lexicalTier;
+        for (RankedSearchResult ranked : rankedResults) {
+            if (ranked == null) {
+                continue;
+            }
+            if (ranked.lexicalTier != bestTier) {
+                continue;
+            }
+            filtered.add(ranked);
+            if (filtered.size() >= MAX_SEARCH_RESULTS) {
+                break;
+            }
+        }
+        return filtered;
     }
 
     private ChunkSearchSignals computeChunkSignals(
@@ -508,7 +541,7 @@ public class DocumentRepository {
         }
     }
 
-    private static class RankedSearchResult {
+    static class RankedSearchResult {
 
         final DocumentEntity document;
         final float score;
