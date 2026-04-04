@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.EkkoApp;
 import com.semantic.ekko.R;
@@ -333,6 +334,7 @@ public class DetailActivity extends AppCompatActivity {
             doc.fileType != null ? doc.fileType.toUpperCase() : "FILE"
         );
         chipCategory.setText(doc.category != null ? doc.category : "General");
+        styleCategoryChip(chipCategory);
 
         String wordLabel =
             doc.wordCount >= 1000
@@ -376,6 +378,16 @@ public class DetailActivity extends AppCompatActivity {
                 styleDisplayChip(chip);
                 chipGroupKeywords.addView(chip);
             }
+        } else {
+            Chip emptyChip = new Chip(this);
+            emptyChip.setText("No keywords extracted yet");
+            emptyChip.setClickable(false);
+            emptyChip.setFocusable(false);
+            emptyChip.setTypeface(
+                ResourcesCompat.getFont(this, R.font.bricolage_grotesque)
+            );
+            stylePlaceholderChip(emptyChip);
+            chipGroupKeywords.addView(emptyChip);
         }
 
         chipGroupEntities.removeAllViews();
@@ -406,6 +418,7 @@ public class DetailActivity extends AppCompatActivity {
                 viewModel.correctCategory(currentDoc, selected);
                 currentDoc.category = selected;
                 chipCategory.setText(selected);
+                styleCategoryChip(chipCategory);
                 Snackbar.make(
                     btnOpenFile,
                     "Category updated to " + selected,
@@ -693,12 +706,73 @@ public class DetailActivity extends AppCompatActivity {
         if (chip == null) {
             return;
         }
-        chip.setChipStrokeWidth(0f);
+        int background = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorSurfaceVariant
+        );
+        int foreground = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorOnSurfaceVariant
+        );
+        int stroke = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorOutlineVariant
+        );
+        applyDisplayChipStyle(chip, background, foreground, stroke);
+    }
+
+    private void stylePlaceholderChip(Chip chip) {
+        if (chip == null) {
+            return;
+        }
+        int background = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorSurfaceContainerHighest
+        );
+        int foreground = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorOnSurfaceVariant
+        );
+        int stroke = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorOutlineVariant
+        );
+        applyDisplayChipStyle(chip, background, foreground, stroke);
+        chip.setAlpha(0.8f);
+    }
+
+    private void styleCategoryChip(Chip chip) {
+        if (chip == null) {
+            return;
+        }
+        int background = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorPrimaryContainer
+        );
+        int foreground = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorOnPrimaryContainer
+        );
+        int stroke = MaterialColors.getColor(
+            chip,
+            com.google.android.material.R.attr.colorPrimary
+        );
+        applyDisplayChipStyle(chip, background, foreground, stroke);
+    }
+
+    private void applyDisplayChipStyle(
+        Chip chip,
+        int background,
+        int foreground,
+        int stroke
+    ) {
+        chip.setChipStrokeWidth(getResources().getDisplayMetrics().density);
         chip.setEnsureMinTouchTargetSize(false);
         chip.setChipMinHeight(getResources().getDisplayMetrics().density * 34f);
         chip.setChipCornerRadius(getResources().getDisplayMetrics().density * 17f);
-        chip.setChipBackgroundColorResource(R.color.detail_chip_background);
-        chip.setTextColor(getColorStateList(R.color.detail_chip_text));
+        chip.setChipBackgroundColor(ColorStateList.valueOf(background));
+        chip.setTextColor(foreground);
+        chip.setChipStrokeColor(ColorStateList.valueOf(stroke));
     }
 
     private void renderEntityChips() {

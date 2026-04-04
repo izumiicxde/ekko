@@ -8,6 +8,10 @@ import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.button.MaterialButton;
 import com.semantic.ekko.R;
@@ -26,10 +30,12 @@ public class GraphActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_graph);
 
         bindViews();
+        applyInsets();
         viewModel = new ViewModelProvider(this).get(GraphViewModel.class);
         observeState();
         setupListeners();
@@ -73,6 +79,9 @@ public class GraphActivity extends AppCompatActivity {
 
                 if (state.scene != null) {
                     graphView.setScene(state.scene);
+                    graphView.setAlpha(0.82f);
+                    graphView.setTranslationY(20f);
+                    graphView.animate().alpha(1f).translationY(0f).setDuration(320L).start();
                 } else {
                     graphView.setScene(null);
                 }
@@ -84,6 +93,24 @@ public class GraphActivity extends AppCompatActivity {
                     btnScope.setText(state.actionLabel);
                 }
             });
+    }
+
+    private void applyInsets() {
+        View root = findViewById(R.id.graphRoot);
+        int baseTop = root.getPaddingTop();
+        int baseBottom = root.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets systemBars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars()
+            );
+            view.setPadding(
+                view.getPaddingLeft(),
+                baseTop + systemBars.top,
+                view.getPaddingRight(),
+                baseBottom + systemBars.bottom
+            );
+            return insets;
+        });
     }
 
     private void setupListeners() {
