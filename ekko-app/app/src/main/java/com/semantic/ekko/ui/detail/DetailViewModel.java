@@ -10,6 +10,7 @@ import com.semantic.ekko.data.model.DocumentEntity;
 import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.data.repository.RagRepository;
 import com.semantic.ekko.ml.EmbeddingEngine;
+import com.semantic.ekko.util.UserFacingMessages;
 
 public class DetailViewModel extends AndroidViewModel {
 
@@ -39,7 +40,7 @@ public class DetailViewModel extends AndroidViewModel {
         currentDocumentId = documentId;
         repository.getById(documentId, doc -> {
             if (doc != null) document.postValue(doc);
-            else errorMessage.postValue("Document not found.");
+            else errorMessage.postValue(UserFacingMessages.DOCUMENT_UNAVAILABLE);
         });
     }
 
@@ -50,11 +51,11 @@ public class DetailViewModel extends AndroidViewModel {
 
     public void generateAiSummary() {
         if (ragRepository == null) {
-            errorMessage.postValue("ML not ready.");
+            errorMessage.postValue(UserFacingMessages.SUMMARY_UNAVAILABLE);
             return;
         }
         if (currentDocumentId <= 0) {
-            errorMessage.postValue("Document not loaded.");
+            errorMessage.postValue(UserFacingMessages.DOCUMENT_UNAVAILABLE);
             return;
         }
         RagRepository.cancelActiveSummaryRequest();

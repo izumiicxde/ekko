@@ -3,7 +3,6 @@ package com.semantic.ekko.processing;
 import android.content.Context;
 import android.net.Uri;
 import android.os.SystemClock;
-import android.util.Log;
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.ChunkDao;
 import com.semantic.ekko.data.db.DocumentDao;
@@ -81,7 +80,6 @@ public class DocumentIndexer {
 
             for (int i = 0; i < total; i++) {
                 if (cancelled || Thread.currentThread().isInterrupted()) {
-                    Log.d(TAG, "Indexing interrupted.");
                     break;
                 }
 
@@ -96,7 +94,6 @@ public class DocumentIndexer {
                 try {
                     if (shouldSkipReindex(existing, doc)) {
                         indexed.incrementAndGet();
-                        Log.d(TAG, "Skipping unchanged document: " + doc.name);
                         continue;
                     }
 
@@ -106,11 +103,6 @@ public class DocumentIndexer {
                     String rawText = extractText(doc);
 
                     if (rawText == null || rawText.trim().length() < 20) {
-                        Log.w(
-                            TAG,
-                            doc.name +
-                                ": text extraction poor, using filename only"
-                        );
                         rawText = doc.name
                             .replaceAll("\\.[^.]+$", "")
                             .replaceAll("[_\\-]", " ");
@@ -214,31 +206,12 @@ public class DocumentIndexer {
                             );
                         }
                         chunkDao.insertAll(chunkEntities);
-                        Log.d(
-                            TAG,
-                            doc.name +
-                                ": " +
-                                chunkEntities.size() +
-                                " chunks indexed"
-                        );
-                    } catch (Exception e) {
-                        Log.w(
-                            TAG,
-                            doc.name +
-                                ": chunk indexing failed: " +
-                                e.getMessage()
-                        );
+                    } catch (Exception ignored) {
                     }
 
                     indexed.incrementAndGet();
-                    Log.d(TAG, "Indexed: " + doc.name);
                     SystemClock.sleep(PER_DOCUMENT_COOLDOWN_MS);
                 } catch (Exception e) {
-                    Log.e(
-                        TAG,
-                        "Failed to index " + doc.name + ": " + e.getMessage(),
-                        e
-                    );
                     failed.incrementAndGet();
                     failedNames.add(doc.name + " (error)");
                 }
@@ -329,10 +302,6 @@ public class DocumentIndexer {
                     return "";
             }
         } catch (Exception e) {
-            Log.e(
-                TAG,
-                "Text extraction failed for " + doc.name + ": " + e.getMessage()
-            );
             return "";
         }
     }

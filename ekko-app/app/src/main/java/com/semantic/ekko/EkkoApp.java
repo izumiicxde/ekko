@@ -1,7 +1,6 @@
 package com.semantic.ekko;
 
 import android.app.Application;
-import android.util.Log;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import com.semantic.ekko.ml.DocumentClassifier;
@@ -19,7 +18,6 @@ import java.util.Map;
 
 public class EkkoApp extends Application {
 
-    private static final String TAG = "EkkoApp";
     private static final long BACKEND_CHECK_INTERVAL_HEALTHY_MS = 15_000L;
     private static final long BACKEND_CHECK_INTERVAL_UNHEALTHY_MS = 3_000L;
     private static final int BACKEND_FAILURES_BEFORE_OFFLINE = 4;
@@ -232,14 +230,9 @@ public class EkkoApp extends Application {
                 textSummarizer = new TextSummarizer(embeddingEngine);
                 mlReady = true;
                 mlReadyState.postValue(true);
-                Log.d(TAG, "ML components initialized successfully");
             } catch (Exception e) {
                 mlReady = false;
                 mlReadyState.postValue(false);
-                Log.e(
-                    TAG,
-                    "Failed to initialize ML components: " + e.getMessage()
-                );
                 CrashLogger.logHandled(this, "ML init failure", e);
             }
         })
@@ -269,42 +262,19 @@ public class EkkoApp extends Application {
             try {
                 for (String candidateBaseUrl : RagClient.getCandidateBaseUrls()) {
                     try {
-                        Log.d(
-                            TAG,
-                            "Checking backend health at " + candidateBaseUrl
-                        );
                         retrofit2.Response<Void> response = RagClient.getService(
                             candidateBaseUrl
                         )
                             .health()
                             .execute();
-                        Log.d(
-                            TAG,
-                            "Health response " +
-                            response.code() +
-                            " from " +
-                            candidateBaseUrl
-                        );
                         if (response.isSuccessful()) {
                             requestSucceeded = true;
                             resolvedBaseUrl = candidateBaseUrl;
-                            Log.d(
-                                TAG,
-                                "Backend reachable via " + candidateBaseUrl
-                            );
                             break;
                         }
-                    } catch (Exception e) {
-                        Log.d(
-                            TAG,
-                            "Backend health check failed for " +
-                            candidateBaseUrl,
-                            e
-                        );
-                    }
+                    } catch (Exception ignored) {}
                 }
-            } catch (Exception e) {
-                Log.d(TAG, "Backend health check failed", e);
+            } catch (Exception ignored) {
             } finally {
                 boolean resolvedState;
                 if (requestSucceeded) {
@@ -318,13 +288,6 @@ public class EkkoApp extends Application {
                         consecutiveBackendFailures <
                         BACKEND_FAILURES_BEFORE_OFFLINE;
                 }
-                Log.d(
-                    TAG,
-                    "Backend reachable state=" +
-                    resolvedState +
-                    " activeBaseUrl=" +
-                    RagClient.getBaseUrl()
-                );
                 backendReachable = resolvedState;
                 backendReachableState.postValue(resolvedState);
                 backendCheckInFlight = false;

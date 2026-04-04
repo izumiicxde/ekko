@@ -1,7 +1,6 @@
 package com.semantic.ekko.data.repository;
 
 import android.content.Context;
-import android.util.Log;
 import com.semantic.ekko.data.db.AppDatabase;
 import com.semantic.ekko.data.db.ChunkDao;
 import com.semantic.ekko.data.db.DocumentDao;
@@ -37,8 +36,6 @@ import org.json.JSONObject;
 import retrofit2.Callback;
 
 public class RagRepository {
-
-    private static final String TAG = "RagRepository";
     private static final int TOP_DOCS = 2;
     private static final int CHUNKS_PER_DOC = 5;
     private static final int SCORE_TOP_N = 3;
@@ -99,7 +96,6 @@ public class RagRepository {
         Call call = activeCall;
         if (call != null && !call.isCanceled()) {
             call.cancel();
-            Log.d(TAG, "Stream cancelled.");
         }
         activeCall = null;
     }
@@ -299,45 +295,21 @@ public class RagRepository {
         int docLimit = Math.min(TOP_DOCS, scoredDocs.size());
 
         StringBuilder sourceNames = new StringBuilder();
-        StringBuilder docLog = new StringBuilder("Top docs: ");
         for (int i = 0; i < docLimit; i++) {
             ScoredDoc sd = scoredDocs.get(i);
             if (i > 0) {
                 sourceNames.append(", ");
-                docLog.append(", ");
             }
             sourceNames.append(sd.docName);
-            docLog
-                .append(sd.docName)
-                .append("(score=")
-                .append(String.format("%.3f", sd.score))
-                .append(", chunks=")
-                .append(sd.scoredChunks.size())
-                .append(")");
         }
-        Log.d(TAG, docLog.toString());
 
         List<String> selectedChunks = new ArrayList<>();
         for (int d = 0; d < docLimit; d++) {
             List<String> picked = pickTopChunks(scoredDocs.get(d).scoredChunks);
             selectedChunks.addAll(picked);
-            Log.d(
-                TAG,
-                scoredDocs.get(d).docName +
-                    ": picked " +
-                    picked.size() +
-                    " chunks"
-            );
         }
 
         if (selectedChunks.isEmpty()) return null;
-        Log.d(
-            TAG,
-            "Total chunks: " +
-                selectedChunks.size() +
-                " | best score: " +
-                bestScore
-        );
         return new SelectionResult(
             selectedChunks,
             sourceNames.toString(),
@@ -390,17 +362,6 @@ public class RagRepository {
             computeChunkOpportunityPenalty(scored.size());
 
         List<String> selected = pickTopChunks(scored);
-        Log.d(
-            TAG,
-            "Doc mode: " +
-                docName +
-                " picked " +
-                selected.size() +
-                "/" +
-                docChunks.size() +
-                " | best score: " +
-                bestScore
-        );
         // In document mode we do not apply a relevance threshold since the user
         // explicitly chose this document to chat with.
         return new SelectionResult(selected, docName, docScore);
@@ -477,13 +438,6 @@ public class RagRepository {
                 // For global queries, reject if no document is relevant enough.
                 // Document mode skips this check since the user chose the file.
                 if (documentId <= 0 && selection.bestScore < MIN_RELEVANCE) {
-                    Log.d(
-                        TAG,
-                        "Rejected query - best score " +
-                            selection.bestScore +
-                            " below threshold " +
-                            MIN_RELEVANCE
-                    );
                     callback.onError(
                         "I could not find relevant content for this question in your documents. " +
                             "Try rephrasing or ask about a topic covered in your files."
@@ -537,18 +491,14 @@ public class RagRepository {
                                 callback.onError(GENERIC_QA_UNAVAILABLE);
                                 break;
                             }
-                        } catch (Exception e) {
-                            Log.w(TAG, "Parse error: " + line);
-                        }
+                        } catch (Exception ignored) {}
                     }
                 } catch (Exception e) {
                     if (!call.isCanceled()) throw e;
-                    Log.d(TAG, "Stream cancelled.");
                 } finally {
                     activeCall = null;
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Stream failed: " + e.getMessage(), e);
                 callback.onError(GENERIC_QA_UNAVAILABLE);
             }
         })

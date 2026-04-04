@@ -2,7 +2,6 @@ package com.semantic.ekko.ml;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
-import android.util.Log;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -44,13 +43,6 @@ public class EmbeddingEngine {
         interpreter = new Interpreter(loadModelFile(context));
         inputCount = interpreter.getInputTensorCount();
         loadVocab(context);
-        Log.d(
-            TAG,
-            "EmbeddingEngine ready. Vocab size: " +
-                vocab.size() +
-                ", inputs: " +
-                inputCount
-        );
     }
 
     private MappedByteBuffer loadModelFile(Context context) throws IOException {

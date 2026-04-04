@@ -12,6 +12,7 @@ import com.semantic.ekko.data.repository.DocumentRepository;
 import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ml.EmbeddingEngine;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.UserFacingMessages;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +48,7 @@ public class SearchViewModel extends AndroidViewModel {
 
         EkkoApp app = EkkoApp.getInstance();
         if (!app.isMlReady()) {
-            errorMessage.postValue("ML models are still loading. Please wait.");
+            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
             return;
         }
 
@@ -60,7 +61,7 @@ public class SearchViewModel extends AndroidViewModel {
 
                 if (queryEmbedding == null) {
                     isSearching.postValue(false);
-                    errorMessage.postValue("Could not process query.");
+                    errorMessage.postValue(UserFacingMessages.SEARCH_UNAVAILABLE);
                     return;
                 }
 
@@ -108,7 +109,7 @@ public class SearchViewModel extends AndroidViewModel {
                 );
             } catch (Exception e) {
                 isSearching.postValue(false);
-                errorMessage.postValue("Search failed. Try a shorter query.");
+                errorMessage.postValue(UserFacingMessages.SEARCH_UNAVAILABLE);
             }
         })
             .start();

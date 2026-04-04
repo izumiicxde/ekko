@@ -17,6 +17,7 @@ import com.semantic.ekko.processing.DocumentScanner;
 import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.util.UserFacingMessages;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,9 +71,7 @@ public class HomeViewModel extends AndroidViewModel {
         EkkoApp app = EkkoApp.getInstance();
 
         if (!app.isMlReady()) {
-            errorMessage.postValue(
-                "ML models are still loading. Please wait a moment."
-            );
+            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
             return;
         }
 
@@ -87,9 +86,7 @@ public class HomeViewModel extends AndroidViewModel {
 
         entityExtractor.prepareModel(success -> {
             if (!success) {
-                errorMessage.postValue(
-                    "Entity extraction unavailable. Check internet connection."
-                );
+                errorMessage.postValue(UserFacingMessages.SMART_FEATURES_LIMITED);
             }
         });
     }
@@ -148,16 +145,14 @@ public class HomeViewModel extends AndroidViewModel {
         if (isIndexing.getValue() == Boolean.TRUE) return;
 
         if (!EkkoApp.getInstance().isMlReady()) {
-            errorMessage.postValue(
-                "ML models are still initializing. Please try again in a moment."
-            );
+            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
             return;
         }
 
         if (indexer == null) {
             initMl();
             if (indexer == null) {
-                errorMessage.postValue("Failed to initialize indexer.");
+                errorMessage.postValue(UserFacingMessages.GENERIC_ERROR);
                 return;
             }
         }
@@ -209,16 +204,14 @@ public class HomeViewModel extends AndroidViewModel {
         }
 
         if (!EkkoApp.getInstance().isMlReady()) {
-            errorMessage.postValue(
-                "ML models are still initializing. Please try again in a moment."
-            );
+            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
             return;
         }
 
         if (indexer == null) {
             initMl();
             if (indexer == null) {
-                errorMessage.postValue("Failed to initialize indexer.");
+                errorMessage.postValue(UserFacingMessages.GENERIC_ERROR);
                 return;
             }
         }
@@ -293,16 +286,14 @@ public class HomeViewModel extends AndroidViewModel {
         }
 
         if (!EkkoApp.getInstance().isMlReady()) {
-            errorMessage.postValue(
-                "ML models are still initializing. Please try again in a moment."
-            );
+            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
             return;
         }
 
         if (indexer == null) {
             initMl();
             if (indexer == null) {
-                errorMessage.postValue("Failed to initialize indexer.");
+                errorMessage.postValue(UserFacingMessages.GENERIC_ERROR);
                 return;
             }
         }
@@ -548,28 +539,9 @@ public class HomeViewModel extends AndroidViewModel {
                     indexingStage.postValue("");
                     loadDocuments();
                     if (!failedNames.isEmpty()) {
-                        StringBuilder msg = new StringBuilder();
-                        msg
-                            .append(failedNames.size())
-                            .append(
-                                failedNames.size() == 1 ? " file" : " files"
-                            )
-                            .append(" could not be fully indexed: ");
-                        for (
-                            int i = 0;
-                            i < Math.min(failedNames.size(), 3);
-                            i++
-                        ) {
-                            if (i > 0) msg.append(", ");
-                            msg.append(failedNames.get(i));
-                        }
-                        if (failedNames.size() > 3) {
-                            msg
-                                .append(" and ")
-                                .append(failedNames.size() - 3)
-                                .append(" more");
-                        }
-                        errorMessage.postValue(msg.toString());
+                        errorMessage.postValue(
+                            UserFacingMessages.INDEXING_PARTIAL_FAILURE
+                        );
                     }
                 }
             }
