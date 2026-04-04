@@ -16,6 +16,8 @@ import com.semantic.ekko.processing.DocumentIndexer;
 import com.semantic.ekko.processing.DocumentScanner;
 import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
+import com.semantic.ekko.util.StorageAccessHelper;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -199,6 +201,88 @@ public class HomeViewModel extends AndroidViewModel {
         );
     }
 
+    public void addFilesystemFoldersAndIndex(List<File> folderFiles) {
+        if (isIndexing.getValue() == Boolean.TRUE) return;
+        if (folderFiles == null || folderFiles.isEmpty()) {
+            errorMessage.postValue("No shared folders selected.");
+            return;
+        }
+
+        if (!EkkoApp.getInstance().isMlReady()) {
+            errorMessage.postValue(
+                "ML models are still initializing. Please try again in a moment."
+            );
+            return;
+        }
+
+        if (indexer == null) {
+            initMl();
+            if (indexer == null) {
+                errorMessage.postValue("Failed to initialize indexer.");
+                return;
+            }
+        }
+
+        isIndexing.postValue(true);
+        indexingStage.postValue("Preparing shared folders...");
+
+        List<FolderEntity> folderEntities = new ArrayList<>();
+        for (File folderFile : folderFiles) {
+            if (folderFile == null) continue;
+            String uri = Uri.fromFile(folderFile).toString();
+            prefsManager.setFolderExcluded(uri, false);
+            folderEntities.add(
+                new FolderEntity(
+                    uri,
+                    StorageAccessHelper.getFolderDisplayName(folderFile)
+                )
+            );
+        }
+
+        folderRepository.resolveOrInsert(folderEntities, resolvedFolders -> {
+            List<File> scanFolders = new ArrayList<>();
+            List<Long> folderIds = new ArrayList<>();
+            List<FolderEntity> safeFolders =
+                resolvedFolders == null ? Collections.emptyList() : resolvedFolders;
+
+            for (FolderEntity folder : safeFolders) {
+                if (folder == null || folder.uri == null) continue;
+                try {
+                    scanFolders.add(new File(Uri.parse(folder.uri).getPath()));
+                    folderIds.add(folder.id);
+                } catch (Exception ignored) {}
+            }
+
+            if (scanFolders.isEmpty()) {
+                isIndexing.postValue(false);
+                indexingStage.postValue("");
+                errorMessage.postValue("No readable shared folders selected.");
+                return;
+            }
+
+            DocumentScanner.ScanResult scanResult =
+                DocumentScanner.scanFilesystemFolders(
+                    getApplication(),
+                    scanFolders,
+                    folderIds
+                );
+
+            syncScannedDocuments(folderIds, scanResult.documents, () -> {
+                if (scanResult.documents.isEmpty()) {
+                    isIndexing.postValue(false);
+                    indexingStage.postValue("");
+                    loadDocuments();
+                    errorMessage.postValue(
+                        "No supported documents found in selected shared folders."
+                    );
+                    return;
+                }
+
+                startIndexing(scanResult.documents);
+            });
+        });
+    }
+
     public void reindexFolders(List<FolderEntity> folders) {
         if (isIndexing.getValue() == Boolean.TRUE) return;
         if (folders == null || folders.isEmpty()) {
@@ -260,6 +344,21 @@ public class HomeViewModel extends AndroidViewModel {
 
             startIndexing(scanResult.documents);
         });
+    }
+
+    public void setFolderIncluded(FolderEntity folder, boolean included) {
+        if (folder == null || folder.uri == null) {
+            return;
+        }
+
+        prefsManager.setFolderExcluded(folder.uri, !included);
+        if (!included) {
+            documentRepository.deleteByFolderId(folder.id, this::loadDocuments);
+            return;
+        }
+
+        loadDocuments();
+        reindexFolders(Collections.singletonList(folder));
     }
 
     private void syncScannedDocuments(

@@ -163,16 +163,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void maybeStartPendingPublicImport() {
-        if (
-            prefsManager == null ||
-            !prefsManager.isPublicImportPending() ||
-            !StorageAccessHelper.supportsAllFilesAccess() ||
-            !StorageAccessHelper.hasAllFilesAccess()
-        ) {
+        if (prefsManager == null || !prefsManager.isPublicImportPending()) {
             return;
         }
         prefsManager.setPublicImportPending(false);
-        PublicStorageImportWorker.enqueue(this);
     }
 
     private void applyWindowInsets() {

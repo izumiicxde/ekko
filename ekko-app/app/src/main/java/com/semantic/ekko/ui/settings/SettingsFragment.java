@@ -33,6 +33,7 @@ import com.semantic.ekko.ui.home.HomeViewModel;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.PublicStorageImportWorker;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -110,7 +111,7 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
                 if (StorageAccessHelper.hasAllFilesAccess()) {
-                    startPublicFolderImport();
+                    showPublicFolderSelectionDialog();
                     return;
                 }
                 View root = getView();
@@ -173,9 +174,8 @@ public class SettingsFragment extends Fragment {
                     FolderEntity folder,
                     boolean included
                 ) {
-                    prefsManager.setFolderExcluded(folder.uri, !included);
+                    homeViewModel.setFolderIncluded(folder, included);
                     refreshFolderUi();
-                    homeViewModel.loadDocuments();
                 }
 
                 @Override
@@ -315,7 +315,7 @@ public class SettingsFragment extends Fragment {
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
-                startPublicFolderImport();
+                showPublicFolderSelectionDialog();
             } else if (getContext() != null) {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(
@@ -328,16 +328,58 @@ public class SettingsFragment extends Fragment {
         folderPicker.launch(null);
     }
 
-    private void startPublicFolderImport() {
-        if (!isAdded() || getContext() == null) {
+    private void showPublicFolderSelectionDialog() {
+        List<File> publicFolders =
+            StorageAccessHelper.discoverAccessiblePublicFolders(
+                requireContext()
+            );
+        if (publicFolders.isEmpty()) {
+            Snackbar.make(
+                requireView(),
+                "No readable shared folders found.",
+                Snackbar.LENGTH_LONG
+            ).show();
             return;
         }
-        PublicStorageImportWorker.enqueue(requireContext());
-        isPublicImportRunning = true;
-        layoutReindexProgress.setVisibility(View.VISIBLE);
-        progressReindex.setIndeterminate(true);
-        txtReindexStage.setText("Indexing shared folders...");
-        updateActionButtons(true);
+
+        String[] items = new String[publicFolders.size()];
+        boolean[] checked = new boolean[publicFolders.size()];
+        Set<String> existingUris = new java.util.HashSet<>();
+        for (FolderEntity folder : currentFolders) {
+            if (folder != null && folder.uri != null) {
+                existingUris.add(folder.uri);
+            }
+        }
+        for (int i = 0; i < publicFolders.size(); i++) {
+            File folder = publicFolders.get(i);
+            items[i] = StorageAccessHelper.getFolderDisplayName(folder);
+            checked[i] = existingUris.contains(Uri.fromFile(folder).toString());
+        }
+
+        new AlertDialog.Builder(requireContext())
+            .setTitle("Choose shared folders")
+            .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
+                checked[which] = isChecked;
+            })
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Index", (dialog, which) -> {
+                List<File> selectedFolders = new ArrayList<>();
+                for (int i = 0; i < publicFolders.size(); i++) {
+                    if (checked[i]) {
+                        selectedFolders.add(publicFolders.get(i));
+                    }
+                }
+                if (selectedFolders.isEmpty()) {
+                    Snackbar.make(
+                        requireView(),
+                        "Select at least one shared folder.",
+                        Snackbar.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+                homeViewModel.addFilesystemFoldersAndIndex(selectedFolders);
+            })
+            .show();
     }
 
     private void refreshFolderUi() {

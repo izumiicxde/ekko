@@ -88,7 +88,7 @@ public class OnboardingActivity extends AppCompatActivity {
             result -> {
                 if (StorageAccessHelper.hasAllFilesAccess()) {
                     hasRequiredFolder = true;
-                    prefsManager.setPublicImportPending(true);
+                    prefsManager.setPublicImportPending(false);
                     btnNext.setEnabled(true);
                     updateUiForPage(viewPager.getCurrentItem());
                     return;
@@ -350,7 +350,7 @@ public class OnboardingActivity extends AppCompatActivity {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
                 hasRequiredFolder = true;
-                prefsManager.setPublicImportPending(true);
+                prefsManager.setPublicImportPending(false);
                 updateUiForPage(viewPager.getCurrentItem());
             } else {
                 allFilesAccessLauncher.launch(

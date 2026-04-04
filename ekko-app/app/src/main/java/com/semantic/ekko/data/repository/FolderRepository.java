@@ -62,6 +62,31 @@ public class FolderRepository {
         });
     }
 
+    public void resolveOrInsert(
+        List<FolderEntity> folders,
+        QueryCallback<List<FolderEntity>> callback
+    ) {
+        executor.execute(() -> {
+            List<FolderEntity> resolved = new java.util.ArrayList<>();
+            if (folders != null) {
+                for (FolderEntity folder : folders) {
+                    if (folder == null || folder.uri == null || folder.uri.isEmpty()) {
+                        continue;
+                    }
+                    FolderEntity existing = folderDao.getByUri(folder.uri);
+                    if (existing != null) {
+                        resolved.add(existing);
+                        continue;
+                    }
+                    long id = folderDao.insert(folder);
+                    folder.id = id;
+                    resolved.add(folder);
+                }
+            }
+            if (callback != null) callback.onResult(resolved);
+        });
+    }
+
     // =========================
     // QUERIES
     // =========================

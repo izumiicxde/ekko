@@ -32,6 +32,7 @@ import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.PublicStorageImportWorker;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -109,7 +110,7 @@ public class HomeFragment extends Fragment {
                     return;
                 }
                 if (StorageAccessHelper.hasAllFilesAccess()) {
-                    startPublicFolderImport();
+                    showPublicFolderSelectionDialog();
                     return;
                 }
                 View root = getView();
@@ -306,7 +307,7 @@ public class HomeFragment extends Fragment {
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
-                startPublicFolderImport();
+                showPublicFolderSelectionDialog();
             } else if (getContext() != null) {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(
@@ -319,16 +320,69 @@ public class HomeFragment extends Fragment {
         folderPicker.launch(null);
     }
 
-    private void startPublicFolderImport() {
-        if (!isAdded() || getContext() == null) {
+    private void showPublicFolderSelectionDialog() {
+        List<File> publicFolders =
+            StorageAccessHelper.discoverAccessiblePublicFolders(
+                requireContext()
+            );
+        if (publicFolders.isEmpty()) {
+            Snackbar.make(
+                recyclerDocuments,
+                "No readable shared folders found.",
+                Snackbar.LENGTH_LONG
+            ).show();
             return;
         }
-        PublicStorageImportWorker.enqueue(requireContext());
-        isPublicImportRunning = true;
-        updateIndexingUi();
-        txtIndexingStage.setText("Indexing shared folders...");
-        txtIndexingDoc.setText("Scanning public storage");
-        progressIndexing.setIndeterminate(true);
+
+        String[] items = new String[publicFolders.size()];
+        boolean[] checked = new boolean[publicFolders.size()];
+        java.util.Map<String, Boolean> existing = new java.util.HashMap<>();
+        if (viewModel.getFolderNames().getValue() != null) {
+            for (String name : viewModel.getFolderNames().getValue().values()) {}
+        }
+        FolderRepository folderRepository = new FolderRepository(requireContext());
+        folderRepository.getAll(folders -> {
+            java.util.Set<String> existingUris = new java.util.HashSet<>();
+            if (folders != null) {
+                for (FolderEntity folder : folders) {
+                    if (folder != null && folder.uri != null) {
+                        existingUris.add(folder.uri);
+                    }
+                }
+            }
+            requireActivity().runOnUiThread(() -> {
+                for (int i = 0; i < publicFolders.size(); i++) {
+                    File folder = publicFolders.get(i);
+                    items[i] = StorageAccessHelper.getFolderDisplayName(folder);
+                    checked[i] =
+                        existingUris.contains(Uri.fromFile(folder).toString());
+                }
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Choose shared folders")
+                    .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
+                        checked[which] = isChecked;
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Index", (dialog, which) -> {
+                        List<File> selectedFolders = new ArrayList<>();
+                        for (int i = 0; i < publicFolders.size(); i++) {
+                            if (checked[i]) {
+                                selectedFolders.add(publicFolders.get(i));
+                            }
+                        }
+                        if (selectedFolders.isEmpty()) {
+                            Snackbar.make(
+                                recyclerDocuments,
+                                "Select at least one shared folder.",
+                                Snackbar.LENGTH_SHORT
+                            ).show();
+                            return;
+                        }
+                        viewModel.addFilesystemFoldersAndIndex(selectedFolders);
+                    })
+                    .show();
+            });
+        });
     }
 
     public boolean handleSystemBackPressed() {

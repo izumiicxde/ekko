@@ -56,6 +56,13 @@ public class DocumentRepository {
         executor.execute(() -> documentDao.deleteByFolderId(folderId));
     }
 
+    public void deleteByFolderId(long folderId, Runnable onComplete) {
+        executor.execute(() -> {
+            documentDao.deleteByFolderId(folderId);
+            if (onComplete != null) onComplete.run();
+        });
+    }
+
     public void deleteMissingByFolderId(
         long folderId,
         List<String> uris,

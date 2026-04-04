@@ -20,6 +20,8 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.DocumentEntity;
+import com.semantic.ekko.data.model.FolderEntity;
+import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
@@ -29,6 +31,7 @@ import com.semantic.ekko.ui.settings.SettingsActivity;
 import com.semantic.ekko.ui.statistics.StatisticsActivity;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.PublicStorageImportWorker;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -52,6 +55,7 @@ public class HomeActivity extends AppCompatActivity {
     private ChipGroup chipGroupFilters;
     private View searchBar;
     private Map<Long, String> currentFolderNames = new HashMap<>();
+    private FolderRepository folderRepository;
     private boolean isAppIndexing = false;
     private boolean isPublicImportRunning = false;
 
@@ -85,7 +89,7 @@ public class HomeActivity extends AppCompatActivity {
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (StorageAccessHelper.hasAllFilesAccess()) {
-                    startPublicFolderImport();
+                    showPublicFolderSelectionDialog();
                     return;
                 }
                 Snackbar.make(
@@ -112,6 +116,7 @@ public class HomeActivity extends AppCompatActivity {
         setupViewModel();
         setupSearchBar();
         setupClickListeners();
+        folderRepository = new FolderRepository(this);
 
         Executors.newSingleThreadExecutor().execute(() -> {
             viewModel.initMl();
@@ -266,7 +271,7 @@ public class HomeActivity extends AppCompatActivity {
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
-                startPublicFolderImport();
+                showPublicFolderSelectionDialog();
             } else {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(this)
@@ -277,13 +282,60 @@ public class HomeActivity extends AppCompatActivity {
         folderPicker.launch(null);
     }
 
-    private void startPublicFolderImport() {
-        PublicStorageImportWorker.enqueue(this);
-        isPublicImportRunning = true;
-        progressIndexing.setIndeterminate(true);
-        txtIndexingStage.setText("Indexing shared folders...");
-        txtIndexingDoc.setText("Scanning public storage");
-        updateIndexingUi();
+    private void showPublicFolderSelectionDialog() {
+        List<File> publicFolders =
+            StorageAccessHelper.discoverAccessiblePublicFolders(this);
+        if (publicFolders.isEmpty()) {
+            Snackbar.make(
+                recyclerDocuments,
+                "No readable shared folders found.",
+                Snackbar.LENGTH_LONG
+            ).show();
+            return;
+        }
+
+        String[] items = new String[publicFolders.size()];
+        boolean[] checked = new boolean[publicFolders.size()];
+        folderRepository.getAll(folders -> runOnUiThread(() -> {
+            java.util.Set<String> existingUris = new java.util.HashSet<>();
+            if (folders != null) {
+                for (FolderEntity folder : folders) {
+                    if (folder != null && folder.uri != null) {
+                        existingUris.add(folder.uri);
+                    }
+                }
+            }
+            for (int i = 0; i < publicFolders.size(); i++) {
+                File folder = publicFolders.get(i);
+                items[i] = StorageAccessHelper.getFolderDisplayName(folder);
+                checked[i] =
+                    existingUris.contains(Uri.fromFile(folder).toString());
+            }
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Choose shared folders")
+                .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
+                    checked[which] = isChecked;
+                })
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Index", (dialog, which) -> {
+                    List<File> selectedFolders = new ArrayList<>();
+                    for (int i = 0; i < publicFolders.size(); i++) {
+                        if (checked[i]) {
+                            selectedFolders.add(publicFolders.get(i));
+                        }
+                    }
+                    if (selectedFolders.isEmpty()) {
+                        Snackbar.make(
+                            recyclerDocuments,
+                            "Select at least one shared folder.",
+                            Snackbar.LENGTH_SHORT
+                        ).show();
+                        return;
+                    }
+                    viewModel.addFilesystemFoldersAndIndex(selectedFolders);
+                })
+                .show();
+        }));
     }
 
     // =========================
