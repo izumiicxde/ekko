@@ -145,6 +145,16 @@ public class DocumentRepository {
         });
     }
 
+    public void getGraphRows(
+        QueryCallback<List<DocumentDao.DocumentEmbeddingRow>> callback
+    ) {
+        executor.execute(() -> {
+            List<DocumentDao.DocumentEmbeddingRow> result =
+                documentDao.getAllGraphRows();
+            if (callback != null) callback.onResult(result);
+        });
+    }
+
     // =========================
     // SEMANTIC SEARCH
     // =========================

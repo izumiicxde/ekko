@@ -43,6 +43,7 @@
             android:name=".ui.main.MainActivity"
             android:windowSoftInputMode="adjustResize"
         />
+        <activity android:name=".ui.graph.GraphActivity" />
         <activity android:name=".ui.home.HomeActivity" />
         <activity android:name=".ui.detail.DetailActivity" />
         <activity android:name=".ui.pdf.PdfViewerActivity" />

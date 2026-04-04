@@ -105,6 +105,11 @@ public interface DocumentDao {
     )
     List<DocumentEmbeddingRow> getAllEmbeddings();
 
+    @Query(
+        "SELECT id, name, uri, category, embedding, word_count, file_type, keywords, summary, raw_text, relative_path FROM documents ORDER BY indexed_at DESC"
+    )
+    List<DocumentEmbeddingRow> getAllGraphRows();
+
     // =========================
     // SEARCH SUPPORT
     // =========================

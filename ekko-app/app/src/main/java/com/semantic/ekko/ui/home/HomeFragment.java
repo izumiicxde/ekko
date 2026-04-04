@@ -28,6 +28,7 @@ import com.semantic.ekko.data.repository.FolderRepository;
 import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.processing.extractor.PdfTextExtractor;
 import com.semantic.ekko.ui.detail.DetailActivity;
+import com.semantic.ekko.ui.graph.GraphActivity;
 import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
@@ -284,6 +285,12 @@ public class HomeFragment extends Fragment {
         root
             .findViewById(R.id.btnSortFilter)
             .setOnClickListener(v -> showSortFilterSheet());
+
+        root
+            .findViewById(R.id.btnGraph)
+            .setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), GraphActivity.class))
+            );
 
         root
             .findViewById(R.id.btnFolderBack)
