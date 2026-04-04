@@ -50,6 +50,9 @@ public class OnboardingActivity extends AppCompatActivity {
             uri -> {
                 if (uri == null) {
                     btnNext.setEnabled(true);
+                    if (btnSecondaryAction != null) {
+                        btnSecondaryAction.setEnabled(true);
+                    }
                     return;
                 }
                 try {
@@ -66,6 +69,9 @@ public class OnboardingActivity extends AppCompatActivity {
                         );
                     } catch (SecurityException | IllegalArgumentException ignored) {
                         btnNext.setEnabled(true);
+                        if (btnSecondaryAction != null) {
+                            btnSecondaryAction.setEnabled(true);
+                        }
                         return;
                     }
                 }
@@ -85,6 +91,7 @@ public class OnboardingActivity extends AppCompatActivity {
                                 btnSecondaryAction.setEnabled(true);
                             }
                             updateUiForPage(viewPager.getCurrentItem());
+                            completeOnboarding();
                         })
                 );
             }
