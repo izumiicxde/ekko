@@ -27,13 +27,13 @@ final class SearchTextMatcher {
         int matchedCount = 0;
 
         for (String fieldText : fieldTexts) {
-            String normalizedField = normalize(fieldText);
-            if (normalizedField.isEmpty()) {
+            Set<String> normalizedTokens = tokenSet(fieldText);
+            if (normalizedTokens.isEmpty()) {
                 continue;
             }
 
-            String paddedField = " " + normalizedField + " ";
-            if (!phraseMatch && paddedField.contains(" " + normalizedQuery + " ")) {
+            String normalizedField = String.join(" ", normalizedTokens);
+            if (!phraseMatch && containsNormalizedPhrase(fieldText, normalizedQuery)) {
                 phraseMatch = true;
             }
 
@@ -45,7 +45,7 @@ final class SearchTextMatcher {
                 if (term.length() < 2) {
                     continue;
                 }
-                if (paddedField.contains(" " + term + " ")) {
+                if (normalizedTokens.contains(term) || normalizedTokens.contains(singularize(term))) {
                     matchedTerms[i] = true;
                     matchedCount++;
                 }
@@ -62,12 +62,11 @@ final class SearchTextMatcher {
             return 0f;
         }
 
-        String normalizedField = normalize(fieldText);
-        if (normalizedField.isEmpty()) {
+        Set<String> normalizedTokens = tokenSet(fieldText);
+        if (normalizedTokens.isEmpty()) {
             return 0f;
         }
 
-        String paddedField = " " + normalizedField + " ";
         int matches = 0;
         int validTerms = 0;
         for (String term : queryTerms) {
@@ -75,7 +74,7 @@ final class SearchTextMatcher {
                 continue;
             }
             validTerms++;
-            if (paddedField.contains(" " + term + " ")) {
+            if (normalizedTokens.contains(term) || normalizedTokens.contains(singularize(term))) {
                 matches++;
             }
         }
@@ -90,6 +89,8 @@ final class SearchTextMatcher {
             return "";
         }
         return text
+            .replaceAll("([a-z0-9])([A-Z])", "$1 $2")
+            .replaceAll("([A-Z]+)([A-Z][a-z])", "$1 $2")
             .toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9]+", " ")
             .trim();
@@ -107,6 +108,56 @@ final class SearchTextMatcher {
             }
         }
         return uniqueTerms.toArray(new String[0]);
+    }
+
+    private static boolean containsNormalizedPhrase(
+        String fieldText,
+        String normalizedQuery
+    ) {
+        String normalizedField = normalize(fieldText);
+        if (normalizedField.isEmpty() || normalizedQuery == null || normalizedQuery.isEmpty()) {
+            return false;
+        }
+        String paddedField = " " + normalizedField + " ";
+        return paddedField.contains(" " + normalizedQuery + " ");
+    }
+
+    private static Set<String> tokenSet(String fieldText) {
+        Set<String> tokens = new LinkedHashSet<>();
+        String normalized = normalize(fieldText);
+        if (normalized.isEmpty()) {
+            return tokens;
+        }
+        for (String token : normalized.split("\\s+")) {
+            if (token == null || token.isEmpty()) {
+                continue;
+            }
+            tokens.add(token);
+            String singular = singularize(token);
+            if (!singular.isEmpty()) {
+                tokens.add(singular);
+            }
+        }
+        return tokens;
+    }
+
+    private static String singularize(String token) {
+        if (token == null || token.length() < 4) {
+            return token == null ? "" : token;
+        }
+        if (token.endsWith("ies") && token.length() > 4) {
+            return token.substring(0, token.length() - 3) + "y";
+        }
+        if (token.endsWith("sses")) {
+            return token.substring(0, token.length() - 2);
+        }
+        if (token.endsWith("ses") || token.endsWith("xes")) {
+            return token.substring(0, token.length() - 2);
+        }
+        if (token.endsWith("s") && !token.endsWith("ss")) {
+            return token.substring(0, token.length() - 1);
+        }
+        return token;
     }
 
     static final class Signals {

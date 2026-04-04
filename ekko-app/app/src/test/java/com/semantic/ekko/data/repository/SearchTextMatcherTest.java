@@ -44,4 +44,34 @@ public class SearchTextMatcherTest {
 
         assertEquals(0f, score, 0.0001f);
     }
+
+    @Test
+    public void analyze_matches_camel_case_filenames() {
+        String normalizedQuery = SearchTextMatcher.normalize("wrapper class");
+        String[] terms = SearchTextMatcher.tokenize(normalizedQuery);
+
+        SearchTextMatcher.Signals signals = SearchTextMatcher.analyze(
+            normalizedQuery,
+            terms,
+            "WrapperClass.java"
+        );
+
+        assertEquals(1f, signals.coverageScore(), 0.0001f);
+        assertTrue(signals.hasStrongMatch());
+        assertTrue(signals.phraseMatch);
+    }
+
+    @Test
+    public void field_score_matches_simple_plural_variants() {
+        String[] terms = SearchTextMatcher.tokenize(
+            SearchTextMatcher.normalize("wrapper class")
+        );
+
+        float score = SearchTextMatcher.fieldScore(
+            "Java wrapper classes and boxing",
+            terms
+        );
+
+        assertEquals(1f, score, 0.0001f);
+    }
 }
