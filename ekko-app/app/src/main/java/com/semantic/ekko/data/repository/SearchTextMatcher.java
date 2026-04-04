@@ -45,7 +45,7 @@ final class SearchTextMatcher {
                 if (term.length() < 2) {
                     continue;
                 }
-                if (normalizedTokens.contains(term) || normalizedTokens.contains(singularize(term))) {
+                if (matchesTerm(normalizedTokens, term)) {
                     matchedTerms[i] = true;
                     matchedCount++;
                 }
@@ -74,7 +74,7 @@ final class SearchTextMatcher {
                 continue;
             }
             validTerms++;
-            if (normalizedTokens.contains(term) || normalizedTokens.contains(singularize(term))) {
+            if (matchesTerm(normalizedTokens, term)) {
                 matches++;
             }
         }
@@ -118,8 +118,36 @@ final class SearchTextMatcher {
         if (normalizedField.isEmpty() || normalizedQuery == null || normalizedQuery.isEmpty()) {
             return false;
         }
+        if (!normalizedQuery.contains(" ") && normalizedQuery.length() >= 3) {
+            return normalizedField.contains(normalizedQuery);
+        }
         String paddedField = " " + normalizedField + " ";
         return paddedField.contains(" " + normalizedQuery + " ");
+    }
+
+    private static boolean matchesTerm(Set<String> normalizedTokens, String term) {
+        if (normalizedTokens == null || normalizedTokens.isEmpty() || term == null || term.isEmpty()) {
+            return false;
+        }
+
+        String singular = singularize(term);
+        if (normalizedTokens.contains(term) || normalizedTokens.contains(singular)) {
+            return true;
+        }
+
+        if (term.length() < 3) {
+            return false;
+        }
+
+        for (String token : normalizedTokens) {
+            if (token == null || token.isEmpty()) {
+                continue;
+            }
+            if (token.startsWith(term) || token.startsWith(singular)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Set<String> tokenSet(String fieldText) {
