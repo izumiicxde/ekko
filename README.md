@@ -173,7 +173,14 @@ The backend defaults to:
 
 - API base: `http://127.0.0.1:8000`
 - Ollama endpoint: `http://localhost:11434/api/generate`
-- Ollama model: `gemma2:2b`
+- Ollama model: `llama3.2:1b`
+
+You can override the backend runtime with environment variables:
+
+- `OLLAMA_URL`
+- `OLLAMA_MODEL`
+- `OLLAMA_REQUEST_TIMEOUT`
+- `OLLAMA_RELEVANCE_TIMEOUT`
 
 ## How It Works
 

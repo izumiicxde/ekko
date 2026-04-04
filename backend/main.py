@@ -1,6 +1,8 @@
 import json
 import logging
+import os
 import re
+from typing import AsyncIterator
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -12,14 +14,15 @@ logger = logging.getLogger("ekko-rag")
 
 app = FastAPI(title="Ekko RAG Backend")
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "llama3.2:1b"
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+OLLAMA_REQUEST_TIMEOUT = float(os.getenv("OLLAMA_REQUEST_TIMEOUT", "600"))
+OLLAMA_RELEVANCE_TIMEOUT = float(os.getenv("OLLAMA_RELEVANCE_TIMEOUT", "15"))
 
 OLLAMA_OPTIONS = {
     "temperature": 0,
     "num_predict": -1,
 }
-OLLAMA_REQUEST_TIMEOUT = 600.0
 
 SYSTEM_PROMPT = (
     "You are a strict document assistant. "
@@ -89,10 +92,7 @@ STOPWORDS = {
     "on",
 }
 
-
-# =========================
-# REQUEST / RESPONSE MODELS
-# =========================
+NOT_FOUND = "I could not find this in the provided content."
 
 
 class RAGRequest(BaseModel):
@@ -113,11 +113,6 @@ class SummaryRequest(BaseModel):
 
 class SummaryResponse(BaseModel):
     summary: str
-
-
-# =========================
-# KEYWORD CHECK (fast pre-filter)
-# =========================
 
 
 def extract_keywords(text: str) -> list[str]:
@@ -144,23 +139,10 @@ def has_keyword_match(question: str, chunks: list[str]) -> bool:
     if not keywords:
         return True
     combined = " ".join(chunks).lower()
-    for keyword in keywords:
-        if fuzzy_match(keyword, combined):
-            return True
-    return False
-
-
-# =========================
-# RELEVANCE CHECK
-# =========================
+    return any(fuzzy_match(keyword, combined) for keyword in keywords)
 
 
 async def is_relevant(question: str, context: str, client: httpx.AsyncClient) -> bool:
-    """
-    Ask the model to judge if the context is relevant to the question.
-    Returns True if relevant, False otherwise.
-    This is a fast cheap call with num_predict=10 since we only need YES or NO.
-    """
     check_prompt = (
         f"Does the following text contain information relevant to answering "
         f'the question: "{question}"?\n\n'
@@ -176,24 +158,23 @@ async def is_relevant(question: str, context: str, client: httpx.AsyncClient) ->
                 "stream": False,
                 "options": {"temperature": 0, "num_predict": 5},
             },
-            timeout=15.0,
+            timeout=OLLAMA_RELEVANCE_TIMEOUT,
         )
         response.raise_for_status()
         answer = response.json().get("response", "").strip().upper()
-        logger.info(f"Relevance check for '{question}': {answer}")
+        logger.info("Relevance check for '%s': %s", question, answer)
         return "YES" in answer
-    except Exception as e:
-        logger.warning(f"Relevance check failed: {e}, allowing through")
-        return True  # On failure, allow through to avoid blocking valid queries
+    except Exception as exc:
+        logger.warning("Relevance check failed: %s, allowing through", exc)
+        return True
 
 
-# =========================
-# PROMPT BUILDER
-# =========================
+def normalize_chunks(chunks: list[str]) -> list[str]:
+    return [chunk.strip() for chunk in chunks if chunk and chunk.strip()]
 
 
 def build_prompt(question: str, chunks: list[str], document_name: str) -> str:
-    context = "\n\n".join(chunk.strip() for chunk in chunks if chunk.strip())
+    context = "\n\n".join(chunks)
     doc_ref = f' from "{document_name}"' if document_name else ""
     return (
         f"Below is extracted text{doc_ref}.\n\n"
@@ -207,9 +188,6 @@ def build_prompt(question: str, chunks: list[str], document_name: str) -> str:
         f"- Do NOT wrap your entire answer in a code block\n\n"
         f"ANSWER:"
     )
-
-
-NOT_FOUND = "I could not find this in the provided content."
 
 
 def build_summary_prompt(context: str, document_name: str) -> str:
@@ -227,40 +205,62 @@ def build_summary_prompt(context: str, document_name: str) -> str:
     )
 
 
-# =========================
-# ROUTES
-# =========================
+async def prepare_rag_request(
+    request: RAGRequest,
+    client: httpx.AsyncClient,
+) -> tuple[bool, list[str], str]:
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    chunks = normalize_chunks(request.chunks)
+    if not chunks:
+        raise HTTPException(status_code=400, detail="No chunks provided.")
+
+    if not has_keyword_match(question, chunks):
+        logger.info("Keyword rejected: '%s'", question)
+        return False, chunks, ""
+
+    context = "\n\n".join(chunks)
+    relevant = await is_relevant(question, context, client)
+    if not relevant:
+        logger.info("Model rejected as irrelevant: '%s'", question)
+        return False, chunks, ""
+
+    prompt = build_prompt(question, chunks, request.document_name)
+    return True, chunks, prompt
+
+
+def not_found_response() -> RAGResponse:
+    return RAGResponse(answer=NOT_FOUND, chunks_used=0)
+
+
+async def not_found_stream() -> AsyncIterator[str]:
+    yield json.dumps({"token": NOT_FOUND}) + "\n"
+    yield json.dumps({"done": True}) + "\n"
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": OLLAMA_MODEL}
+    return {
+        "status": "ok",
+        "model": OLLAMA_MODEL,
+        "ollama_url": OLLAMA_URL,
+    }
 
 
 @app.post("/rag")
 async def rag(request: RAGRequest):
-    if not request.question.strip():
-        raise HTTPException(status_code=400, detail="Question cannot be empty.")
-    if not request.chunks:
-        raise HTTPException(status_code=400, detail="No chunks provided.")
-
-    if not has_keyword_match(request.question, request.chunks):
-        logger.info(f"Keyword rejected: '{request.question}'")
-        return RAGResponse(answer=NOT_FOUND, chunks_used=0)
-
-    context = "\n\n".join(chunk.strip() for chunk in request.chunks if chunk.strip())
-
     async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
-        relevant = await is_relevant(request.question, context, client)
-        if not relevant:
-            logger.info(f"Model rejected as irrelevant: '{request.question}'")
-            return RAGResponse(answer=NOT_FOUND, chunks_used=0)
+        allowed, chunks, prompt = await prepare_rag_request(request, client)
+        if not allowed:
+            return not_found_response()
 
-        prompt = build_prompt(request.question, request.chunks, request.document_name)
         logger.info(
-            f"RAG request | question='{request.question}' | chunks={len(request.chunks)}"
+            "RAG request | question='%s' | chunks=%s",
+            request.question,
+            len(chunks),
         )
-
         try:
             response = await client.post(
                 OLLAMA_URL,
@@ -278,11 +278,11 @@ async def rag(request: RAGRequest):
             raise HTTPException(
                 status_code=504, detail="Model took too long to respond."
             )
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
+        except Exception as exc:
+            logger.error("Unexpected error: %s", exc)
             raise HTTPException(status_code=500, detail="Internal server error.")
 
-    return RAGResponse(answer=answer, chunks_used=len(request.chunks))
+    return RAGResponse(answer=answer, chunks_used=len(chunks))
 
 
 @app.post("/summary")
@@ -293,7 +293,9 @@ async def summary(request: SummaryRequest):
 
     prompt = build_summary_prompt(context, request.document_name)
     logger.info(
-        f"Summary request | document='{request.document_name}' | chars={len(context)}"
+        "Summary request | document='%s' | chars=%s",
+        request.document_name,
+        len(context),
     )
 
     try:
@@ -316,8 +318,8 @@ async def summary(request: SummaryRequest):
         raise HTTPException(
             status_code=504, detail="Model took too long to respond."
         )
-    except Exception as e:
-        logger.error(f"Summary generation failed: {e}")
+    except Exception as exc:
+        logger.error("Summary generation failed: %s", exc)
         raise HTTPException(status_code=500, detail="Internal server error.")
 
     if not summary_text:
@@ -328,41 +330,18 @@ async def summary(request: SummaryRequest):
 
 @app.post("/rag/stream")
 async def rag_stream(request: RAGRequest):
-    if not request.question.strip():
-        raise HTTPException(status_code=400, detail="Question cannot be empty.")
-    if not request.chunks:
-        raise HTTPException(status_code=400, detail="No chunks provided.")
+    async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
+        allowed, chunks, prompt = await prepare_rag_request(request, client)
+        if not allowed:
+            return StreamingResponse(not_found_stream(), media_type="application/x-ndjson")
 
-    if not has_keyword_match(request.question, request.chunks):
-        logger.info(f"Keyword rejected stream: '{request.question}'")
-
-        async def rejected():
-            yield json.dumps({"token": NOT_FOUND}) + "\n"
-            yield json.dumps({"done": True}) + "\n"
-
-        return StreamingResponse(rejected(), media_type="application/x-ndjson")
-
-    context = "\n\n".join(chunk.strip() for chunk in request.chunks if chunk.strip())
-
-    # Run relevance check before opening the stream
-    async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as check_client:
-        relevant = await is_relevant(request.question, context, check_client)
-
-    if not relevant:
-        logger.info(f"Model rejected stream as irrelevant: '{request.question}'")
-
-        async def not_found():
-            yield json.dumps({"token": NOT_FOUND}) + "\n"
-            yield json.dumps({"done": True}) + "\n"
-
-        return StreamingResponse(not_found(), media_type="application/x-ndjson")
-
-    prompt = build_prompt(request.question, request.chunks, request.document_name)
     logger.info(
-        f"RAG stream | question='{request.question}' | chunks={len(request.chunks)}"
+        "RAG stream | question='%s' | chunks=%s",
+        request.question,
+        len(chunks),
     )
 
-    async def token_generator():
+    async def token_generator() -> AsyncIterator[str]:
         try:
             async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
                 async with client.stream(
@@ -376,22 +355,24 @@ async def rag_stream(request: RAGRequest):
                         "options": OLLAMA_OPTIONS,
                     },
                 ) as response:
+                    response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line.strip():
                             continue
                         try:
                             data = json.loads(line)
-                            token = data.get("response", "")
-                            done = data.get("done", False)
-                            if token:
-                                yield json.dumps({"token": token}) + "\n"
-                            if done:
-                                yield json.dumps({"done": True}) + "\n"
-                                break
                         except json.JSONDecodeError:
                             continue
-        except Exception as e:
-            logger.error(f"Stream error: {e}")
-            yield json.dumps({"error": str(e)}) + "\n"
+
+                        token = data.get("response", "")
+                        done = data.get("done", False)
+                        if token:
+                            yield json.dumps({"token": token}) + "\n"
+                        if done:
+                            yield json.dumps({"done": True}) + "\n"
+                            break
+        except Exception as exc:
+            logger.error("Stream error: %s", exc)
+            yield json.dumps({"error": str(exc)}) + "\n"
 
     return StreamingResponse(token_generator(), media_type="application/x-ndjson")
