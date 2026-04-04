@@ -20,6 +20,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.semantic.ekko.R;
 import com.semantic.ekko.data.model.FolderEntity;
 import com.semantic.ekko.data.repository.FolderRepository;
+import com.semantic.ekko.ui.graph.GraphActivity;
 import com.semantic.ekko.ui.home.HomeFragment;
 import com.semantic.ekko.ui.qa.QAActivity;
 import com.semantic.ekko.ui.search.SearchFragment;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     private LinearLayout navHome;
     private LinearLayout navSearch;
+    private LinearLayout navGraph;
     private LinearLayout navAsk;
     private LinearLayout navSettings;
     private String currentTag = TAG_HOME;
@@ -92,6 +94,17 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             Intent intent = new Intent(this, QAActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
+            syncNavToCurrentTag();
+        });
+
+        navGraph.setOnClickListener(v -> {
+            if (!hasIncludedFolders) {
+                showNoFoldersMessage();
+                return;
+            }
+            Intent intent = new Intent(this, GraphActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             startActivity(intent);
             syncNavToCurrentTag();
@@ -158,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
     private void bindNavViews() {
         navHome = findViewById(R.id.navHome);
         navSearch = findViewById(R.id.navSearch);
+        navGraph = findViewById(R.id.navGraph);
         navAsk = findViewById(R.id.navAsk);
         navSettings = findViewById(R.id.navSettings);
     }
@@ -207,6 +221,7 @@ public class MainActivity extends AppCompatActivity {
             TAG_SEARCH.equals(currentTag),
             hasIncludedFolders
         );
+        setNavSelected(navGraph, false, hasIncludedFolders);
         setNavSelected(navAsk, false, hasIncludedFolders);
         setNavSelected(navSettings, TAG_SETTINGS.equals(currentTag), true);
     }

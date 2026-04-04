@@ -152,6 +152,43 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/navGraph"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="5dp"
+            >
+
+                <ImageView
+                    android:id="@+id/iconNavGraph"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Graph"
+                    android:src="@drawable/ic_cluster_graph"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                />
+
+                <TextView
+                    android:id="@+id/textNavGraph"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:text="Graph"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/navSettings"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
