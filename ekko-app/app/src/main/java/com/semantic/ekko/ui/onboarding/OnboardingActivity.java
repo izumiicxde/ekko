@@ -26,6 +26,7 @@ import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.FileUtils;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
+import com.semantic.ekko.work.PublicStorageImportWorker;
 import java.util.Arrays;
 import java.util.List;
 
@@ -87,10 +88,8 @@ public class OnboardingActivity extends AppCompatActivity {
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (StorageAccessHelper.hasAllFilesAccess()) {
-                    hasRequiredFolder = true;
-                    prefsManager.setPublicImportPending(false);
+                    refreshRequirementState();
                     btnNext.setEnabled(true);
-                    updateUiForPage(viewPager.getCurrentItem());
                     return;
                 }
                 btnNext.setEnabled(true);
@@ -123,16 +122,7 @@ public class OnboardingActivity extends AppCompatActivity {
         viewPager.setAdapter(new OnboardingPagerAdapter(pages));
         folderRepository
             .getAllLive()
-            .observe(this, folders -> {
-                boolean hasFolders = folders != null && !folders.isEmpty();
-                hasRequiredFolder =
-                    hasFolders ||
-                    (
-                        StorageAccessHelper.supportsAllFilesAccess() &&
-                        StorageAccessHelper.hasAllFilesAccess()
-                    );
-                updateUiForPage(viewPager.getCurrentItem());
-            });
+            .observe(this, folders -> refreshRequirementState());
         createIndicators();
         updateUiForPage(0);
 
@@ -189,7 +179,7 @@ public class OnboardingActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (viewPager != null) {
-            updateUiForPage(viewPager.getCurrentItem());
+            refreshRequirementState();
         }
     }
 
@@ -346,13 +336,30 @@ public class OnboardingActivity extends AppCompatActivity {
         btnBack.setEnabled(true);
     }
 
+    private void refreshRequirementState() {
+        if (folderRepository == null || viewPager == null) {
+            return;
+        }
+        folderRepository.getAll(folders ->
+            runOnUiThread(() -> {
+                boolean hasFolders = folders != null && !folders.isEmpty();
+                hasRequiredFolder =
+                    hasFolders ||
+                    (
+                        StorageAccessHelper.supportsAllFilesAccess() &&
+                        StorageAccessHelper.hasAllFilesAccess()
+                    );
+                updateUiForPage(viewPager.getCurrentItem());
+            })
+        );
+    }
+
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
-                hasRequiredFolder = true;
-                prefsManager.setPublicImportPending(false);
-                updateUiForPage(viewPager.getCurrentItem());
-            } else {
+                prefsManager.setPublicImportPending(true);
+                refreshRequirementState();
+                } else {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(this)
                 );
@@ -363,6 +370,13 @@ public class OnboardingActivity extends AppCompatActivity {
     }
 
     private void completeOnboarding() {
+        if (
+            StorageAccessHelper.supportsAllFilesAccess() &&
+            StorageAccessHelper.hasAllFilesAccess()
+        ) {
+            prefsManager.setPublicImportPending(true);
+            PublicStorageImportWorker.enqueue(this);
+        }
         prefsManager.setOnboardingDone(true);
         launchMain();
     }

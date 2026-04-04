@@ -166,7 +166,13 @@ public class MainActivity extends AppCompatActivity {
         if (prefsManager == null || !prefsManager.isPublicImportPending()) {
             return;
         }
-        prefsManager.setPublicImportPending(false);
+        if (
+            StorageAccessHelper.supportsAllFilesAccess() &&
+            StorageAccessHelper.hasAllFilesAccess()
+        ) {
+            PublicStorageImportWorker.enqueue(this);
+            prefsManager.setPublicImportPending(false);
+        }
     }
 
     private void applyWindowInsets() {

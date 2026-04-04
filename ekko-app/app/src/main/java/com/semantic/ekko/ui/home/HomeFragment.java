@@ -33,7 +33,6 @@ import com.semantic.ekko.ui.main.MainActivity;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.PublicStorageImportWorker;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -65,6 +64,11 @@ public class HomeFragment extends Fragment {
     private boolean hasIncludedFolders = false;
     private boolean isAppIndexing = false;
     private boolean isPublicImportRunning = false;
+    private String latestIndexingStage = "";
+    private String latestIndexingDoc = "";
+    private int latestIndexCurrent = 0;
+    private int latestIndexTotal = 0;
+    private boolean hasDeterminateIndexingProgress = false;
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -111,7 +115,7 @@ public class HomeFragment extends Fragment {
                     return;
                 }
                 if (StorageAccessHelper.hasAllFilesAccess()) {
-                    showPublicFolderSelectionDialog();
+                    viewModel.importDetectedPublicFolders();
                     return;
                 }
                 View root = getView();
@@ -247,21 +251,19 @@ public class HomeFragment extends Fragment {
         viewModel
             .getIndexingStage()
             .observe(getViewLifecycleOwner(), stage -> {
-                if (stage != null && progressIndexing.getProgress() == 0) {
-                    txtIndexingStage.setText(stage);
-                }
+                latestIndexingStage = stage == null ? "" : stage;
+                renderIndexingState();
             });
 
         viewModel
             .getIndexingProgress()
             .observe(getViewLifecycleOwner(), progress -> {
                 if (progress == null) return;
-                progressIndexing.setMax(progress.total);
-                progressIndexing.setProgress(progress.current);
-                txtIndexingStage.setText(progress.docName);
-                txtIndexingDoc.setText(
-                    progress.current + " / " + progress.total
-                );
+                latestIndexCurrent = progress.current;
+                latestIndexTotal = progress.total;
+                latestIndexingDoc = progress.docName == null ? "" : progress.docName;
+                hasDeterminateIndexingProgress = progress.total > 0;
+                renderIndexingState();
             });
 
         viewModel
@@ -314,7 +316,7 @@ public class HomeFragment extends Fragment {
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
-                showPublicFolderSelectionDialog();
+                viewModel.importDetectedPublicFolders();
             } else if (getContext() != null) {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(
@@ -325,71 +327,6 @@ public class HomeFragment extends Fragment {
             return;
         }
         folderPicker.launch(null);
-    }
-
-    private void showPublicFolderSelectionDialog() {
-        List<File> publicFolders =
-            StorageAccessHelper.discoverAccessiblePublicFolders(
-                requireContext()
-            );
-        if (publicFolders.isEmpty()) {
-            Snackbar.make(
-                recyclerDocuments,
-                "No readable shared folders found.",
-                Snackbar.LENGTH_LONG
-            ).show();
-            return;
-        }
-
-        String[] items = new String[publicFolders.size()];
-        boolean[] checked = new boolean[publicFolders.size()];
-        java.util.Map<String, Boolean> existing = new java.util.HashMap<>();
-        if (viewModel.getFolderNames().getValue() != null) {
-            for (String name : viewModel.getFolderNames().getValue().values()) {}
-        }
-        FolderRepository folderRepository = new FolderRepository(requireContext());
-        folderRepository.getAll(folders -> {
-            java.util.Set<String> existingUris = new java.util.HashSet<>();
-            if (folders != null) {
-                for (FolderEntity folder : folders) {
-                    if (folder != null && folder.uri != null) {
-                        existingUris.add(folder.uri);
-                    }
-                }
-            }
-            requireActivity().runOnUiThread(() -> {
-                for (int i = 0; i < publicFolders.size(); i++) {
-                    File folder = publicFolders.get(i);
-                    items[i] = StorageAccessHelper.getFolderDisplayName(folder);
-                    checked[i] =
-                        existingUris.contains(Uri.fromFile(folder).toString());
-                }
-                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                    .setTitle("Choose shared folders")
-                    .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
-                        checked[which] = isChecked;
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Index", (dialog, which) -> {
-                        List<File> selectedFolders = new ArrayList<>();
-                        for (int i = 0; i < publicFolders.size(); i++) {
-                            if (checked[i]) {
-                                selectedFolders.add(publicFolders.get(i));
-                            }
-                        }
-                        if (selectedFolders.isEmpty()) {
-                            Snackbar.make(
-                                recyclerDocuments,
-                                "Select at least one shared folder.",
-                                Snackbar.LENGTH_SHORT
-                            ).show();
-                            return;
-                        }
-                        viewModel.addFilesystemFoldersAndIndex(selectedFolders);
-                    })
-                    .show();
-            });
-        });
     }
 
     public boolean handleSystemBackPressed() {
@@ -629,14 +566,50 @@ public class HomeFragment extends Fragment {
         boolean showBanner = isAppIndexing || isPublicImportRunning;
         layoutIndexingProgress.setVisibility(showBanner ? View.VISIBLE : View.GONE);
         if (!showBanner) {
+            latestIndexingStage = "";
+            latestIndexingDoc = "";
+            latestIndexCurrent = 0;
+            latestIndexTotal = 0;
+            hasDeterminateIndexingProgress = false;
             progressIndexing.setIndeterminate(false);
             progressIndexing.setProgress(0);
             txtIndexingStage.setText("");
             txtIndexingDoc.setText("");
             return;
         }
+        renderIndexingState();
+    }
 
-        progressIndexing.setIndeterminate(false);
+    private void renderIndexingState() {
+        if (!isAdded()) {
+            return;
+        }
+        if (isPublicImportRunning && !isAppIndexing) {
+            progressIndexing.setIndeterminate(true);
+            txtIndexingStage.setText("Indexing shared folders...");
+            txtIndexingDoc.setText("Scanning public storage");
+            return;
+        }
+        if (!isAppIndexing) {
+            return;
+        }
+        if (hasDeterminateIndexingProgress && latestIndexTotal > 0) {
+            progressIndexing.setIndeterminate(false);
+            progressIndexing.setMax(latestIndexTotal);
+            progressIndexing.setProgress(latestIndexCurrent);
+            txtIndexingStage.setText(
+                latestIndexingDoc.isEmpty() ? latestIndexingStage : latestIndexingDoc
+            );
+            txtIndexingDoc.setText(
+                latestIndexCurrent + " / " + latestIndexTotal
+            );
+            return;
+        }
+        progressIndexing.setIndeterminate(true);
+        txtIndexingStage.setText(
+            latestIndexingStage.isEmpty() ? "Preparing index..." : latestIndexingStage
+        );
+        txtIndexingDoc.setText("Getting documents ready");
     }
 
     private void handlePublicImportState(List<WorkInfo> workInfos) {
@@ -667,11 +640,6 @@ public class HomeFragment extends Fragment {
         }
 
         isPublicImportRunning = running;
-        if (running && !isAppIndexing) {
-            progressIndexing.setIndeterminate(true);
-            txtIndexingStage.setText("Indexing shared folders...");
-            txtIndexingDoc.setText("Scanning public storage");
-        }
         updateIndexingUi();
 
         if (finished && !running) {

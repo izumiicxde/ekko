@@ -173,7 +173,7 @@
                             android:layout_height="54dp"
                             android:layout_marginStart="8dp"
                             android:layout_weight="1"
-                            android:text="Hidden"
+                            android:text="Restore hidden"
                             app:icon="@drawable/ic_refresh"
                             app:iconTint="?attr/colorOnSurface"
                         />

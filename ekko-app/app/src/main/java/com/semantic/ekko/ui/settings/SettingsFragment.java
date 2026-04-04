@@ -33,7 +33,6 @@ import com.semantic.ekko.ui.home.HomeViewModel;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.PublicStorageImportWorker;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -111,7 +110,7 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
                 if (StorageAccessHelper.hasAllFilesAccess()) {
-                    showPublicFolderSelectionDialog();
+                    homeViewModel.importDetectedPublicFolders();
                     return;
                 }
                 View root = getView();
@@ -265,21 +264,33 @@ public class SettingsFragment extends Fragment {
         view
             .findViewById(R.id.btnReindexIncluded)
             .setOnClickListener(v -> {
-                List<FolderEntity> included = getIncludedFolders();
-                if (included.isEmpty()) {
+                if (
+                    StorageAccessHelper.supportsAllFilesAccess() &&
+                    StorageAccessHelper.hasAllFilesAccess()
+                ) {
+                    homeViewModel.importDetectedPublicFolders();
                     Snackbar.make(
                         view,
-                        "No included folders selected for re-indexing.",
+                        "Refreshing included folders and checking for anything new.",
                         Snackbar.LENGTH_SHORT
                     ).show();
-                    return;
+                } else {
+                    List<FolderEntity> included = getIncludedFolders();
+                    if (included.isEmpty()) {
+                        Snackbar.make(
+                            view,
+                            "No included folders selected for re-indexing.",
+                            Snackbar.LENGTH_SHORT
+                        ).show();
+                        return;
+                    }
+                    homeViewModel.reindexFolders(included);
+                    Snackbar.make(
+                        view,
+                        "Re-index started for included folders.",
+                        Snackbar.LENGTH_SHORT
+                    ).show();
                 }
-                homeViewModel.reindexFolders(included);
-                Snackbar.make(
-                    view,
-                    "Re-index started for included folders.",
-                    Snackbar.LENGTH_SHORT
-                ).show();
             });
 
         PublicStorageImportWorker
@@ -307,15 +318,16 @@ public class SettingsFragment extends Fragment {
         }
         btnAddFolder.setEnabled(mlReady && !indexing);
         btnReindexIncluded.setEnabled(mlReady && !indexing);
-        btnResetExcluded.setEnabled(!indexing);
+        btnResetExcluded.setEnabled(!indexing && hasExcludedFolders());
         btnAddFolder.setAlpha(mlReady ? 1f : 0.55f);
         btnReindexIncluded.setAlpha(mlReady ? 1f : 0.55f);
+        btnResetExcluded.setAlpha(hasExcludedFolders() ? 1f : 0.55f);
     }
 
     private void launchFolderImport() {
         if (StorageAccessHelper.supportsAllFilesAccess()) {
             if (StorageAccessHelper.hasAllFilesAccess()) {
-                showPublicFolderSelectionDialog();
+                homeViewModel.importDetectedPublicFolders();
             } else if (getContext() != null) {
                 allFilesAccessLauncher.launch(
                     StorageAccessHelper.createManageAllFilesAccessIntent(
@@ -326,60 +338,6 @@ public class SettingsFragment extends Fragment {
             return;
         }
         folderPicker.launch(null);
-    }
-
-    private void showPublicFolderSelectionDialog() {
-        List<File> publicFolders =
-            StorageAccessHelper.discoverAccessiblePublicFolders(
-                requireContext()
-            );
-        if (publicFolders.isEmpty()) {
-            Snackbar.make(
-                requireView(),
-                "No readable shared folders found.",
-                Snackbar.LENGTH_LONG
-            ).show();
-            return;
-        }
-
-        String[] items = new String[publicFolders.size()];
-        boolean[] checked = new boolean[publicFolders.size()];
-        Set<String> existingUris = new java.util.HashSet<>();
-        for (FolderEntity folder : currentFolders) {
-            if (folder != null && folder.uri != null) {
-                existingUris.add(folder.uri);
-            }
-        }
-        for (int i = 0; i < publicFolders.size(); i++) {
-            File folder = publicFolders.get(i);
-            items[i] = StorageAccessHelper.getFolderDisplayName(folder);
-            checked[i] = existingUris.contains(Uri.fromFile(folder).toString());
-        }
-
-        new AlertDialog.Builder(requireContext())
-            .setTitle("Choose shared folders")
-            .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
-                checked[which] = isChecked;
-            })
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Index", (dialog, which) -> {
-                List<File> selectedFolders = new ArrayList<>();
-                for (int i = 0; i < publicFolders.size(); i++) {
-                    if (checked[i]) {
-                        selectedFolders.add(publicFolders.get(i));
-                    }
-                }
-                if (selectedFolders.isEmpty()) {
-                    Snackbar.make(
-                        requireView(),
-                        "Select at least one shared folder.",
-                        Snackbar.LENGTH_SHORT
-                    ).show();
-                    return;
-                }
-                homeViewModel.addFilesystemFoldersAndIndex(selectedFolders);
-            })
-            .show();
     }
 
     private void refreshFolderUi() {
@@ -401,9 +359,12 @@ public class SettingsFragment extends Fragment {
                 (total == 1 ? "" : "s") +
                 "  •  " +
                 (total - hidden) +
-                " included"
+                " included  •  " +
+                hidden +
+                " hidden"
         );
         applyFolderExpansionState();
+        updateActionButtons(isAppIndexing || isPublicImportRunning);
     }
 
     private void handlePublicImportState(List<WorkInfo> workInfos) {
@@ -495,6 +456,10 @@ public class SettingsFragment extends Fragment {
             }
         }
         return included;
+    }
+
+    private boolean hasExcludedFolders() {
+        return !prefsManager.getExcludedFolderUris().isEmpty();
     }
 
     private void confirmFolderRemoval(FolderEntity folder) {

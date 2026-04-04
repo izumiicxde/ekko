@@ -219,61 +219,100 @@ public class HomeViewModel extends AndroidViewModel {
         isIndexing.postValue(true);
         indexingStage.postValue("Preparing shared folders...");
 
-        List<FolderEntity> folderEntities = new ArrayList<>();
-        for (File folderFile : folderFiles) {
-            if (folderFile == null) continue;
-            String uri = Uri.fromFile(folderFile).toString();
-            prefsManager.setFolderExcluded(uri, false);
-            folderEntities.add(
-                new FolderEntity(
-                    uri,
-                    StorageAccessHelper.getFolderDisplayName(folderFile)
-                )
-            );
-        }
-
-        folderRepository.resolveOrInsert(folderEntities, resolvedFolders -> {
-            List<File> scanFolders = new ArrayList<>();
-            List<Long> folderIds = new ArrayList<>();
-            List<FolderEntity> safeFolders =
-                resolvedFolders == null ? Collections.emptyList() : resolvedFolders;
-
-            for (FolderEntity folder : safeFolders) {
-                if (folder == null || folder.uri == null) continue;
-                try {
-                    scanFolders.add(new File(Uri.parse(folder.uri).getPath()));
-                    folderIds.add(folder.id);
-                } catch (Exception ignored) {}
+        folderRepository.getAll(existingFolders -> {
+            Set<String> existingUris = new HashSet<>();
+            if (existingFolders != null) {
+                for (FolderEntity existingFolder : existingFolders) {
+                    if (
+                        existingFolder != null &&
+                        existingFolder.uri != null &&
+                        !existingFolder.uri.isEmpty()
+                    ) {
+                        existingUris.add(existingFolder.uri);
+                    }
+                }
             }
 
-            if (scanFolders.isEmpty()) {
-                isIndexing.postValue(false);
-                indexingStage.postValue("");
-                errorMessage.postValue("No readable shared folders selected.");
-                return;
-            }
-
-            DocumentScanner.ScanResult scanResult =
-                DocumentScanner.scanFilesystemFolders(
-                    getApplication(),
-                    scanFolders,
-                    folderIds
+            List<FolderEntity> folderEntities = new ArrayList<>();
+            for (File folderFile : folderFiles) {
+                if (folderFile == null) continue;
+                String uri = Uri.fromFile(folderFile).toString();
+                if (!existingUris.contains(uri)) {
+                    prefsManager.setFolderExcluded(uri, false);
+                }
+                folderEntities.add(
+                    new FolderEntity(
+                        uri,
+                        StorageAccessHelper.getFolderDisplayName(folderFile)
+                    )
                 );
+            }
 
-            syncScannedDocuments(folderIds, scanResult.documents, () -> {
-                if (scanResult.documents.isEmpty()) {
+            folderRepository.resolveOrInsert(folderEntities, resolvedFolders -> {
+                List<File> scanFolders = new ArrayList<>();
+                List<Long> folderIds = new ArrayList<>();
+                List<FolderEntity> safeFolders =
+                    resolvedFolders == null
+                        ? Collections.emptyList()
+                        : resolvedFolders;
+
+                for (FolderEntity folder : safeFolders) {
+                    if (
+                        folder == null ||
+                        folder.uri == null ||
+                        prefsManager.isFolderExcluded(folder.uri)
+                    ) {
+                        continue;
+                    }
+                    try {
+                        scanFolders.add(new File(Uri.parse(folder.uri).getPath()));
+                        folderIds.add(folder.id);
+                    } catch (Exception ignored) {}
+                }
+
+                if (scanFolders.isEmpty()) {
                     isIndexing.postValue(false);
                     indexingStage.postValue("");
                     loadDocuments();
                     errorMessage.postValue(
-                        "No supported documents found in selected shared folders."
+                        "No included shared folders are available to refresh."
                     );
                     return;
                 }
 
-                startIndexing(scanResult.documents);
+                DocumentScanner.ScanResult scanResult =
+                    DocumentScanner.scanFilesystemFolders(
+                        getApplication(),
+                        scanFolders,
+                        folderIds
+                    );
+
+                syncScannedDocuments(folderIds, scanResult.documents, () -> {
+                    if (scanResult.documents.isEmpty()) {
+                        isIndexing.postValue(false);
+                        indexingStage.postValue("");
+                        loadDocuments();
+                        errorMessage.postValue(
+                            "No supported documents found in included shared folders."
+                        );
+                        return;
+                    }
+
+                    startIndexing(scanResult.documents);
+                });
             });
         });
+    }
+
+    public void importDetectedPublicFolders() {
+        List<File> publicFolders = StorageAccessHelper.discoverAccessiblePublicFolders(
+            getApplication()
+        );
+        if (publicFolders.isEmpty()) {
+            errorMessage.postValue("No readable shared folders found.");
+            return;
+        }
+        addFilesystemFoldersAndIndex(publicFolders);
     }
 
     public void reindexFolders(List<FolderEntity> folders) {
