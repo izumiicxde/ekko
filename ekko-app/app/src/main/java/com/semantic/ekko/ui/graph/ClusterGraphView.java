@@ -10,6 +10,7 @@ import android.os.SystemClock;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.ViewConfiguration;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -30,6 +31,9 @@ public class ClusterGraphView extends View {
     private final Paint nodePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint iconLetterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint titlePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint detailPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final List<RenderedNode> renderedNodes = new ArrayList<>();
@@ -47,14 +51,19 @@ public class ClusterGraphView extends View {
     private float downTouchX = 0f;
     private float downTouchY = 0f;
     private int touchSlop = 0;
+    private float scaleFactor = 1f;
+    private final ScaleGestureDetector scaleGestureDetector;
+    private boolean scaling = false;
 
     public ClusterGraphView(Context context) {
         super(context);
+        scaleGestureDetector = createScaleGestureDetector(context);
         init();
     }
 
     public ClusterGraphView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        scaleGestureDetector = createScaleGestureDetector(context);
         init();
     }
 
@@ -64,7 +73,63 @@ public class ClusterGraphView extends View {
         int defStyleAttr
     ) {
         super(context, attrs, defStyleAttr);
+        scaleGestureDetector = createScaleGestureDetector(context);
         init();
+    }
+
+    private ScaleGestureDetector createScaleGestureDetector(Context context) {
+        return new ScaleGestureDetector(
+            context,
+            new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override
+                public boolean onScaleBegin(ScaleGestureDetector detector) {
+                    scaling = true;
+                    return true;
+                }
+
+                @Override
+                public boolean onScale(ScaleGestureDetector detector) {
+                    float previousScale = scaleFactor;
+                    scaleFactor = clamp(
+                        scaleFactor * detector.getScaleFactor(),
+                        0.72f,
+                        1.9f
+                    );
+                    if (Math.abs(previousScale - scaleFactor) < 0.001f) {
+                        return false;
+                    }
+
+                    float focusX = detector.getFocusX();
+                    float focusY = detector.getFocusY();
+                    float centerX = getWidth() / 2f;
+                    float centerY = getHeight() / 2f;
+                    float worldX =
+                        centerX +
+                        ((focusX - centerX) / previousScale) -
+                        viewportOffsetX;
+                    float worldY =
+                        centerY +
+                        ((focusY - centerY) / previousScale) -
+                        viewportOffsetY;
+
+                    viewportOffsetX =
+                        centerX -
+                        worldX -
+                        ((centerX - focusX) / scaleFactor);
+                    viewportOffsetY =
+                        centerY -
+                        worldY -
+                        ((centerY - focusY) / scaleFactor);
+                    invalidate();
+                    return true;
+                }
+
+                @Override
+                public void onScaleEnd(ScaleGestureDetector detector) {
+                    scaling = false;
+                }
+            }
+        );
     }
 
     private void init() {
@@ -81,14 +146,18 @@ public class ClusterGraphView extends View {
         gridPaint.setStrokeWidth(dp(1f));
         gridPaint.setColor(Color.argb(20, 32, 84, 215));
 
-        titlePaint.setColor(Color.parseColor("#0F172A"));
+        iconLetterPaint.setTextAlign(Paint.Align.CENTER);
+        iconLetterPaint.setFakeBoldText(true);
+        iconLetterPaint.setTextSize(sp(11f));
+
+        labelPaint.setStyle(Paint.Style.FILL);
+
         titlePaint.setTextAlign(Paint.Align.CENTER);
         titlePaint.setFakeBoldText(true);
-        titlePaint.setTextSize(sp(12f));
+        titlePaint.setTextSize(sp(12.5f));
 
-        detailPaint.setColor(Color.parseColor("#475569"));
         detailPaint.setTextAlign(Paint.Align.CENTER);
-        detailPaint.setTextSize(sp(10f));
+        detailPaint.setTextSize(sp(10.5f));
     }
 
     public void setScene(@Nullable GraphScene scene) {
@@ -126,6 +195,7 @@ public class ClusterGraphView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        scaleGestureDetector.onTouchEvent(event);
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 downTouchX = event.getX();
@@ -135,6 +205,11 @@ public class ClusterGraphView extends View {
                 dragging = false;
                 return true;
             case MotionEvent.ACTION_MOVE:
+                if (scaling || event.getPointerCount() > 1) {
+                    lastTouchX = event.getX();
+                    lastTouchY = event.getY();
+                    return true;
+                }
                 float dx = event.getX() - lastTouchX;
                 float dy = event.getY() - lastTouchY;
                 if (
@@ -143,8 +218,8 @@ public class ClusterGraphView extends View {
                     Math.abs(event.getY() - downTouchY) > touchSlop
                 ) {
                     dragging = true;
-                    viewportOffsetX += dx;
-                    viewportOffsetY += dy;
+                    viewportOffsetX += dx / scaleFactor;
+                    viewportOffsetY += dy / scaleFactor;
                     invalidate();
                 }
                 lastTouchX = event.getX();
@@ -154,8 +229,9 @@ public class ClusterGraphView extends View {
                 dragging = false;
                 return true;
             case MotionEvent.ACTION_UP:
-                if (dragging || renderedNodes.isEmpty()) {
+                if (dragging || scaling || renderedNodes.isEmpty()) {
                     dragging = false;
+                    scaling = false;
                     return true;
                 }
                 float x = event.getX();
@@ -180,12 +256,14 @@ public class ClusterGraphView extends View {
         );
         canvas.drawRoundRect(bounds, dp(26f), dp(26f), gridPaint);
 
-        float step = dp(44f);
-        float startX = inset + mod(viewportOffsetX, step) - step;
+        float step = dp(48f) * scaleFactor;
+        float offsetX = viewportOffsetX * scaleFactor;
+        float offsetY = viewportOffsetY * scaleFactor;
+        float startX = inset + mod(offsetX, step) - step;
         for (float x = startX; x < getWidth() - inset + step; x += step) {
             canvas.drawLine(x, inset, x, getHeight() - inset, gridPaint);
         }
-        float startY = inset + mod(viewportOffsetY, step) - step;
+        float startY = inset + mod(offsetY, step) - step;
         for (float y = startY; y < getHeight() - inset + step; y += step) {
             canvas.drawLine(inset, y, getWidth() - inset, y, gridPaint);
         }
@@ -215,16 +293,32 @@ public class ClusterGraphView extends View {
     private void drawNodes(Canvas canvas) {
         for (RenderedNode rendered : renderedNodes) {
             RenderedNode displayed = applyViewport(resolveDisplayedNode(rendered));
-            int fillColor = ColorUtils.blendARGB(
-                rendered.node.color,
-                Color.WHITE,
-                0.18f
+            int fillColor = nodeFillColor(rendered.node);
+            int foregroundColor = foregroundColor(fillColor);
+            int detailColor = ColorUtils.setAlphaComponent(foregroundColor, 210);
+            float iconRadius = displayed.radius * 0.28f;
+            float labelWidth = Math.min(
+                displayed.radius * 1.5f,
+                Math.max(
+                    displayed.radius * 0.92f,
+                    titlePaint.measureText(rendered.node.label) + dp(22f)
+                )
             );
+            float labelHeight = dp(21f);
+            float labelCenterY =
+                displayed.cy + (displayed.radius * 0.38f);
             nodePaint.setColor(fillColor);
             canvas.drawCircle(
                 displayed.cx,
                 displayed.cy,
                 displayed.radius,
+                nodePaint
+            );
+            nodePaint.setColor(ColorUtils.setAlphaComponent(Color.WHITE, 36));
+            canvas.drawCircle(
+                displayed.cx,
+                displayed.cy - (displayed.radius * 0.2f),
+                displayed.radius * 0.74f,
                 nodePaint
             );
             canvas.drawCircle(
@@ -234,31 +328,47 @@ public class ClusterGraphView extends View {
                 strokePaint
             );
 
+            drawNodeIcon(canvas, displayed, fillColor, foregroundColor, iconRadius);
+
+            labelPaint.setColor(ColorUtils.setAlphaComponent(foregroundColor, 34));
+            canvas.drawRoundRect(
+                displayed.cx - (labelWidth / 2f),
+                labelCenterY - (labelHeight / 2f),
+                displayed.cx + (labelWidth / 2f),
+                labelCenterY + (labelHeight / 2f),
+                labelHeight / 2f,
+                labelHeight / 2f,
+                labelPaint
+            );
+
+            titlePaint.setColor(foregroundColor);
+            detailPaint.setColor(detailColor);
+
             String title = fitLine(
                 rendered.node.label,
-                displayed.radius,
+                displayed.radius * 0.95f,
                 titlePaint
             );
             String detail = fitLine(
                 rendered.node.detail,
-                displayed.radius,
+                displayed.radius * 0.94f,
                 detailPaint
             );
             canvas.drawText(
                 title,
                 displayed.cx,
-                displayed.cy - dp(3f),
+                labelCenterY + verticalTextOffset(titlePaint),
                 titlePaint
             );
             if (
-                displayed.radius >= dp(34f) &&
+                displayed.radius >= dp(38f) &&
                 detail != null &&
                 !detail.isEmpty()
             ) {
                 canvas.drawText(
                     detail,
                     displayed.cx,
-                    displayed.cy + dp(13f),
+                    displayed.cy + (displayed.radius * 0.73f),
                     detailPaint
                 );
             }
@@ -282,8 +392,8 @@ public class ClusterGraphView extends View {
     private void layoutOverview(List<GraphNode> nodes, int width, int height) {
         float cx = width / 2f;
         float cy = height / 2f + dp(10f);
-        float outerX = width * 0.29f;
-        float outerY = height * 0.22f;
+        float outerX = width * 0.35f;
+        float outerY = height * 0.27f;
         if (nodes.size() == 1) {
             renderedNodes.add(
                 new RenderedNode(nodes.get(0), cx, cy, radiusFor(nodes.get(0), true))
@@ -297,8 +407,8 @@ public class ClusterGraphView extends View {
                 (-Math.PI / 2d) +
                 ((Math.PI * 2d * i) / nodes.size()) +
                 organicAngleOffset(node, 0.16d);
-            float ringScale = nodes.size() > 5 && (i % 2 == 1) ? 0.78f : 1f;
-            float radialOffset = organicRadiusOffset(node, dp(10f));
+            float ringScale = nodes.size() > 5 && (i % 2 == 1) ? 0.86f : 1.05f;
+            float radialOffset = organicRadiusOffset(node, dp(18f));
             float nodeX =
                 cx + (float) (Math.cos(angle) * ((outerX * ringScale) + radialOffset));
             float nodeY =
@@ -320,8 +430,14 @@ public class ClusterGraphView extends View {
             return;
         }
 
-        int[] capacities = { 6, 12, 18 };
-        float[] radii = { width * 0.19f, width * 0.31f, width * 0.39f };
+        int[] capacities = { 5, 9, 13, 17 };
+        float minDimension = Math.min(width, height);
+        float[] radii = {
+            minDimension * 0.22f,
+            minDimension * 0.34f,
+            minDimension * 0.46f,
+            minDimension * 0.58f
+        };
         int nodeIndex = 0;
         for (int ring = 0; ring < capacities.length && nodeIndex < nodes.size(); ring++) {
             int ringCount = Math.min(capacities[ring], nodes.size() - nodeIndex);
@@ -331,15 +447,15 @@ public class ClusterGraphView extends View {
                 double angle =
                     (-Math.PI / 2d) +
                     ((Math.PI * 2d * i) / ringCount) +
-                    organicAngleOffset(node, 0.12d);
-                float radialOffset = organicRadiusOffset(node, dp(12f));
+                    organicAngleOffset(node, 0.18d);
+                float radialOffset = organicRadiusOffset(node, dp(22f));
                 float nodeX =
                     cx + (float) (Math.cos(angle) * (ringRadius + radialOffset));
                 float nodeY =
                     cy +
                     (float) (
                         Math.sin(angle) *
-                        ((ringRadius * 0.78f) + (radialOffset * 0.65f))
+                        ((ringRadius * 0.9f) + (radialOffset * 0.72f))
                     );
                 renderedNodes.add(
                     new RenderedNode(node, nodeX, nodeY, radiusFor(node, false))
@@ -409,21 +525,42 @@ public class ClusterGraphView extends View {
     private RenderedNode applyViewport(RenderedNode node) {
         float floatX = floatingOffset(node.node, 0.82f, dp(8f));
         float floatY = floatingOffset(node.node, 0.53f, dp(10f));
+        float worldX = node.cx + viewportOffsetX + floatX;
+        float worldY = node.cy + viewportOffsetY + floatY;
+        float centerX = getWidth() / 2f;
+        float centerY = getHeight() / 2f;
         return new RenderedNode(
             node.node,
-            node.cx + viewportOffsetX + floatX,
-            node.cy + viewportOffsetY + floatY,
-            node.radius
+            centerX + ((worldX - centerX) * scaleFactor),
+            centerY + ((worldY - centerY) * scaleFactor),
+            node.radius * scaleFactor
         );
     }
 
     private RenderedNode randomSpawnNode(RenderedNode target) {
+        float width = Math.max(getWidth(), dp(320f));
+        float height = Math.max(getHeight(), dp(420f));
         float seedA = normalizedHash(target.node, 17);
         float seedB = normalizedHash(target.node, 43);
-        float distance = dp(80f) + (seedB * dp(180f));
-        double angle = seedA * Math.PI * 2d;
-        float startX = target.cx + (float) (Math.cos(angle) * distance);
-        float startY = target.cy + (float) (Math.sin(angle) * distance);
+        float seedC = normalizedHash(target.node, 71);
+        int edge = Math.min(3, (int) (seedA * 4f));
+        float overshootX = dp(88f) + (seedB * width * 0.22f);
+        float overshootY = dp(88f) + (seedC * height * 0.22f);
+        float startX;
+        float startY;
+        if (edge == 0) {
+            startX = (width * seedB);
+            startY = -overshootY;
+        } else if (edge == 1) {
+            startX = width + overshootX;
+            startY = height * seedC;
+        } else if (edge == 2) {
+            startX = width * seedB;
+            startY = height + overshootY;
+        } else {
+            startX = -overshootX;
+            startY = height * seedC;
+        }
         return new RenderedNode(target.node, startX, startY, target.radius * 0.72f);
     }
 
@@ -462,8 +599,54 @@ public class ClusterGraphView extends View {
         return (hash % 1000) / 999f;
     }
 
+    private void drawNodeIcon(
+        Canvas canvas,
+        RenderedNode displayed,
+        int fillColor,
+        int foregroundColor,
+        float iconRadius
+    ) {
+        int iconColor =
+            displayed.node.type == GraphNode.TYPE_CLUSTER
+                ? ColorUtils.blendARGB(fillColor, Color.WHITE, 0.42f)
+                : ColorUtils.blendARGB(fillColor, Color.BLACK, 0.12f);
+        iconPaint.setColor(ColorUtils.setAlphaComponent(iconColor, 236));
+        float centerY = displayed.cy - (displayed.radius * 0.26f);
+        canvas.drawCircle(displayed.cx, centerY, iconRadius, iconPaint);
+
+        iconLetterPaint.setColor(foregroundColor);
+        canvas.drawText(
+            displayed.node.type == GraphNode.TYPE_CLUSTER ? "C" : "F",
+            displayed.cx,
+            centerY + verticalTextOffset(iconLetterPaint),
+            iconLetterPaint
+        );
+    }
+
+    private float verticalTextOffset(Paint paint) {
+        Paint.FontMetrics metrics = paint.getFontMetrics();
+        return -((metrics.ascent + metrics.descent) / 2f);
+    }
+
+    private int nodeFillColor(GraphNode node) {
+        if (node.type == GraphNode.TYPE_CLUSTER) {
+            return ColorUtils.blendARGB(node.color, Color.WHITE, 0.08f);
+        }
+        return ColorUtils.blendARGB(node.color, Color.parseColor("#0F172A"), 0.18f);
+    }
+
+    private int foregroundColor(int backgroundColor) {
+        return ColorUtils.calculateLuminance(backgroundColor) > 0.45d
+            ? Color.parseColor("#0F172A")
+            : Color.WHITE;
+    }
+
     private float lerp(float start, float end, float progress) {
         return start + ((end - start) * progress);
+    }
+
+    private float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private float mod(float value, float divisor) {
