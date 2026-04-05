@@ -41,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class BackgroundIndexWorker extends Worker {
 
@@ -53,6 +54,7 @@ public class BackgroundIndexWorker extends Worker {
     private static final String CHANNEL_ID = "ekko_indexing";
     private static final int NOTIFICATION_ID = 4102;
     private static final int COMPLETE_NOTIFICATION_ID = 4103;
+    private static final long MODEL_PREPARE_TIMEOUT_SECONDS = 20L;
 
     public BackgroundIndexWorker(
         @NonNull Context context,
@@ -161,7 +163,15 @@ public class BackgroundIndexWorker extends Worker {
                 entityExtractor.close();
                 return Result.success();
             }
-            prepareLatch.await();
+            if (
+                !prepareLatch.await(
+                    MODEL_PREPARE_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS
+                )
+            ) {
+                entityExtractor.close();
+                return Result.retry();
+            }
             if (!prepareSuccess[0]) {
                 entityExtractor.close();
                 return Result.retry();
@@ -176,6 +186,9 @@ public class BackgroundIndexWorker extends Worker {
             );
             CountDownLatch indexLatch = new CountDownLatch(1);
             final boolean[] hadFailures = { false };
+            final int[] lastCurrent = { 0 };
+            final int[] lastTotal = { scanBundle.scanResult.documents.size() };
+            final String[] lastDocName = { "" };
             if (isStopped()) {
                 indexer.shutdown();
                 entityExtractor.close();
@@ -190,17 +203,27 @@ public class BackgroundIndexWorker extends Worker {
                             stage == null || stage.isEmpty()
                                 ? "Indexing"
                                 : stage;
+                        String safeDocName = lastDocName[0] == null
+                            ? ""
+                            : lastDocName[0];
                         setForegroundAsync(
                             createForegroundInfo(
                                 safeStage,
-                                "Working in background",
-                                0,
-                                scanBundle.scanResult.documents.size(),
-                                false
+                                safeDocName.isEmpty()
+                                    ? "Working in background"
+                                    : safeDocName,
+                                lastCurrent[0],
+                                lastTotal[0],
+                                lastTotal[0] > 0
                             )
                         );
                         setProgressAsync(
-                            buildProgressData(safeStage, "", 0, scanBundle.scanResult.documents.size())
+                            buildProgressData(
+                                safeStage,
+                                safeDocName,
+                                lastCurrent[0],
+                                lastTotal[0]
+                            )
                         );
                     }
 
@@ -211,6 +234,9 @@ public class BackgroundIndexWorker extends Worker {
                         String docName
                     ) {
                         String safeName = docName == null ? "" : docName;
+                        lastCurrent[0] = current;
+                        lastTotal[0] = total;
+                        lastDocName[0] = safeName;
                         setForegroundAsync(
                             createForegroundInfo(
                                 "Indexing files",
@@ -239,6 +265,16 @@ public class BackgroundIndexWorker extends Worker {
                         List<String> failedNames
                     ) {
                         hadFailures[0] = failed > 0;
+                        setProgressAsync(
+                            buildProgressData(
+                                failed > 0
+                                    ? "Indexing finished with issues"
+                                    : "Indexing finished",
+                                "",
+                                indexed,
+                                Math.max(indexed + failed, indexed)
+                            )
+                        );
                         showCompletionNotification(indexed, failed);
                         indexLatch.countDown();
                     }

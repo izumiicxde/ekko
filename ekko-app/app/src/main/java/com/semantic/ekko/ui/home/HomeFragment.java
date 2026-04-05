@@ -51,6 +51,7 @@ public class HomeFragment extends Fragment {
     private LinearLayout layoutFolderNavigation;
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
+    private TextView txtIndexingMeta;
     private TextView txtDocCount;
     private TextView txtDocMeta;
     private TextView txtFolderPath;
@@ -198,6 +199,7 @@ public class HomeFragment extends Fragment {
         layoutFolderNavigation = view.findViewById(R.id.layoutFolderNavigation);
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
+        txtIndexingMeta = view.findViewById(R.id.txtIndexingMeta);
         txtDocCount = view.findViewById(R.id.txtDocCount);
         txtDocMeta = view.findViewById(R.id.txtDocMeta);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
@@ -558,6 +560,7 @@ public class HomeFragment extends Fragment {
             progressIndexing.setProgress(0);
             txtIndexingStage.setText("");
             txtIndexingDoc.setText("");
+            txtIndexingMeta.setText("");
             return;
         }
         renderIndexingState();
@@ -575,10 +578,22 @@ public class HomeFragment extends Fragment {
             progressIndexing.setMax(latestIndexTotal);
             progressIndexing.setProgress(latestIndexCurrent);
             txtIndexingStage.setText(
-                latestIndexingDoc.isEmpty() ? latestIndexingStage : latestIndexingDoc
+                latestIndexingStage.isEmpty() ? "Indexing files" : latestIndexingStage
+            );
+            txtIndexingMeta.setText(
+                latestIndexingDoc.isEmpty()
+                    ? "Working through your library"
+                    : latestIndexingDoc
+            );
+            int percent = Math.min(
+                100,
+                Math.max(
+                    0,
+                    Math.round((latestIndexCurrent * 100f) / latestIndexTotal)
+                )
             );
             txtIndexingDoc.setText(
-                latestIndexCurrent + " of " + latestIndexTotal
+                percent + "%  •  " + latestIndexCurrent + " / " + latestIndexTotal
             );
             return;
         }
@@ -586,7 +601,12 @@ public class HomeFragment extends Fragment {
         txtIndexingStage.setText(
             latestIndexingStage.isEmpty() ? "Preparing index..." : latestIndexingStage
         );
-        txtIndexingDoc.setText("Runs in background");
+        txtIndexingMeta.setText(
+            latestIndexingDoc.isEmpty()
+                ? "This can take a moment for larger files."
+                : latestIndexingDoc
+        );
+        txtIndexingDoc.setText("Live");
     }
 
     private void requestIndexingNotificationsIfNeeded() {

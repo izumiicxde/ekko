@@ -21,12 +21,14 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DocumentIndexer {
 
     private static final String TAG = "DocumentIndexer";
     private static final int MAX_CHUNKS_TO_EMBED = 24;
+    private static final long ENTITY_EXTRACTION_TIMEOUT_SECONDS = 12L;
 
     public interface ProgressListener {
         void onStageChanged(String stage);
@@ -158,7 +160,14 @@ public class DocumentIndexer {
                                 latch.countDown();
                             }
                         );
-                        latch.await();
+                        if (
+                            !latch.await(
+                                ENTITY_EXTRACTION_TIMEOUT_SECONDS,
+                                TimeUnit.SECONDS
+                            )
+                        ) {
+                            doc.entities = "";
+                        }
                     } catch (Exception e) {
                         doc.entities = "";
                     }
