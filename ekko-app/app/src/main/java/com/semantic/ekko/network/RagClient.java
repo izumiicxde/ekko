@@ -56,10 +56,15 @@ public class RagClient {
 
     public static List<String> getCandidateBaseUrls() {
         Set<String> urls = new LinkedHashSet<>();
+        urls.add(normalizeBaseUrl(activeBaseUrl));
         urls.add(normalizeBaseUrl(BuildConfig.RAG_BASE_URL));
-        urls.add("http://127.0.0.1:8000/");
-        urls.add("http://10.0.2.2:8000/");
-        urls.add("http://localhost:8000/");
+        if (BuildConfig.DEBUG) {
+            // Real devices over `adb reverse` reach the host backend via 127.0.0.1.
+            urls.add("http://127.0.0.1:8000/");
+            urls.add("http://localhost:8000/");
+            // Emulator fallback when the app runs in an Android emulator.
+            urls.add("http://10.0.2.2:8000/");
+        }
         return new ArrayList<>(urls);
     }
 
