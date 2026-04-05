@@ -403,8 +403,8 @@ public class ClusterGraphView extends View {
     private void layoutOverview(List<GraphNode> nodes, int width, int height) {
         float cx = width / 2f;
         float cy = height / 2f + dp(10f);
-        float outerX = width * 0.37f;
-        float outerY = height * 0.3f;
+        float outerX = width * 0.42f;
+        float outerY = height * 0.35f;
         int startIndex = 0;
         if (!nodes.isEmpty() && nodes.get(0).type == GraphNode.TYPE_HUB) {
             GraphNode hub = nodes.get(0);
@@ -412,8 +412,8 @@ public class ClusterGraphView extends View {
                 new RenderedNode(hub, cx, cy, radiusFor(hub, true))
             );
             startIndex = 1;
-            outerX = width * 0.4f;
-            outerY = height * 0.32f;
+            outerX = width * 0.45f;
+            outerY = height * 0.37f;
         }
         if (nodes.size() - startIndex == 1) {
             renderedNodes.add(
@@ -435,8 +435,8 @@ public class ClusterGraphView extends View {
                 (-Math.PI / 2d) +
                 ((Math.PI * 2d * ringIndex) / ringCount) +
                 organicAngleOffset(node, 0.16d);
-            float ringScale = ringCount > 5 && (ringIndex % 2 == 1) ? 0.9f : 1.08f;
-            float radialOffset = organicRadiusOffset(node, dp(24f));
+            float ringScale = ringCount > 5 && (ringIndex % 2 == 1) ? 0.96f : 1.15f;
+            float radialOffset = organicRadiusOffset(node, dp(30f));
             float nodeX =
                 cx + (float) (Math.cos(angle) * ((outerX * ringScale) + radialOffset));
             float nodeY =
@@ -471,14 +471,14 @@ public class ClusterGraphView extends View {
             return;
         }
 
-        int[] capacities = { 5, 8, 11, 15, 18 };
+        int[] capacities = { 4, 6, 8, 10, 12 };
         float minDimension = Math.min(width, height);
         float[] radii = {
-            minDimension * 0.24f,
-            minDimension * 0.37f,
-            minDimension * 0.5f,
-            minDimension * 0.63f,
-            minDimension * 0.76f
+            minDimension * 0.3f,
+            minDimension * 0.45f,
+            minDimension * 0.6f,
+            minDimension * 0.75f,
+            minDimension * 0.88f
         };
         int nodeIndex = startIndex;
         for (int ring = 0; ring < capacities.length && nodeIndex < nodes.size(); ring++) {
@@ -490,7 +490,7 @@ public class ClusterGraphView extends View {
                     (-Math.PI / 2d) +
                     ((Math.PI * 2d * i) / ringCount) +
                     organicAngleOffset(node, 0.22d);
-                float radialOffset = organicRadiusOffset(node, dp(28f));
+                float radialOffset = organicRadiusOffset(node, dp(34f));
                 float nodeX =
                     cx + (float) (Math.cos(angle) * (ringRadius + radialOffset));
                 float nodeY =
@@ -777,8 +777,8 @@ public class ClusterGraphView extends View {
         }
         float centerX = width / 2f;
         float centerY = (height / 2f) + (overview ? dp(10f) : dp(6f));
-        float maxRadius = Math.min(width, height) * (overview ? 0.44f : 0.88f);
-        for (int pass = 0; pass < 18; pass++) {
+        float maxRadius = Math.min(width, height) * (overview ? 0.5f : 0.96f);
+        for (int pass = 0; pass < 28; pass++) {
             boolean changed = false;
             for (int i = 0; i < renderedNodes.size(); i++) {
                 RenderedNode left = renderedNodes.get(i);
@@ -795,7 +795,7 @@ public class ClusterGraphView extends View {
                     float dx = right.cx - left.cx;
                     float dy = right.cy - left.cy;
                     float distance = (float) Math.sqrt((dx * dx) + (dy * dy));
-                    float minDistance = (left.radius + right.radius) + dp(18f);
+                    float minDistance = (left.radius + right.radius) + dp(34f);
                     if (distance <= 0.001f) {
                         dx = dp(1f);
                         dy = dp(1f);

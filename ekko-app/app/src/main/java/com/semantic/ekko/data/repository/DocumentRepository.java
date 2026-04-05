@@ -20,6 +20,9 @@ import java.util.concurrent.Executors;
 public class DocumentRepository {
 
     private static final int MAX_SEARCH_RESULTS = 5;
+    private static final int MAX_SEMANTIC_FALLBACK_RESULTS = 3;
+    private static final float MIN_SEMANTIC_FALLBACK_SCORE = 0.18f;
+    private static final float MIN_SEMANTIC_EMBEDDING_SCORE = 0.42f;
     private final DocumentDao documentDao;
     private final ChunkDao chunkDao;
     private final ExecutorService executor;
@@ -214,6 +217,7 @@ public class DocumentRepository {
                     metadataSignals.hasAnyMatch() || contentSignals.hasAnyMatch();
                 boolean exactPhraseMatch =
                     metadataSignals.phraseMatch || contentSignals.phraseMatch;
+                float metadataCoverage = metadataSignals.coverageScore();
                 if (row.word_count < 20 && !obviousTextMatch) continue;
                 float embeddingScore = 0f;
                 if (row.embedding != null) {
@@ -252,8 +256,11 @@ public class DocumentRepository {
                 float chunkOpportunityPenalty = computeChunkOpportunityPenalty(
                     chunkSignals.chunkCount
                 );
+                float contentBreadthPenalty = computeContentBreadthPenalty(
+                    row.word_count
+                );
                 float lexicalCoverage = Math.max(
-                    metadataSignals.coverageScore(),
+                    metadataCoverage,
                     Math.max(
                         contentSignals.coverageScore(),
                         chunkSignals.coverageScore
@@ -270,14 +277,19 @@ public class DocumentRepository {
                         0.08f * (chunkSignals.averageEmbeddingScore * chunkOpportunityPenalty) +
                         0.14f * keywordScore +
                         0.10f * summaryScore +
-                        0.14f * fullTextScore +
-                        0.06f * filenameScore +
+                        0.14f * (fullTextScore * contentBreadthPenalty) +
+                        0.14f * filenameScore +
                         0.10f * phraseScore
                     );
 
                 finalScore = Math.max(
                     finalScore,
-                    0.18f * (chunkSignals.lexicalScore * chunkOpportunityPenalty)
+                    0.18f *
+                    (
+                        chunkSignals.lexicalScore *
+                        chunkOpportunityPenalty *
+                        contentBreadthPenalty
+                    )
                 );
                 finalScore = Math.max(
                     finalScore,
@@ -296,6 +308,14 @@ public class DocumentRepository {
                             ? 0.34f
                             : 0.22f
                     );
+                }
+
+                if (metadataSignals.phraseMatch) {
+                    finalScore = Math.max(finalScore, 0.58f);
+                } else if (metadataCoverage >= 1f) {
+                    finalScore = Math.max(finalScore, 0.46f);
+                } else if (filenameScore >= 0.5f) {
+                    finalScore = Math.max(finalScore, 0.3f);
                 }
 
                 if (
@@ -317,7 +337,9 @@ public class DocumentRepository {
                                 finalScore,
                                 lexicalTier,
                                 lexicalCoverage,
+                                metadataCoverage,
                                 filenameScore,
+                                metadataSignals.phraseMatch ? 1f : 0f,
                                 phraseScore,
                                 embeddingScore,
                                 chunkSignals.embeddingScore
@@ -327,36 +349,7 @@ public class DocumentRepository {
                 }
             }
 
-            Collections.sort(rankedResults, (a, b) -> {
-                int tierCompare = Integer.compare(b.lexicalTier, a.lexicalTier);
-                if (tierCompare != 0) return tierCompare;
-
-                int phraseCompare = Float.compare(b.phraseScore, a.phraseScore);
-                if (phraseCompare != 0) return phraseCompare;
-
-                int coverageCompare = Float.compare(
-                    b.lexicalCoverage,
-                    a.lexicalCoverage
-                );
-                if (coverageCompare != 0) return coverageCompare;
-
-                int filenameCompare = Float.compare(
-                    b.filenameScore,
-                    a.filenameScore
-                );
-                if (filenameCompare != 0) return filenameCompare;
-
-                int finalScoreCompare = Float.compare(b.score, a.score);
-                if (finalScoreCompare != 0) return finalScoreCompare;
-
-                int chunkEmbeddingCompare = Float.compare(
-                    b.bestChunkEmbedding,
-                    a.bestChunkEmbedding
-                );
-                if (chunkEmbeddingCompare != 0) return chunkEmbeddingCompare;
-
-                return Float.compare(b.docEmbedding, a.docEmbedding);
-            });
+            Collections.sort(rankedResults, DocumentRepository::compareRankedResults);
 
             List<RankedSearchResult> filteredResults = filterRankedResults(
                 rankedResults
@@ -419,8 +412,12 @@ public class DocumentRepository {
         }
 
         RankedSearchResult bestResult = rankedResults.get(0);
-        if (bestResult == null || bestResult.lexicalTier < 1) {
+        if (bestResult == null) {
             return filtered;
+        }
+
+        if (bestResult.lexicalTier < 1) {
+            return filterSemanticFallbackResults(rankedResults);
         }
 
         int bestTier = bestResult.lexicalTier;
@@ -437,6 +434,86 @@ public class DocumentRepository {
             }
         }
         return filtered;
+    }
+
+    static List<RankedSearchResult> filterSemanticFallbackResults(
+        List<RankedSearchResult> rankedResults
+    ) {
+        List<RankedSearchResult> filtered = new ArrayList<>();
+        if (rankedResults == null || rankedResults.isEmpty()) {
+            return filtered;
+        }
+
+        float bestScore = rankedResults.get(0).score;
+        for (RankedSearchResult ranked : rankedResults) {
+            if (ranked == null) {
+                continue;
+            }
+            if (ranked.score < MIN_SEMANTIC_FALLBACK_SCORE) {
+                continue;
+            }
+            float strongestEmbedding = Math.max(
+                ranked.docEmbedding,
+                ranked.bestChunkEmbedding
+            );
+            if (strongestEmbedding < MIN_SEMANTIC_EMBEDDING_SCORE) {
+                continue;
+            }
+            if (ranked.score < (bestScore * 0.72f)) {
+                continue;
+            }
+            filtered.add(ranked);
+            if (filtered.size() >= MAX_SEMANTIC_FALLBACK_RESULTS) {
+                break;
+            }
+        }
+        return filtered;
+    }
+
+    static int compareRankedResults(
+        RankedSearchResult a,
+        RankedSearchResult b
+    ) {
+        int tierCompare = Integer.compare(b.lexicalTier, a.lexicalTier);
+        if (tierCompare != 0) return tierCompare;
+
+        int metadataPhraseCompare = Float.compare(
+            b.metadataPhraseScore,
+            a.metadataPhraseScore
+        );
+        if (metadataPhraseCompare != 0) return metadataPhraseCompare;
+
+        int metadataCoverageCompare = Float.compare(
+            b.metadataCoverage,
+            a.metadataCoverage
+        );
+        if (metadataCoverageCompare != 0) return metadataCoverageCompare;
+
+        int phraseCompare = Float.compare(b.phraseScore, a.phraseScore);
+        if (phraseCompare != 0) return phraseCompare;
+
+        int filenameCompare = Float.compare(
+            b.filenameScore,
+            a.filenameScore
+        );
+        if (filenameCompare != 0) return filenameCompare;
+
+        int coverageCompare = Float.compare(
+            b.lexicalCoverage,
+            a.lexicalCoverage
+        );
+        if (coverageCompare != 0) return coverageCompare;
+
+        int finalScoreCompare = Float.compare(b.score, a.score);
+        if (finalScoreCompare != 0) return finalScoreCompare;
+
+        int chunkEmbeddingCompare = Float.compare(
+            b.bestChunkEmbedding,
+            a.bestChunkEmbedding
+        );
+        if (chunkEmbeddingCompare != 0) return chunkEmbeddingCompare;
+
+        return Float.compare(b.docEmbedding, a.docEmbedding);
     }
 
     private ChunkSearchSignals computeChunkSignals(
@@ -537,6 +614,17 @@ public class DocumentRepository {
         return 1f / (1f + (extraChunks * 0.04f));
     }
 
+    private float computeContentBreadthPenalty(int wordCount) {
+        if (wordCount <= 0) {
+            return 1f;
+        }
+        if (wordCount <= 1600) {
+            return 1f;
+        }
+        float overage = (wordCount - 1600) / 2400f;
+        return Math.max(0.52f, 1f / (1f + overage));
+    }
+
     private float computeSemanticCoverageMultiplier(
         String[] queryTerms,
         float lexicalCoverage
@@ -589,7 +677,9 @@ public class DocumentRepository {
         final float score;
         final int lexicalTier;
         final float lexicalCoverage;
+        final float metadataCoverage;
         final float filenameScore;
+        final float metadataPhraseScore;
         final float phraseScore;
         final float docEmbedding;
         final float bestChunkEmbedding;
@@ -599,7 +689,9 @@ public class DocumentRepository {
             float score,
             int lexicalTier,
             float lexicalCoverage,
+            float metadataCoverage,
             float filenameScore,
+            float metadataPhraseScore,
             float phraseScore,
             float docEmbedding,
             float bestChunkEmbedding
@@ -608,7 +700,9 @@ public class DocumentRepository {
             this.score = score;
             this.lexicalTier = lexicalTier;
             this.lexicalCoverage = lexicalCoverage;
+            this.metadataCoverage = metadataCoverage;
             this.filenameScore = filenameScore;
+            this.metadataPhraseScore = metadataPhraseScore;
             this.phraseScore = phraseScore;
             this.docEmbedding = docEmbedding;
             this.bestChunkEmbedding = bestChunkEmbedding;

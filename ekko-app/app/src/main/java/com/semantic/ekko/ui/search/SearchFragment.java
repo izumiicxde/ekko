@@ -235,6 +235,7 @@ public class SearchFragment extends Fragment {
                         if (
                             debounceRunnable != null
                         ) debounceHandler.removeCallbacks(debounceRunnable);
+                        viewModel.cancelActiveSearch();
                         clearResults();
                         return;
                     }
@@ -284,6 +285,7 @@ public class SearchFragment extends Fragment {
         if (debounceRunnable != null) debounceHandler.removeCallbacks(
             debounceRunnable
         );
+        viewModel.cancelActiveSearch();
         editSearch.setText("");
         btnSearch.setImageResource(R.drawable.ic_search);
         clearResults();
@@ -324,5 +326,6 @@ public class SearchFragment extends Fragment {
         if (debounceRunnable != null) debounceHandler.removeCallbacks(
             debounceRunnable
         );
+        viewModel.cancelActiveSearch();
     }
 }

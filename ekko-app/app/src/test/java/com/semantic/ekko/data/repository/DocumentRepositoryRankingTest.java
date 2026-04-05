@@ -65,16 +65,60 @@ public class DocumentRepositoryRankingTest {
     }
 
     @Test
+    public void compareRankedResults_prioritizes_filename_match_over_broader_content() {
+        DocumentRepository.RankedSearchResult fileSpecific = rankedResult(
+            1,
+            0.42f,
+            "java-wrapper-class.pdf",
+            0.40f,
+            0.39f,
+            1f,
+            1f,
+            1f
+        );
+        DocumentRepository.RankedSearchResult broadDocument = rankedResult(
+            1,
+            0.64f,
+            "semester-notes.pdf",
+            0.66f,
+            0.61f,
+            0.2f,
+            0f,
+            1f
+        );
+
+        assertTrue(
+            DocumentRepository.compareRankedResults(fileSpecific, broadDocument) < 0
+        );
+    }
+
+    @Test
     public void filterRankedResults_returns_empty_when_no_proper_match_exists() {
         List<DocumentRepository.RankedSearchResult> filtered =
             DocumentRepository.filterRankedResults(
                 Arrays.asList(
-                    rankedResult(0, 0.81f, "Syllabus.txt"),
-                    rankedResult(0, 0.63f, "Notes.txt")
+                    rankedResult(0, 0.16f, "Syllabus.txt"),
+                    rankedResult(0, 0.14f, "Notes.txt")
                 )
             );
 
         assertTrue(filtered.isEmpty());
+    }
+
+    @Test
+    public void filterRankedResults_keeps_semantic_matches_when_no_lexical_hit_exists() {
+        List<DocumentRepository.RankedSearchResult> filtered =
+            DocumentRepository.filterRankedResults(
+                Arrays.asList(
+                    rankedResult(0, 0.61f, "Semantic-A.txt", 0.64f, 0.58f),
+                    rankedResult(0, 0.44f, "Semantic-B.txt", 0.49f, 0.41f),
+                    rankedResult(0, 0.12f, "Weak.txt", 0.18f, 0.16f)
+                )
+            );
+
+        assertEquals(2, filtered.size());
+        assertEquals("Semantic-A.txt", filtered.get(0).document.name);
+        assertEquals("Semantic-B.txt", filtered.get(1).document.name);
     }
 
     private static DocumentRepository.ChunkSearchSignals buildChunkSignals(
@@ -98,6 +142,38 @@ public class DocumentRepositoryRankingTest {
         float score,
         String name
     ) {
+        return rankedResult(lexicalTier, score, name, 0.5f, 0.5f, 1f, 1f, lexicalTier >= 3 ? 1f : 0f);
+    }
+
+    private static DocumentRepository.RankedSearchResult rankedResult(
+        int lexicalTier,
+        float score,
+        String name,
+        float docEmbedding,
+        float bestChunkEmbedding
+    ) {
+        return rankedResult(
+            lexicalTier,
+            score,
+            name,
+            docEmbedding,
+            bestChunkEmbedding,
+            1f,
+            1f,
+            lexicalTier >= 3 ? 1f : 0f
+        );
+    }
+
+    private static DocumentRepository.RankedSearchResult rankedResult(
+        int lexicalTier,
+        float score,
+        String name,
+        float docEmbedding,
+        float bestChunkEmbedding,
+        float metadataCoverage,
+        float filenameScore,
+        float metadataPhraseScore
+    ) {
         DocumentEntity document = new DocumentEntity();
         document.name = name;
         return new DocumentRepository.RankedSearchResult(
@@ -105,10 +181,12 @@ public class DocumentRepositoryRankingTest {
             score,
             lexicalTier,
             1f,
+            metadataCoverage,
+            filenameScore,
+            metadataPhraseScore,
             1f,
-            lexicalTier >= 3 ? 1f : 0f,
-            0.5f,
-            0.5f
+            docEmbedding,
+            bestChunkEmbedding
         );
     }
 }
