@@ -46,6 +46,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginEnd="10dp"
                 android:orientation="vertical"
             >
 
@@ -79,57 +80,46 @@
                 />
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/btnRemoveFolder"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_marginStart="12dp"
-                android:background="@drawable/bg_surface_pill"
-                android:contentDescription="Remove folder"
-                android:padding="9dp"
-                android:src="@drawable/ic_close"
-                app:tint="?attr/colorOnSurfaceVariant"
-            />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+            >
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchInclude"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text=""
+                />
+
+                <ImageButton
+                    android:id="@+id/btnRemoveFolder"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_surface_pill"
+                    android:contentDescription="Remove folder"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
             android:id="@+id/txtFolderUri"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:ellipsize="middle"
             android:fontFamily="@font/bricolage_grotesque"
             android:maxLines="1"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp"
         />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-        >
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:text="Show in library"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-            />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchInclude"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text=""
-            />
-        </LinearLayout>
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
