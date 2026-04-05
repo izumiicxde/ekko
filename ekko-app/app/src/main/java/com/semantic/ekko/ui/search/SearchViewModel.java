@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SearchViewModel extends AndroidViewModel {
 
@@ -35,6 +36,7 @@ public class SearchViewModel extends AndroidViewModel {
     private final DocumentRepository repository;
     private final FolderRepository folderRepository;
     private final PrefsManager prefsManager;
+    private final AtomicInteger searchVersion = new AtomicInteger(0);
 
     public SearchViewModel(@NonNull Application application) {
         super(application);
@@ -45,10 +47,14 @@ public class SearchViewModel extends AndroidViewModel {
 
     public void search(String query) {
         if (query == null || query.trim().isEmpty()) return;
+        final String trimmedQuery = query.trim();
+        final int requestVersion = searchVersion.incrementAndGet();
 
         EkkoApp app = EkkoApp.getInstance();
         if (!app.isMlReady()) {
-            errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
+            if (isActiveRequest(requestVersion)) {
+                errorMessage.postValue(UserFacingMessages.FEATURE_PREPARING);
+            }
             return;
         }
 
@@ -57,20 +63,34 @@ public class SearchViewModel extends AndroidViewModel {
         new Thread(() -> {
             try {
                 EmbeddingEngine engine = app.getEmbeddingEngine();
-                float[] queryEmbedding = engine.embedQuery(query.trim());
+                float[] queryEmbedding = engine.embedQuery(trimmedQuery);
+
+                if (!isActiveRequest(requestVersion)) {
+                    return;
+                }
 
                 if (queryEmbedding == null) {
-                    isSearching.postValue(false);
-                    errorMessage.postValue(UserFacingMessages.SEARCH_UNAVAILABLE);
+                    if (isActiveRequest(requestVersion)) {
+                        isSearching.postValue(false);
+                        errorMessage.postValue(
+                            UserFacingMessages.SEARCH_UNAVAILABLE
+                        );
+                    }
                     return;
                 }
 
                 repository.search(
                     queryEmbedding,
-                    query.trim(),
+                    trimmedQuery,
                     MIN_SCORE,
                     searchResults -> {
+                        if (!isActiveRequest(requestVersion)) {
+                            return;
+                        }
                         folderRepository.getAll(folders -> {
+                            if (!isActiveRequest(requestVersion)) {
+                                return;
+                            }
                             List<FolderEntity> safeFolders =
                                 folders == null ? new ArrayList<>() : folders;
                             Set<String> excludedUris =
@@ -102,17 +122,32 @@ public class SearchViewModel extends AndroidViewModel {
                                     visibleResults.add(result);
                                 }
                             }
-                            results.postValue(visibleResults);
-                            isSearching.postValue(false);
+                            if (isActiveRequest(requestVersion)) {
+                                results.postValue(visibleResults);
+                                isSearching.postValue(false);
+                            }
                         });
                     }
                 );
             } catch (Exception e) {
-                isSearching.postValue(false);
-                errorMessage.postValue(UserFacingMessages.SEARCH_UNAVAILABLE);
+                if (isActiveRequest(requestVersion)) {
+                    isSearching.postValue(false);
+                    errorMessage.postValue(
+                        UserFacingMessages.SEARCH_UNAVAILABLE
+                    );
+                }
             }
         })
             .start();
+    }
+
+    public void cancelActiveSearch() {
+        searchVersion.incrementAndGet();
+        isSearching.postValue(false);
+    }
+
+    private boolean isActiveRequest(int requestVersion) {
+        return searchVersion.get() == requestVersion;
     }
 
     public LiveData<List<SearchResult>> getResults() {

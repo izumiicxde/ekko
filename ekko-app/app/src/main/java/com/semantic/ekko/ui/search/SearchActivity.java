@@ -188,6 +188,7 @@ public class SearchActivity extends AppCompatActivity {
                         if (debounceRunnable != null) {
                             debounceHandler.removeCallbacks(debounceRunnable);
                         }
+                        viewModel.cancelActiveSearch();
                         clearResults();
                         return;
                     }
@@ -248,6 +249,7 @@ public class SearchActivity extends AppCompatActivity {
         if (debounceRunnable != null) debounceHandler.removeCallbacks(
             debounceRunnable
         );
+        viewModel.cancelActiveSearch();
         editSearch.setText("");
         btnSearch.setImageResource(R.drawable.ic_search);
         editSearch.requestFocus();

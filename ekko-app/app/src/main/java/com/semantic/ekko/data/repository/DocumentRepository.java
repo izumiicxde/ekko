@@ -11,7 +11,9 @@ import com.semantic.ekko.data.model.SearchResult;
 import com.semantic.ekko.ml.EmbeddingEngine;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -186,6 +188,9 @@ public class DocumentRepository {
         executor.execute(() -> {
             List<DocumentDao.DocumentEmbeddingRow> rows =
                 documentDao.getAllEmbeddings();
+            Map<Long, List<ChunkEntity>> chunksByDocumentId = groupChunksByDocumentId(
+                chunkDao.getAll()
+            );
             List<RankedSearchResult> rankedResults = new ArrayList<>();
 
             String normalizedQuery = SearchTextMatcher.normalize(rawQuery);
@@ -239,7 +244,7 @@ public class DocumentRepository {
                 );
                 float phraseScore = exactPhraseMatch ? 1f : 0f;
                 ChunkSearchSignals chunkSignals = computeChunkSignals(
-                    row.id,
+                    chunksByDocumentId.get(row.id),
                     queryEmbedding,
                     normalizedQuery,
                     queryTerms
@@ -435,12 +440,11 @@ public class DocumentRepository {
     }
 
     private ChunkSearchSignals computeChunkSignals(
-        long documentId,
+        List<ChunkEntity> chunks,
         float[] queryEmbedding,
         String normalizedQuery,
         String[] queryTerms
     ) {
-        List<ChunkEntity> chunks = chunkDao.getByDocumentId(documentId);
         if (chunks == null || chunks.isEmpty()) {
             return ChunkSearchSignals.empty();
         }
@@ -505,6 +509,27 @@ public class DocumentRepository {
             strongMatch,
             chunkCount
         );
+    }
+
+    private Map<Long, List<ChunkEntity>> groupChunksByDocumentId(
+        List<ChunkEntity> chunks
+    ) {
+        Map<Long, List<ChunkEntity>> grouped = new HashMap<>();
+        if (chunks == null || chunks.isEmpty()) {
+            return grouped;
+        }
+        for (ChunkEntity chunk : chunks) {
+            if (chunk == null) {
+                continue;
+            }
+            List<ChunkEntity> bucket = grouped.get(chunk.documentId);
+            if (bucket == null) {
+                bucket = new ArrayList<>();
+                grouped.put(chunk.documentId, bucket);
+            }
+            bucket.add(chunk);
+        }
+        return grouped;
     }
 
     private float computeChunkOpportunityPenalty(int chunkCount) {
