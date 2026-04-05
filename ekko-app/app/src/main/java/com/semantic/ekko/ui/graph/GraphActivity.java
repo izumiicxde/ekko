@@ -27,6 +27,8 @@ public class GraphActivity extends AppCompatActivity {
     private TextView txtSubtitle;
     private TextView txtEmptyMessage;
     private MaterialButton btnScope;
+    private MaterialButton btnModeCluster;
+    private MaterialButton btnModeFolder;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -49,6 +51,8 @@ public class GraphActivity extends AppCompatActivity {
         txtSubtitle = findViewById(R.id.txtGraphSubtitle);
         txtEmptyMessage = findViewById(R.id.txtGraphEmptyMessage);
         btnScope = findViewById(R.id.btnGraphScope);
+        btnModeCluster = findViewById(R.id.btnGraphModeCluster);
+        btnModeFolder = findViewById(R.id.btnGraphModeFolder);
     }
 
     private void observeState() {
@@ -67,6 +71,7 @@ public class GraphActivity extends AppCompatActivity {
                         ? View.GONE
                         : View.VISIBLE
                 );
+                updateModeButtons(state.mode);
                 progressBar.setVisibility(state.loading ? View.VISIBLE : View.GONE);
                 boolean isEmpty = !state.loading && state.scene == null;
                 emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
@@ -116,12 +121,20 @@ public class GraphActivity extends AppCompatActivity {
     private void setupListeners() {
         findViewById(R.id.btnGraphBack).setOnClickListener(v -> handleBackAction());
         btnScope.setOnClickListener(v -> viewModel.showOverview());
+        btnModeCluster.setOnClickListener(v -> viewModel.showClusterMode());
+        btnModeFolder.setOnClickListener(v -> viewModel.showFolderMode());
         graphView.setNodeTapListener(node -> {
             if (node == null) {
                 return;
             }
             if (node.type == GraphNode.TYPE_CLUSTER) {
-                viewModel.openCategory(node.id);
+                String category = node.id.replace("__category__:", "");
+                viewModel.openCategory(category);
+                return;
+            }
+            if (node.type == GraphNode.TYPE_FOLDER) {
+                String folderPath = node.id.replace("__folder__:", "");
+                viewModel.openFolder(folderPath);
                 return;
             }
             if (node.documentId > 0L) {
@@ -139,6 +152,12 @@ public class GraphActivity extends AppCompatActivity {
                 }
             }
         );
+    }
+
+    private void updateModeButtons(int mode) {
+        boolean folderMode = mode == GraphViewModel.MODE_FOLDER;
+        btnModeCluster.setChecked(!folderMode);
+        btnModeFolder.setChecked(folderMode);
     }
 
     private void handleBackAction() {

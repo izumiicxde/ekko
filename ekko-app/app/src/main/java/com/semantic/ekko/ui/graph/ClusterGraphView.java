@@ -6,14 +6,13 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RectF;
 import android.os.SystemClock;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
-import android.view.ViewConfiguration;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
@@ -30,14 +29,13 @@ public class ClusterGraphView extends View {
 
     private final Paint edgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint nodePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint titlePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint detailPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final List<RenderedNode> renderedNodes = new ArrayList<>();
     private final Map<String, RenderedNode> previousNodes = new HashMap<>();
+    private final ScaleGestureDetector scaleGestureDetector;
+    private final Path iconPath = new Path();
 
     private GraphScene scene;
     private NodeTapListener nodeTapListener;
@@ -47,33 +45,24 @@ public class ClusterGraphView extends View {
     private float viewportOffsetY = 0f;
     private float lastTouchX = 0f;
     private float lastTouchY = 0f;
-    private boolean dragging = false;
     private float downTouchX = 0f;
     private float downTouchY = 0f;
-    private int touchSlop = 0;
     private float scaleFactor = 1f;
-    private final ScaleGestureDetector scaleGestureDetector;
+    private boolean dragging = false;
     private boolean scaling = false;
-    private final Path fileIconPath = new Path();
+    private final int touchSlop;
 
     public ClusterGraphView(Context context) {
-        super(context);
-        scaleGestureDetector = createScaleGestureDetector(context);
-        init();
+        this(context, null);
     }
 
     public ClusterGraphView(Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
-        scaleGestureDetector = createScaleGestureDetector(context);
-        init();
+        this(context, attrs, 0);
     }
 
-    public ClusterGraphView(
-        Context context,
-        @Nullable AttributeSet attrs,
-        int defStyleAttr
-    ) {
+    public ClusterGraphView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         scaleGestureDetector = createScaleGestureDetector(context);
         init();
     }
@@ -91,11 +80,7 @@ public class ClusterGraphView extends View {
                 @Override
                 public boolean onScale(ScaleGestureDetector detector) {
                     float previousScale = scaleFactor;
-                    scaleFactor = clamp(
-                        scaleFactor * detector.getScaleFactor(),
-                        0.72f,
-                        1.9f
-                    );
+                    scaleFactor = clamp(scaleFactor * detector.getScaleFactor(), 0.65f, 2.2f);
                     if (Math.abs(previousScale - scaleFactor) < 0.001f) {
                         return false;
                     }
@@ -104,23 +89,11 @@ public class ClusterGraphView extends View {
                     float focusY = detector.getFocusY();
                     float centerX = getWidth() / 2f;
                     float centerY = getHeight() / 2f;
-                    float worldX =
-                        centerX +
-                        ((focusX - centerX) / previousScale) -
-                        viewportOffsetX;
-                    float worldY =
-                        centerY +
-                        ((focusY - centerY) / previousScale) -
-                        viewportOffsetY;
+                    float worldX = centerX + ((focusX - centerX) / previousScale) - viewportOffsetX;
+                    float worldY = centerY + ((focusY - centerY) / previousScale) - viewportOffsetY;
 
-                    viewportOffsetX =
-                        centerX -
-                        worldX -
-                        ((centerX - focusX) / scaleFactor);
-                    viewportOffsetY =
-                        centerY -
-                        worldY -
-                        ((centerY - focusY) / scaleFactor);
+                    viewportOffsetX = centerX - worldX - ((centerX - focusX) / scaleFactor);
+                    viewportOffsetY = centerY - worldY - ((centerY - focusY) / scaleFactor);
                     invalidate();
                     return true;
                 }
@@ -135,29 +108,22 @@ public class ClusterGraphView extends View {
 
     private void init() {
         setWillNotDraw(false);
-        touchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
+
         edgePaint.setStyle(Paint.Style.STROKE);
         edgePaint.setStrokeCap(Paint.Cap.ROUND);
 
-        strokePaint.setStyle(Paint.Style.STROKE);
-        strokePaint.setStrokeWidth(dp(1.6f));
-        strokePaint.setColor(Color.argb(28, 15, 23, 42));
+        nodePaint.setStyle(Paint.Style.FILL);
 
-        gridPaint.setStyle(Paint.Style.STROKE);
-        gridPaint.setStrokeWidth(dp(1f));
-        gridPaint.setColor(Color.argb(20, 32, 84, 215));
-
-        labelPaint.setStyle(Paint.Style.FILL);
-        iconPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        iconPaint.setStyle(Paint.Style.STROKE);
         iconPaint.setStrokeCap(Paint.Cap.ROUND);
         iconPaint.setStrokeJoin(Paint.Join.ROUND);
 
         titlePaint.setTextAlign(Paint.Align.CENTER);
         titlePaint.setFakeBoldText(true);
-        titlePaint.setTextSize(sp(12.5f));
+        titlePaint.setTextSize(sp(12f));
 
         detailPaint.setTextAlign(Paint.Align.CENTER);
-        detailPaint.setTextSize(sp(10.5f));
+        detailPaint.setTextSize(sp(10f));
     }
 
     public void setScene(@Nullable GraphScene scene) {
@@ -184,7 +150,6 @@ public class ClusterGraphView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        drawBackgroundGrid(canvas);
         if (scene == null) {
             return;
         }
@@ -234,38 +199,13 @@ public class ClusterGraphView extends View {
                     scaling = false;
                     return true;
                 }
-                float x = event.getX();
-                float y = event.getY();
-                RenderedNode tappedNode = findTappedNode(x, y);
+                RenderedNode tappedNode = findTappedNode(event.getX(), event.getY());
                 if (tappedNode != null && nodeTapListener != null) {
                     nodeTapListener.onNodeTapped(tappedNode.node);
                 }
                 return true;
             default:
                 return super.onTouchEvent(event);
-        }
-    }
-
-    private void drawBackgroundGrid(Canvas canvas) {
-        float inset = dp(12f);
-        RectF bounds = new RectF(
-            inset,
-            inset,
-            getWidth() - inset,
-            getHeight() - inset
-        );
-        canvas.drawRoundRect(bounds, dp(26f), dp(26f), gridPaint);
-
-        float step = dp(48f) * scaleFactor;
-        float offsetX = viewportOffsetX * scaleFactor;
-        float offsetY = viewportOffsetY * scaleFactor;
-        float startX = inset + mod(offsetX, step) - step;
-        for (float x = startX; x < getWidth() - inset + step; x += step) {
-            canvas.drawLine(x, inset, x, getHeight() - inset, gridPaint);
-        }
-        float startY = inset + mod(offsetY, step) - step;
-        for (float y = startY; y < getHeight() - inset + step; y += step) {
-            canvas.drawLine(inset, y, getWidth() - inset, y, gridPaint);
         }
     }
 
@@ -282,10 +222,10 @@ public class ClusterGraphView extends View {
             }
             int color = ColorUtils.setAlphaComponent(
                 blendColors(from.node.color, to.node.color),
-                (int) ((18 + (edge.weight * 78)) * transitionAlpha(edge.fromId + edge.toId))
+                (int) ((24 + (edge.weight * 54)) * transitionAlpha(edge.fromId + edge.toId))
             );
             edgePaint.setColor(color);
-            edgePaint.setStrokeWidth(dp(1.5f) + (edge.weight * dp(2.1f)));
+            edgePaint.setStrokeWidth(dp(1f) + (edge.weight * dp(1.35f)));
             canvas.drawLine(from.cx, from.cy, to.cx, to.cy, edgePaint);
         }
     }
@@ -295,90 +235,35 @@ public class ClusterGraphView extends View {
             RenderedNode displayed = applyViewport(resolveDisplayedNode(rendered));
             int fillColor = nodeFillColor(rendered.node);
             int foregroundColor = foregroundColor(fillColor);
-            int detailColor = ColorUtils.setAlphaComponent(foregroundColor, 210);
             float alpha = transitionAlpha(rendered.node.id);
             int nodeAlpha = (int) (255f * alpha);
-            int labelAlpha = (int) (34f * alpha);
-            float iconRadius = displayed.radius * 0.26f;
-            float labelWidth = Math.min(
-                displayed.radius * 1.42f,
-                Math.max(
-                    displayed.radius * 0.92f,
-                    titlePaint.measureText(rendered.node.label) + dp(18f)
-                )
-            );
-            float labelHeight = dp(20f);
-            float labelCenterY = displayed.cy + (displayed.radius * 0.46f);
+            float iconSize = displayed.radius * 0.42f;
+
             nodePaint.setColor(ColorUtils.setAlphaComponent(fillColor, nodeAlpha));
-            canvas.drawCircle(
-                displayed.cx,
-                displayed.cy,
-                displayed.radius,
-                nodePaint
-            );
-            nodePaint.setColor(
-                ColorUtils.setAlphaComponent(
-                    Color.WHITE,
-                    (int) (28f * alpha)
-                )
-            );
-            canvas.drawCircle(
-                displayed.cx,
-                displayed.cy - (displayed.radius * 0.24f),
-                displayed.radius * 0.68f,
-                nodePaint
-            );
-            strokePaint.setColor(
-                ColorUtils.setAlphaComponent(Color.argb(28, 15, 23, 42), nodeAlpha)
-            );
-            canvas.drawCircle(
-                displayed.cx,
-                displayed.cy,
-                displayed.radius,
-                strokePaint
-            );
+            canvas.drawCircle(displayed.cx, displayed.cy, displayed.radius, nodePaint);
 
-            drawNodeIcon(canvas, displayed, foregroundColor, iconRadius, alpha);
-
-            labelPaint.setColor(ColorUtils.setAlphaComponent(foregroundColor, labelAlpha));
-            canvas.drawRoundRect(
-                displayed.cx - (labelWidth / 2f),
-                labelCenterY - (labelHeight / 2f),
-                displayed.cx + (labelWidth / 2f),
-                labelCenterY + (labelHeight / 2f),
-                labelHeight / 2f,
-                labelHeight / 2f,
-                labelPaint
-            );
+            drawNodeIcon(canvas, displayed, foregroundColor, iconSize, alpha);
 
             titlePaint.setColor(ColorUtils.setAlphaComponent(foregroundColor, nodeAlpha));
-            detailPaint.setColor(ColorUtils.setAlphaComponent(detailColor, nodeAlpha));
+            detailPaint.setColor(
+                ColorUtils.setAlphaComponent(
+                    ColorUtils.blendARGB(foregroundColor, Color.WHITE, 0.2f),
+                    (int) (208f * alpha)
+                )
+            );
 
-            String title = fitLine(
-                rendered.node.label,
-                displayed.radius * 0.95f,
-                titlePaint
-            );
-            String detail = fitLine(
-                rendered.node.detail,
-                displayed.radius * 0.94f,
-                detailPaint
-            );
+            float titleY = displayed.cy + displayed.radius + dp(18f);
             canvas.drawText(
-                title,
+                fitLine(rendered.node.label, displayed.radius * 1.75f, titlePaint),
                 displayed.cx,
-                labelCenterY + verticalTextOffset(titlePaint),
+                titleY + verticalTextOffset(titlePaint),
                 titlePaint
             );
-            if (
-                displayed.radius >= dp(40f) &&
-                detail != null &&
-                !detail.isEmpty()
-            ) {
+            if (rendered.node.detail != null && !rendered.node.detail.isEmpty()) {
                 canvas.drawText(
-                    detail,
+                    fitLine(rendered.node.detail, displayed.radius * 1.9f, detailPaint),
                     displayed.cx,
-                    displayed.cy + (displayed.radius * 0.73f),
+                    titleY + dp(14f) + verticalTextOffset(detailPaint),
                     detailPaint
                 );
             }
@@ -391,40 +276,26 @@ public class ClusterGraphView extends View {
             return;
         }
 
-        List<GraphNode> nodes = scene.nodes;
         if (scene.overview) {
-            layoutOverview(nodes, width, height);
+            layoutOverview(scene.nodes, width, height);
         } else {
-            layoutDetail(nodes, width, height);
+            layoutDetail(scene.nodes, width, height);
         }
         relaxOverlaps(width, height, scene.overview);
     }
 
     private void layoutOverview(List<GraphNode> nodes, int width, int height) {
         float cx = width / 2f;
-        float cy = height / 2f + dp(10f);
-        float outerX = width * 0.44f;
-        float outerY = height * 0.37f;
+        float cy = height / 2f;
+        float outerX = width * 0.48f;
+        float outerY = height * 0.42f;
         int startIndex = 0;
         if (!nodes.isEmpty() && nodes.get(0).type == GraphNode.TYPE_HUB) {
             GraphNode hub = nodes.get(0);
-            renderedNodes.add(
-                new RenderedNode(hub, cx, cy, radiusFor(hub, true))
-            );
+            renderedNodes.add(new RenderedNode(hub, cx, cy, radiusFor(hub, true)));
             startIndex = 1;
-            outerX = width * 0.47f;
-            outerY = height * 0.39f;
-        }
-        if (nodes.size() - startIndex == 1) {
-            renderedNodes.add(
-                new RenderedNode(
-                    nodes.get(startIndex),
-                    cx,
-                    cy + dp(78f),
-                    radiusFor(nodes.get(startIndex), true)
-                )
-            );
-            return;
+            outerX = width * 0.56f;
+            outerY = height * 0.48f;
         }
 
         int ringCount = Math.max(1, nodes.size() - startIndex);
@@ -434,75 +305,44 @@ public class ClusterGraphView extends View {
             double angle =
                 (-Math.PI / 2d) +
                 ((Math.PI * 2d * ringIndex) / ringCount) +
-                organicAngleOffset(node, 0.16d);
-            float ringScale = ringCount > 5 && (ringIndex % 2 == 1) ? 0.98f : 1.2f;
-            float radialOffset = organicRadiusOffset(node, dp(26f));
-            float nodeX =
-                cx + (float) (Math.cos(angle) * ((outerX * ringScale) + radialOffset));
-            float nodeY =
-                cy +
-                (float) (Math.sin(angle) * ((outerY * ringScale) + (radialOffset * 0.72f)));
-            renderedNodes.add(
-                new RenderedNode(node, nodeX, nodeY, radiusFor(node, true))
-            );
+                organicAngleOffset(node, 0.12d);
+            float radialOffset = organicRadiusOffset(node, dp(18f));
+            float nodeX = cx + (float) (Math.cos(angle) * (outerX + radialOffset));
+            float nodeY = cy + (float) (Math.sin(angle) * (outerY + (radialOffset * 0.72f)));
+            renderedNodes.add(new RenderedNode(node, nodeX, nodeY, radiusFor(node, true)));
         }
     }
 
     private void layoutDetail(List<GraphNode> nodes, int width, int height) {
         float cx = width / 2f;
-        float cy = height / 2f + dp(6f);
+        float cy = height / 2f;
         int startIndex = 0;
         if (!nodes.isEmpty() && nodes.get(0).type == GraphNode.TYPE_HUB) {
             GraphNode hub = nodes.get(0);
-            renderedNodes.add(
-                new RenderedNode(hub, cx, cy, radiusFor(hub, false))
-            );
+            renderedNodes.add(new RenderedNode(hub, cx, cy, radiusFor(hub, false)));
             startIndex = 1;
         }
-        if (nodes.size() - startIndex == 1) {
-            renderedNodes.add(
-                new RenderedNode(
-                    nodes.get(startIndex),
-                    cx,
-                    cy + dp(96f),
-                    radiusFor(nodes.get(startIndex), false)
-                )
-            );
-            return;
-        }
 
-        int[] capacities = { 4, 5, 6, 8, 10 };
-        float minDimension = Math.min(width, height);
-        float[] radii = {
-            minDimension * 0.33f,
-            minDimension * 0.49f,
-            minDimension * 0.65f,
-            minDimension * 0.81f,
-            minDimension * 0.94f
-        };
+        int remaining = Math.max(0, nodes.size() - startIndex);
         int nodeIndex = startIndex;
-        for (int ring = 0; ring < capacities.length && nodeIndex < nodes.size(); ring++) {
-            int ringCount = Math.min(capacities[ring], nodes.size() - nodeIndex);
-            float ringRadius = radii[ring];
-            for (int i = 0; i < ringCount; i++) {
+        int ring = 0;
+        float minDimension = Math.min(width, height);
+        while (remaining > 0) {
+            int ringCount = Math.min(remaining, 8 + (ring * 4));
+            float ringRadius = (minDimension * 0.34f) + (ring * minDimension * 0.18f);
+            for (int i = 0; i < ringCount && nodeIndex < nodes.size(); i++) {
                 GraphNode node = nodes.get(nodeIndex++);
                 double angle =
                     (-Math.PI / 2d) +
                     ((Math.PI * 2d * i) / ringCount) +
-                    organicAngleOffset(node, 0.22d);
-                float radialOffset = organicRadiusOffset(node, dp(28f));
-                float nodeX =
-                    cx + (float) (Math.cos(angle) * (ringRadius + radialOffset));
-                float nodeY =
-                    cy +
-                    (float) (
-                        Math.sin(angle) *
-                        ((ringRadius * 0.94f) + (radialOffset * 0.76f))
-                    );
-                renderedNodes.add(
-                    new RenderedNode(node, nodeX, nodeY, radiusFor(node, false))
-                );
+                    organicAngleOffset(node, 0.18d);
+                float radialOffset = organicRadiusOffset(node, dp(18f));
+                float nodeX = cx + (float) (Math.cos(angle) * (ringRadius + radialOffset));
+                float nodeY = cy + (float) (Math.sin(angle) * (ringRadius + radialOffset));
+                renderedNodes.add(new RenderedNode(node, nodeX, nodeY, radiusFor(node, false)));
             }
+            remaining -= ringCount;
+            ring++;
         }
     }
 
@@ -514,10 +354,7 @@ public class ClusterGraphView extends View {
             float dx = x - displayedNode.cx;
             float dy = y - displayedNode.cy;
             float distance = (float) Math.sqrt((dx * dx) + (dy * dy));
-            if (
-                distance <= displayedNode.radius + dp(10f) &&
-                distance < nearestDistance
-            ) {
+            if (distance <= displayedNode.radius + dp(10f) && distance < nearestDistance) {
                 nearest = displayedNode;
                 nearestDistance = distance;
             }
@@ -535,7 +372,7 @@ public class ClusterGraphView extends View {
             return;
         }
         sceneAnimator = ValueAnimator.ofFloat(0f, 1f);
-        sceneAnimator.setDuration(560L);
+        sceneAnimator.setDuration(420L);
         sceneAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
         sceneAnimator.addUpdateListener(animation -> {
             sceneTransitionProgress = (float) animation.getAnimatedValue();
@@ -549,7 +386,7 @@ public class ClusterGraphView extends View {
         if (previous == null) {
             float progress = staggeredProgress(target.node.id);
             RenderedNode origin = randomSpawnNode(target);
-            float startRadius = target.radius * 0.58f;
+            float startRadius = target.radius * 0.55f;
             return new RenderedNode(
                 target.node,
                 lerp(origin.cx, target.cx, progress),
@@ -567,8 +404,8 @@ public class ClusterGraphView extends View {
     }
 
     private RenderedNode applyViewport(RenderedNode node) {
-        float floatX = floatingOffset(node.node, 0.82f, dp(3f));
-        float floatY = floatingOffset(node.node, 0.53f, dp(4f));
+        float floatX = floatingOffset(node.node, 0.82f, dp(2f));
+        float floatY = floatingOffset(node.node, 0.53f, dp(2f));
         float worldX = node.cx + viewportOffsetX + floatX;
         float worldY = node.cy + viewportOffsetY + floatY;
         float centerX = getWidth() / 2f;
@@ -584,19 +421,17 @@ public class ClusterGraphView extends View {
     private RenderedNode randomSpawnNode(RenderedNode target) {
         float seedA = normalizedHash(target.node, 17);
         float seedB = normalizedHash(target.node, 43);
-        float distance = dp(42f) + (seedB * dp(86f));
-        double angle = (seedA * Math.PI * 2d) + organicAngleOffset(target.node, 0.7d);
+        float distance = dp(36f) + (seedB * dp(72f));
+        double angle = (seedA * Math.PI * 2d) + organicAngleOffset(target.node, 0.6d);
         float startX = target.cx + (float) (Math.cos(angle) * distance);
         float startY = target.cy + (float) (Math.sin(angle) * distance);
-        return new RenderedNode(target.node, startX, startY, target.radius * 0.72f);
+        return new RenderedNode(target.node, startX, startY, target.radius * 0.7f);
     }
 
     private float floatingOffset(GraphNode node, float speedScale, float amplitude) {
         long now = SystemClock.uptimeMillis();
         float phase = normalizedHash(node, 91) * (float) (Math.PI * 2d);
-        float drift =
-            (now / (2200f - (normalizedHash(node, 57) * 600f))) *
-            speedScale;
+        float drift = (now / (2400f - (normalizedHash(node, 57) * 500f))) * speedScale;
         return (float) Math.sin(phase + drift) * amplitude;
     }
 
@@ -630,141 +465,83 @@ public class ClusterGraphView extends View {
         Canvas canvas,
         RenderedNode displayed,
         int foregroundColor,
-        float iconRadius,
+        float iconSize,
         float alpha
     ) {
-        iconPaint.setColor(
-            ColorUtils.setAlphaComponent(foregroundColor, (int) (236f * alpha))
-        );
+        iconPaint.setColor(ColorUtils.setAlphaComponent(foregroundColor, (int) (236f * alpha)));
         iconPaint.setStrokeWidth(dp(1.8f));
         iconPaint.setStyle(Paint.Style.STROKE);
-        float centerY = displayed.cy - (displayed.radius * 0.18f);
-        if (
-            displayed.node.type == GraphNode.TYPE_CLUSTER ||
-            displayed.node.type == GraphNode.TYPE_HUB
-        ) {
-            float r = iconRadius * 0.22f;
-            float leftX = displayed.cx - (iconRadius * 0.72f);
-            float rightX = displayed.cx + (iconRadius * 0.72f);
-            float bottomY = centerY + (iconRadius * 0.62f);
-            float topY = centerY - (iconRadius * 0.72f);
-            canvas.drawLine(leftX, bottomY, displayed.cx, topY, iconPaint);
-            canvas.drawLine(displayed.cx, topY, rightX, bottomY, iconPaint);
-            canvas.drawLine(leftX, bottomY, rightX, bottomY, iconPaint);
-            iconPaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(leftX, bottomY, r, iconPaint);
-            canvas.drawCircle(displayed.cx, topY, r, iconPaint);
-            canvas.drawCircle(rightX, bottomY, r, iconPaint);
-        } else {
-            iconPaint.setStyle(Paint.Style.STROKE);
-            float left = displayed.cx - (iconRadius * 0.68f);
-            float top = centerY - (iconRadius * 0.8f);
-            float right = displayed.cx + (iconRadius * 0.52f);
-            float bottom = centerY + (iconRadius * 0.82f);
-            float fold = iconRadius * 0.32f;
-            fileIconPath.reset();
-            fileIconPath.moveTo(left, top);
-            fileIconPath.lineTo(right - fold, top);
-            fileIconPath.lineTo(right, top + fold);
-            fileIconPath.lineTo(right, bottom);
-            fileIconPath.lineTo(left, bottom);
-            fileIconPath.close();
-            canvas.drawPath(fileIconPath, iconPaint);
+
+        float cx = displayed.cx;
+        float cy = displayed.cy;
+
+        if (displayed.node.type == GraphNode.TYPE_FOLDER) {
+            float left = cx - (iconSize * 0.72f);
+            float top = cy - (iconSize * 0.34f);
+            float right = cx + (iconSize * 0.72f);
+            float bottom = cy + (iconSize * 0.5f);
+            float tabRight = cx - (iconSize * 0.08f);
+            iconPath.reset();
+            iconPath.moveTo(left, top + (iconSize * 0.12f));
+            iconPath.lineTo(left + (iconSize * 0.22f), top - (iconSize * 0.14f));
+            iconPath.lineTo(tabRight, top - (iconSize * 0.14f));
+            iconPath.lineTo(tabRight + (iconSize * 0.18f), top + (iconSize * 0.12f));
+            iconPath.lineTo(right, top + (iconSize * 0.12f));
+            iconPath.lineTo(right, bottom);
+            iconPath.lineTo(left, bottom);
+            iconPath.close();
+            canvas.drawPath(iconPath, iconPaint);
+            return;
+        }
+
+        if (displayed.node.type == GraphNode.TYPE_DOCUMENT) {
+            float left = cx - (iconSize * 0.54f);
+            float top = cy - (iconSize * 0.72f);
+            float right = cx + (iconSize * 0.42f);
+            float bottom = cy + (iconSize * 0.68f);
+            float fold = iconSize * 0.28f;
+            iconPath.reset();
+            iconPath.moveTo(left, top);
+            iconPath.lineTo(right - fold, top);
+            iconPath.lineTo(right, top + fold);
+            iconPath.lineTo(right, bottom);
+            iconPath.lineTo(left, bottom);
+            iconPath.close();
+            canvas.drawPath(iconPath, iconPaint);
             canvas.drawLine(right - fold, top, right - fold, top + fold, iconPaint);
             canvas.drawLine(right - fold, top + fold, right, top + fold, iconPaint);
-            float lineLeft = left + (iconRadius * 0.22f);
-            float lineRight = right - (iconRadius * 0.2f);
-            canvas.drawLine(
-                lineLeft,
-                centerY - (iconRadius * 0.08f),
-                lineRight,
-                centerY - (iconRadius * 0.08f),
-                iconPaint
-            );
-            canvas.drawLine(
-                lineLeft,
-                centerY + (iconRadius * 0.34f),
-                right - (iconRadius * 0.34f),
-                centerY + (iconRadius * 0.34f),
-                iconPaint
-            );
+            return;
         }
+
+        float orbitRadius = iconSize * 0.62f;
+        float dotRadius = iconSize * 0.1f;
+        float topY = cy - orbitRadius;
+        float leftX = cx - (orbitRadius * 0.86f);
+        float rightX = cx + (orbitRadius * 0.86f);
+        float bottomY = cy + (orbitRadius * 0.5f);
+        canvas.drawLine(leftX, bottomY, cx, topY, iconPaint);
+        canvas.drawLine(cx, topY, rightX, bottomY, iconPaint);
+        canvas.drawLine(leftX, bottomY, rightX, bottomY, iconPaint);
+        iconPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(cx, topY, dotRadius, iconPaint);
+        canvas.drawCircle(leftX, bottomY, dotRadius, iconPaint);
+        canvas.drawCircle(rightX, bottomY, dotRadius, iconPaint);
     }
 
     private int nodeFillColor(GraphNode node) {
         if (node.type == GraphNode.TYPE_HUB) {
-            return ColorUtils.blendARGB(node.color, Color.WHITE, 0.14f);
+            return ColorUtils.blendARGB(node.color, Color.WHITE, 0.18f);
         }
-        if (node.type == GraphNode.TYPE_CLUSTER) {
-            return ColorUtils.blendARGB(node.color, Color.WHITE, 0.05f);
+        if (node.type == GraphNode.TYPE_DOCUMENT) {
+            return ColorUtils.blendARGB(node.color, Color.parseColor("#0F172A"), 0.16f);
         }
-        return ColorUtils.blendARGB(node.color, Color.parseColor("#0F172A"), 0.12f);
+        return ColorUtils.blendARGB(node.color, Color.WHITE, 0.06f);
     }
 
     private int foregroundColor(int backgroundColor) {
         return ColorUtils.calculateLuminance(backgroundColor) > 0.45d
             ? Color.parseColor("#0F172A")
             : Color.WHITE;
-    }
-
-    private float lerp(float start, float end, float progress) {
-        return start + ((end - start) * progress);
-    }
-
-    private float transitionAlpha(String key) {
-        return 0.2f + (0.8f * staggeredProgress(key));
-    }
-
-    private float staggeredProgress(String key) {
-        float seed = normalizedHashFromKey(key, 131);
-        float start = seed * 0.24f;
-        return clamp((sceneTransitionProgress - start) / (1f - start), 0f, 1f);
-    }
-
-    private float clamp(float value, float min, float max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private float mod(float value, float divisor) {
-        float result = value % divisor;
-        return result < 0f ? result + divisor : result;
-    }
-
-    private float normalizedHashFromKey(String key, int salt) {
-        if (key == null) {
-            return 0.5f;
-        }
-        int hash = Math.abs((key.hashCode() * 31) + salt);
-        return (hash % 1000) / 999f;
-    }
-
-    private float radiusFor(GraphNode node, boolean overview) {
-        if (node.type == GraphNode.TYPE_HUB) {
-            return dp(overview ? 56f : 48f);
-        }
-        float min = overview ? 36f : 30f;
-        float max = overview ? 52f : 40f;
-        return dp(min + ((max - min) * Math.max(0f, Math.min(1f, node.weight))));
-    }
-
-    private String fitLine(String text, float radius, TextPaint paint) {
-        if (text == null) {
-            return "";
-        }
-        float maxWidth = (radius * 1.55f);
-        if (paint.measureText(text) <= maxWidth) {
-            return text;
-        }
-        String ellipsis = "…";
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            String candidate = builder.toString() + text.charAt(i) + ellipsis;
-            if (paint.measureText(candidate) > maxWidth) {
-                break;
-            }
-            builder.append(text.charAt(i));
-        }
-        return builder.length() == 0 ? ellipsis : builder.append(ellipsis).toString();
     }
 
     private int blendColors(int first, int second) {
@@ -776,9 +553,9 @@ public class ClusterGraphView extends View {
             return;
         }
         float centerX = width / 2f;
-        float centerY = (height / 2f) + (overview ? dp(10f) : dp(6f));
-        float maxRadius = Math.min(width, height) * (overview ? 0.54f : 0.98f);
-        for (int pass = 0; pass < 34; pass++) {
+        float centerY = height / 2f;
+        float maxRadius = Math.min(width, height) * (overview ? 0.66f : 1.35f);
+        for (int pass = 0; pass < 40; pass++) {
             boolean changed = false;
             for (int i = 0; i < renderedNodes.size(); i++) {
                 RenderedNode left = renderedNodes.get(i);
@@ -795,7 +572,7 @@ public class ClusterGraphView extends View {
                     float dx = right.cx - left.cx;
                     float dy = right.cy - left.cy;
                     float distance = (float) Math.sqrt((dx * dx) + (dy * dy));
-                    float minDistance = (left.radius + right.radius) + dp(42f);
+                    float minDistance = (left.radius + right.radius) + dp(52f);
                     if (distance <= 0.001f) {
                         dx = dp(1f);
                         dy = dp(1f);
@@ -819,21 +596,21 @@ public class ClusterGraphView extends View {
                         changed = true;
                     }
                 }
+
                 float nextX = left.cx + adjustX;
                 float nextY = left.cy + adjustY;
                 float fromCenterX = nextX - centerX;
                 float fromCenterY = nextY - centerY;
-                float centerDistance =
-                    (float) Math.sqrt((fromCenterX * fromCenterX) + (fromCenterY * fromCenterY));
+                float centerDistance = (float) Math.sqrt(
+                    (fromCenterX * fromCenterX) + (fromCenterY * fromCenterY)
+                );
                 if (centerDistance > maxRadius && centerDistance > 0f) {
                     float scale = maxRadius / centerDistance;
                     nextX = centerX + (fromCenterX * scale);
                     nextY = centerY + (fromCenterY * scale);
                 }
-                renderedNodes.set(
-                    i,
-                    new RenderedNode(left.node, nextX, nextY, left.radius)
-                );
+
+                renderedNodes.set(i, new RenderedNode(left.node, nextX, nextY, left.radius));
             }
             if (!changed) {
                 break;
@@ -841,9 +618,64 @@ public class ClusterGraphView extends View {
         }
     }
 
+    private float radiusFor(GraphNode node, boolean overview) {
+        if (node.type == GraphNode.TYPE_HUB) {
+            return dp(overview ? 34f : 30f);
+        }
+        float min = overview ? 22f : 20f;
+        float max = overview ? 34f : 28f;
+        return dp(min + ((max - min) * Math.max(0f, Math.min(1f, node.weight))));
+    }
+
+    private String fitLine(String text, float radius, TextPaint paint) {
+        if (text == null) {
+            return "";
+        }
+        float maxWidth = radius * 1.7f;
+        if (paint.measureText(text) <= maxWidth) {
+            return text;
+        }
+        String ellipsis = "…";
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            String candidate = builder.toString() + text.charAt(i) + ellipsis;
+            if (paint.measureText(candidate) > maxWidth) {
+                break;
+            }
+            builder.append(text.charAt(i));
+        }
+        return builder.length() == 0 ? ellipsis : builder.append(ellipsis).toString();
+    }
+
     private float verticalTextOffset(Paint paint) {
         Paint.FontMetrics metrics = paint.getFontMetrics();
         return -((metrics.ascent + metrics.descent) / 2f);
+    }
+
+    private float lerp(float start, float end, float progress) {
+        return start + ((end - start) * progress);
+    }
+
+    private float transitionAlpha(String key) {
+        return 0.22f + (0.78f * staggeredProgress(key));
+    }
+
+    private float staggeredProgress(String key) {
+        float seed = normalizedHashFromKey(key, 131);
+        float start = seed * 0.18f;
+        return clamp((sceneTransitionProgress - start) / (1f - start), 0f, 1f);
+    }
+
+    private float normalizedHashFromKey(String key, int salt) {
+        if (key == null) {
+            return 0.5f;
+        }
+        int hash = Math.abs((key.hashCode() * 31) + salt);
+        return (hash % 1000) / 999f;
+    }
+
+    private float clamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private float dp(float value) {
