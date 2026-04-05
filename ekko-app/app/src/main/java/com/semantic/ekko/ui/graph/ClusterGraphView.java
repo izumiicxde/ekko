@@ -405,20 +405,37 @@ public class ClusterGraphView extends View {
         float cy = height / 2f + dp(10f);
         float outerX = width * 0.37f;
         float outerY = height * 0.3f;
-        if (nodes.size() == 1) {
+        int startIndex = 0;
+        if (!nodes.isEmpty() && nodes.get(0).type == GraphNode.TYPE_HUB) {
+            GraphNode hub = nodes.get(0);
             renderedNodes.add(
-                new RenderedNode(nodes.get(0), cx, cy, radiusFor(nodes.get(0), true))
+                new RenderedNode(hub, cx, cy, radiusFor(hub, true))
+            );
+            startIndex = 1;
+            outerX = width * 0.4f;
+            outerY = height * 0.32f;
+        }
+        if (nodes.size() - startIndex == 1) {
+            renderedNodes.add(
+                new RenderedNode(
+                    nodes.get(startIndex),
+                    cx,
+                    cy + dp(78f),
+                    radiusFor(nodes.get(startIndex), true)
+                )
             );
             return;
         }
 
-        for (int i = 0; i < nodes.size(); i++) {
+        int ringCount = Math.max(1, nodes.size() - startIndex);
+        for (int i = startIndex; i < nodes.size(); i++) {
             GraphNode node = nodes.get(i);
+            int ringIndex = i - startIndex;
             double angle =
                 (-Math.PI / 2d) +
-                ((Math.PI * 2d * i) / nodes.size()) +
+                ((Math.PI * 2d * ringIndex) / ringCount) +
                 organicAngleOffset(node, 0.16d);
-            float ringScale = nodes.size() > 5 && (i % 2 == 1) ? 0.9f : 1.1f;
+            float ringScale = ringCount > 5 && (ringIndex % 2 == 1) ? 0.9f : 1.08f;
             float radialOffset = organicRadiusOffset(node, dp(24f));
             float nodeX =
                 cx + (float) (Math.cos(angle) * ((outerX * ringScale) + radialOffset));
@@ -434,9 +451,22 @@ public class ClusterGraphView extends View {
     private void layoutDetail(List<GraphNode> nodes, int width, int height) {
         float cx = width / 2f;
         float cy = height / 2f + dp(6f);
-        if (nodes.size() == 1) {
+        int startIndex = 0;
+        if (!nodes.isEmpty() && nodes.get(0).type == GraphNode.TYPE_HUB) {
+            GraphNode hub = nodes.get(0);
             renderedNodes.add(
-                new RenderedNode(nodes.get(0), cx, cy, radiusFor(nodes.get(0), false))
+                new RenderedNode(hub, cx, cy, radiusFor(hub, false))
+            );
+            startIndex = 1;
+        }
+        if (nodes.size() - startIndex == 1) {
+            renderedNodes.add(
+                new RenderedNode(
+                    nodes.get(startIndex),
+                    cx,
+                    cy + dp(96f),
+                    radiusFor(nodes.get(startIndex), false)
+                )
             );
             return;
         }
@@ -450,7 +480,7 @@ public class ClusterGraphView extends View {
             minDimension * 0.63f,
             minDimension * 0.76f
         };
-        int nodeIndex = 0;
+        int nodeIndex = startIndex;
         for (int ring = 0; ring < capacities.length && nodeIndex < nodes.size(); ring++) {
             int ringCount = Math.min(capacities[ring], nodes.size() - nodeIndex);
             float ringRadius = radii[ring];
@@ -609,7 +639,10 @@ public class ClusterGraphView extends View {
         iconPaint.setStrokeWidth(dp(1.8f));
         iconPaint.setStyle(Paint.Style.STROKE);
         float centerY = displayed.cy - (displayed.radius * 0.18f);
-        if (displayed.node.type == GraphNode.TYPE_CLUSTER) {
+        if (
+            displayed.node.type == GraphNode.TYPE_CLUSTER ||
+            displayed.node.type == GraphNode.TYPE_HUB
+        ) {
             float r = iconRadius * 0.22f;
             float leftX = displayed.cx - (iconRadius * 0.72f);
             float rightX = displayed.cx + (iconRadius * 0.72f);
@@ -659,6 +692,9 @@ public class ClusterGraphView extends View {
     }
 
     private int nodeFillColor(GraphNode node) {
+        if (node.type == GraphNode.TYPE_HUB) {
+            return ColorUtils.blendARGB(node.color, Color.WHITE, 0.14f);
+        }
         if (node.type == GraphNode.TYPE_CLUSTER) {
             return ColorUtils.blendARGB(node.color, Color.WHITE, 0.05f);
         }
@@ -703,6 +739,9 @@ public class ClusterGraphView extends View {
     }
 
     private float radiusFor(GraphNode node, boolean overview) {
+        if (node.type == GraphNode.TYPE_HUB) {
+            return dp(overview ? 56f : 48f);
+        }
         float min = overview ? 36f : 30f;
         float max = overview ? 52f : 40f;
         return dp(min + ((max - min) * Math.max(0f, Math.min(1f, node.weight))));
@@ -743,10 +782,16 @@ public class ClusterGraphView extends View {
             boolean changed = false;
             for (int i = 0; i < renderedNodes.size(); i++) {
                 RenderedNode left = renderedNodes.get(i);
+                if (left.node.type == GraphNode.TYPE_HUB) {
+                    continue;
+                }
                 float adjustX = 0f;
                 float adjustY = 0f;
                 for (int j = i + 1; j < renderedNodes.size(); j++) {
                     RenderedNode right = renderedNodes.get(j);
+                    if (right.node.type == GraphNode.TYPE_HUB) {
+                        continue;
+                    }
                     float dx = right.cx - left.cx;
                     float dy = right.cy - left.cy;
                     float distance = (float) Math.sqrt((dx * dx) + (dy * dy));

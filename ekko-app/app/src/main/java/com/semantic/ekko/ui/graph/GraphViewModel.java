@@ -23,6 +23,8 @@ import java.util.Set;
 
 public class GraphViewModel extends AndroidViewModel {
 
+    private static final String OVERVIEW_HUB_ID = "__overview__";
+    private static final String CATEGORY_HUB_PREFIX = "__category__:";
     private static final int MAX_VISIBLE_DOCUMENTS = 12;
     private static final int MAX_DOC_EDGES = 18;
     private static final float MIN_CATEGORY_EDGE_SIMILARITY = 0.28f;
@@ -127,9 +129,36 @@ public class GraphViewModel extends AndroidViewModel {
         }
 
         List<GraphEdge> edges = buildCategoryEdges(categories, centroids);
+        int connectedCount = 0;
+        nodes.add(
+            0,
+            new GraphNode(
+                OVERVIEW_HUB_ID,
+                "Library",
+                cachedDocuments.size() +
+                (cachedDocuments.size() == 1 ? " indexed file" : " indexed files"),
+                0.92f,
+                Color.parseColor("#0F172A"),
+                GraphNode.TYPE_HUB,
+                -1L
+            )
+        );
+        for (String category : categories) {
+            if (!grouped.containsKey(category)) {
+                continue;
+            }
+            edges.add(
+                new GraphEdge(
+                    OVERVIEW_HUB_ID,
+                    category,
+                    0.68f + (0.06f * (connectedCount % 3))
+                )
+            );
+            connectedCount++;
+        }
         return GraphUiState.ready(
             "Knowledge Map",
-            "Category clusters linked by semantic similarity. Tap a cluster to open its files.",
+            "Category clusters orbit your library. Tap a cluster to open its files.",
             null,
             new GraphScene(true, nodes, edges)
         );
@@ -151,6 +180,18 @@ public class GraphViewModel extends AndroidViewModel {
         }
 
         List<GraphNode> nodes = new ArrayList<>();
+        String hubId = CATEGORY_HUB_PREFIX + category;
+        nodes.add(
+            new GraphNode(
+                hubId,
+                category,
+                docs.size() + (docs.size() == 1 ? " file" : " files"),
+                0.9f,
+                accentColor,
+                GraphNode.TYPE_HUB,
+                -1L
+            )
+        );
         for (GraphDocument doc : visibleDocs) {
             float weight = 0.56f + (0.34f * doc.wordCount / (float) maxWords);
             nodes.add(
@@ -167,11 +208,20 @@ public class GraphViewModel extends AndroidViewModel {
         }
 
         List<GraphEdge> edges = buildDocumentEdges(visibleDocs);
+        for (GraphDocument doc : visibleDocs) {
+            edges.add(
+                new GraphEdge(
+                    hubId,
+                    "doc:" + doc.id,
+                    0.7f
+                )
+            );
+        }
         String subtitle =
             visibleDocs.size() < docs.size()
                 ? "Showing the " +
                 visibleDocs.size() +
-                " strongest files out of " +
+                " strongest files around the category hub out of " +
                 docs.size() +
                 ". Tap a node to open it."
                 : "Tap a node to open its file details.";

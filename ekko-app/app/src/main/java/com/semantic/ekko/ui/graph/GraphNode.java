@@ -4,6 +4,7 @@ public class GraphNode {
 
     public static final int TYPE_CLUSTER = 0;
     public static final int TYPE_DOCUMENT = 1;
+    public static final int TYPE_HUB = 2;
 
     public final String id;
     public final String label;
