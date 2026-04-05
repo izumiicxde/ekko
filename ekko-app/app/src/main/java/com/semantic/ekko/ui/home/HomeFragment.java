@@ -73,6 +73,7 @@ public class HomeFragment extends Fragment {
     private int latestIndexCurrent = 0;
     private int latestIndexTotal = 0;
     private boolean hasDeterminateIndexingProgress = false;
+    private int lastLoadedIndexProgress = -1;
     private List<DocumentEntity> latestVisibleDocs = new ArrayList<>();
     private Map<Long, String> latestFolderNames = Collections.emptyMap();
 
@@ -574,6 +575,7 @@ public class HomeFragment extends Fragment {
             latestIndexCurrent = 0;
             latestIndexTotal = 0;
             hasDeterminateIndexingProgress = false;
+            lastLoadedIndexProgress = -1;
             progressIndexing.setIndeterminate(false);
             progressIndexing.setProgress(0);
             txtIndexingStage.setText("");
@@ -720,12 +722,14 @@ public class HomeFragment extends Fragment {
         latestIndexTotal = total;
         hasDeterminateIndexingProgress = total > 0;
         updateIndexingUi();
-        if (running) {
+        if (running && current > 0 && current != lastLoadedIndexProgress) {
+            lastLoadedIndexProgress = current;
             viewModel.loadDocuments();
         }
 
         if (finished && !running) {
             isAppIndexing = false;
+            lastLoadedIndexProgress = -1;
             viewModel.loadDocuments();
             refreshFolderAvailabilityState();
             if (getView() != null) {

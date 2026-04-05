@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DocumentIndexer {
 
     private static final String TAG = "DocumentIndexer";
-    private static final int MAX_CHUNKS_TO_EMBED = 16;
+    private static final int MAX_CHUNKS_TO_EMBED = 8;
     private static final long ENTITY_EXTRACTION_TIMEOUT_SECONDS = 5L;
 
     public interface ProgressListener {

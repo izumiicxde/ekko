@@ -251,7 +251,7 @@ public class BackgroundIndexWorker extends Worker {
                                     : safeDocName,
                                 lastCurrent[0],
                                 lastTotal[0],
-                                lastTotal[0] > 0
+                                lastCurrent[0] > 0 && lastTotal[0] > 0
                             )
                         );
                         setProgressAsync(
