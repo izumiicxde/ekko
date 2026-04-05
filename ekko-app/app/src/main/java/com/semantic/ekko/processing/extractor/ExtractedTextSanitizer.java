@@ -11,6 +11,7 @@ public final class ExtractedTextSanitizer {
 
         String text = raw.replace("\r\n", "\n").replace('\r', '\n');
         text = text.replace("\u00AD", "");
+        text = text.replaceAll("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]", " ");
 
         // Join words broken across wrapped lines such as "embed-\nding".
         text = text.replaceAll("(?<=\\p{L})-\\s*\\n\\s*(?=\\p{L})", "");
