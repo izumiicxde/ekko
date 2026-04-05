@@ -91,6 +91,12 @@ public class QAActivity extends AppCompatActivity {
         viewModel.restoreIfNeeded();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        EkkoApp.getInstance().refreshBackendHealthAsync(true);
+    }
+
     private void bindViews() {
         recyclerMessages = findViewById(R.id.recyclerMessages);
         editQuestion = findViewById(R.id.editQuestion);

@@ -184,6 +184,7 @@ public class QAViewModel extends AndroidViewModel {
 
     public void ask(String question) {
         if (question == null || question.trim().isEmpty()) return;
+        EkkoApp.getInstance().refreshBackendHealthAsync(true);
 
         if (ragRepository == null) {
             QAMessage err = new QAMessage(

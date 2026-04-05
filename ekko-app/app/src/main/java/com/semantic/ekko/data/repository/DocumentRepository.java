@@ -23,6 +23,7 @@ public class DocumentRepository {
     private static final int MAX_SEMANTIC_FALLBACK_RESULTS = 3;
     private static final float MIN_SEMANTIC_FALLBACK_SCORE = 0.18f;
     private static final float MIN_SEMANTIC_EMBEDDING_SCORE = 0.42f;
+    private static final int MAX_CHUNK_RANKING_CANDIDATES = 18;
     private final DocumentDao documentDao;
     private final ChunkDao chunkDao;
     private final ExecutorService executor;
@@ -195,6 +196,7 @@ public class DocumentRepository {
                 chunkDao.getAll()
             );
             List<RankedSearchResult> rankedResults = new ArrayList<>();
+            List<PreRankedDocument> coarseCandidates = new ArrayList<>();
 
             String normalizedQuery = SearchTextMatcher.normalize(rawQuery);
             String[] queryTerms = SearchTextMatcher.tokenize(normalizedQuery);
@@ -247,6 +249,79 @@ public class DocumentRepository {
                     SearchTextMatcher.fieldScore(row.relative_path, queryTerms)
                 );
                 float phraseScore = exactPhraseMatch ? 1f : 0f;
+                float coarseScore = computeCoarseScore(
+                    embeddingScore,
+                    metadataCoverage,
+                    contentSignals.coverageScore(),
+                    filenameScore,
+                    phraseScore
+                );
+                coarseCandidates.add(
+                    new PreRankedDocument(
+                        row,
+                        coarseScore,
+                        obviousTextMatch,
+                        metadataCoverage,
+                        contentSignals.coverageScore(),
+                        filenameScore,
+                        phraseScore,
+                        embeddingScore
+                    )
+                );
+            }
+
+            Collections.sort(
+                coarseCandidates,
+                (a, b) -> Float.compare(b.coarseScore, a.coarseScore)
+            );
+            float bestCoarseScore = coarseCandidates.isEmpty()
+                ? 0f
+                : coarseCandidates.get(0).coarseScore;
+
+            for (int candidateIndex = 0; candidateIndex < coarseCandidates.size(); candidateIndex++) {
+                PreRankedDocument candidate = coarseCandidates.get(candidateIndex);
+                if (
+                    candidate == null ||
+                    !shouldInspectCandidate(
+                        candidate,
+                        candidateIndex,
+                        bestCoarseScore
+                    )
+                ) {
+                    continue;
+                }
+                DocumentDao.DocumentEmbeddingRow row = candidate.row;
+                SearchTextMatcher.Signals metadataSignals = SearchTextMatcher.analyze(
+                    normalizedQuery,
+                    queryTerms,
+                    row.name,
+                    row.relative_path,
+                    row.keywords
+                );
+                SearchTextMatcher.Signals contentSignals = SearchTextMatcher.analyze(
+                    normalizedQuery,
+                    queryTerms,
+                    row.summary,
+                    row.raw_text
+                );
+                boolean obviousTextMatch = candidate.obviousTextMatch;
+                boolean exactPhraseMatch = candidate.phraseScore >= 1f;
+                float metadataCoverage = candidate.metadataCoverage;
+                float embeddingScore = candidate.embeddingScore;
+                float filenameScore = candidate.filenameScore;
+                float phraseScore = candidate.phraseScore;
+                float keywordScore = SearchTextMatcher.fieldScore(
+                    row.keywords,
+                    queryTerms
+                );
+                float summaryScore = SearchTextMatcher.fieldScore(
+                    row.summary,
+                    queryTerms
+                );
+                float fullTextScore = SearchTextMatcher.fieldScore(
+                    row.raw_text,
+                    queryTerms
+                );
                 ChunkSearchSignals chunkSignals = computeChunkSignals(
                     chunksByDocumentId.get(row.id),
                     queryEmbedding,
@@ -323,7 +398,7 @@ public class DocumentRepository {
                     obviousTextMatch ||
                     chunkSignals.obviousTextMatch
                 ) {
-                    DocumentEntity doc = documentDao.getById(row.id);
+                    DocumentEntity doc = toDocumentEntity(row);
                     if (doc != null) {
                         int lexicalTier = computeLexicalTier(
                             queryTerms.length,
@@ -436,6 +511,49 @@ public class DocumentRepository {
         return filtered;
     }
 
+    private static float computeCoarseScore(
+        float embeddingScore,
+        float metadataCoverage,
+        float contentCoverage,
+        float filenameScore,
+        float phraseScore
+    ) {
+        return (
+            0.34f * embeddingScore +
+            0.24f * metadataCoverage +
+            0.20f * filenameScore +
+            0.12f * contentCoverage +
+            0.10f * phraseScore
+        );
+    }
+
+    private static boolean shouldInspectCandidate(
+        PreRankedDocument candidate,
+        int candidateIndex,
+        float bestCoarseScore
+    ) {
+        if (candidate == null) {
+            return false;
+        }
+        if (
+            candidate.phraseScore >= 1f ||
+            candidate.metadataCoverage >= 0.5f ||
+            candidate.filenameScore >= 0.5f
+        ) {
+            return true;
+        }
+        if (candidate.obviousTextMatch && candidate.coarseScore >= 0.2f) {
+            return true;
+        }
+        if (candidateIndex < MAX_CHUNK_RANKING_CANDIDATES) {
+            return candidate.coarseScore >= Math.max(
+                0.16f,
+                bestCoarseScore * 0.42f
+            );
+        }
+        return false;
+    }
+
     static List<RankedSearchResult> filterSemanticFallbackResults(
         List<RankedSearchResult> rankedResults
     ) {
@@ -445,6 +563,9 @@ public class DocumentRepository {
         }
 
         float bestScore = rankedResults.get(0).score;
+        if (bestScore < 0.24f) {
+            return filtered;
+        }
         for (RankedSearchResult ranked : rankedResults) {
             if (ranked == null) {
                 continue;
@@ -514,6 +635,25 @@ public class DocumentRepository {
         if (chunkEmbeddingCompare != 0) return chunkEmbeddingCompare;
 
         return Float.compare(b.docEmbedding, a.docEmbedding);
+    }
+
+    private DocumentEntity toDocumentEntity(DocumentDao.DocumentEmbeddingRow row) {
+        if (row == null || row.id <= 0L) {
+            return null;
+        }
+        DocumentEntity document = new DocumentEntity();
+        document.id = row.id;
+        document.name = row.name;
+        document.uri = row.uri;
+        document.relativePath = row.relative_path;
+        document.fileType = row.file_type;
+        document.wordCount = row.word_count;
+        document.category = row.category;
+        document.keywords = row.keywords;
+        document.summary = row.summary;
+        document.rawText = row.raw_text;
+        document.embedding = row.embedding;
+        return document;
     }
 
     private ChunkSearchSignals computeChunkSignals(
@@ -623,6 +763,38 @@ public class DocumentRepository {
         }
         float overage = (wordCount - 1600) / 2400f;
         return Math.max(0.52f, 1f / (1f + overage));
+    }
+
+    private static class PreRankedDocument {
+
+        final DocumentDao.DocumentEmbeddingRow row;
+        final float coarseScore;
+        final boolean obviousTextMatch;
+        final float metadataCoverage;
+        final float contentCoverage;
+        final float filenameScore;
+        final float phraseScore;
+        final float embeddingScore;
+
+        PreRankedDocument(
+            DocumentDao.DocumentEmbeddingRow row,
+            float coarseScore,
+            boolean obviousTextMatch,
+            float metadataCoverage,
+            float contentCoverage,
+            float filenameScore,
+            float phraseScore,
+            float embeddingScore
+        ) {
+            this.row = row;
+            this.coarseScore = coarseScore;
+            this.obviousTextMatch = obviousTextMatch;
+            this.metadataCoverage = metadataCoverage;
+            this.contentCoverage = contentCoverage;
+            this.filenameScore = filenameScore;
+            this.phraseScore = phraseScore;
+            this.embeddingScore = embeddingScore;
+        }
     }
 
     private float computeSemanticCoverageMultiplier(
