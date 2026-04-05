@@ -64,6 +64,8 @@ public class SettingsFragment extends Fragment {
     private boolean isAppIndexing = false;
     private List<FolderEntity> currentFolders = new ArrayList<>();
     private boolean foldersExpanded = false;
+    private boolean pendingIncludeAllAfterPermission = false;
+    private int lastLoadedIndexProgress = -1;
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -110,9 +112,13 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
                 if (StorageAccessHelper.hasAllFilesAccess()) {
+                    if (pendingIncludeAllAfterPermission) {
+                        pendingIncludeAllAfterPermission = false;
+                    }
                     homeViewModel.importDetectedPublicFolders();
                     return;
                 }
+                pendingIncludeAllAfterPermission = false;
                 View root = getView();
                 if (root != null) {
                     Snackbar.make(
@@ -284,6 +290,18 @@ public class SettingsFragment extends Fragment {
             .observe(getViewLifecycleOwner(), this::handleBackgroundIndexState);
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (
+            pendingIncludeAllAfterPermission &&
+            StorageAccessHelper.hasAllFilesAccess()
+        ) {
+            pendingIncludeAllAfterPermission = false;
+            homeViewModel.importDetectedPublicFolders();
+        }
+    }
+
     private void observeReadiness() {
         EkkoApp.getInstance()
             .getMlReadyState()
@@ -335,6 +353,7 @@ public class SettingsFragment extends Fragment {
             }
             return;
         }
+        pendingIncludeAllAfterPermission = true;
         allFilesAccessLauncher.launch(
             StorageAccessHelper.createManageAllFilesAccessIntent(
                 requireContext()
@@ -374,13 +393,13 @@ public class SettingsFragment extends Fragment {
         );
         txtFolderStats.setText(
             total +
-                " source" +
-                (total == 1 ? "" : "s") +
-                "  •  " +
-                (total - hidden) +
-                " included  •  " +
-                hidden +
-                " hidden"
+            " source" +
+            (total == 1 ? "" : "s") +
+            ", " +
+            (total - hidden) +
+            " included, " +
+            hidden +
+            " hidden"
         );
         applyFolderExpansionState();
         updateActionButtons(isAppIndexing);
@@ -437,7 +456,7 @@ public class SettingsFragment extends Fragment {
                 progressReindex.setMax(total);
                 progressReindex.setProgress(current);
                 txtReindexStage.setText(
-                    current + " of " + total + "  •  " + (docName == null ? "" : docName)
+                    current + " / " + total + " • " + (docName == null ? "" : docName)
                 );
             } else {
                 progressReindex.setIndeterminate(true);
@@ -445,11 +464,15 @@ public class SettingsFragment extends Fragment {
                     stage == null || stage.isEmpty() ? "Scanning folders..." : stage
                 );
             }
-            homeViewModel.loadDocuments();
+            if (current > 0 && current != lastLoadedIndexProgress) {
+                lastLoadedIndexProgress = current;
+                homeViewModel.loadDocuments();
+            }
         }
         updateActionButtons(running);
 
         if (finished && !running) {
+            lastLoadedIndexProgress = -1;
             homeViewModel.loadDocuments();
             if (getView() != null) {
                 Snackbar.make(
