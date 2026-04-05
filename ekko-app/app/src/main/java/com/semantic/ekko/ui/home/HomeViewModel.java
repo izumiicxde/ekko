@@ -153,12 +153,13 @@ public class HomeViewModel extends AndroidViewModel {
             folder,
             (folderId, alreadyExists) -> {
                 if (alreadyExists) {
-                    errorMessage.postValue(
-                        "This folder has already been added."
-                    );
-                    return;
+                    prefsManager.setFolderExcluded(folder.uri, false);
+                    enqueueBackgroundIndex(Collections.singletonList(folderId));
+                } else {
+                    prefsManager.setFolderExcluded(folder.uri, false);
+                    enqueueBackgroundIndex(Collections.singletonList(folderId));
                 }
-                enqueueBackgroundIndex(Collections.singletonList(folderId));
+                loadDocuments();
             }
         );
     }
@@ -170,26 +171,11 @@ public class HomeViewModel extends AndroidViewModel {
         }
 
         folderRepository.getAll(existingFolders -> {
-            Set<String> existingUris = new HashSet<>();
-            if (existingFolders != null) {
-                for (FolderEntity existingFolder : existingFolders) {
-                    if (
-                        existingFolder != null &&
-                        existingFolder.uri != null &&
-                        !existingFolder.uri.isEmpty()
-                    ) {
-                        existingUris.add(existingFolder.uri);
-                    }
-                }
-            }
-
             List<FolderEntity> folderEntities = new ArrayList<>();
             for (File folderFile : folderFiles) {
                 if (folderFile == null) continue;
                 String uri = Uri.fromFile(folderFile).toString();
-                if (!existingUris.contains(uri)) {
-                    prefsManager.setFolderExcluded(uri, false);
-                }
+                prefsManager.setFolderExcluded(uri, false);
                 folderEntities.add(
                     new FolderEntity(
                         uri,

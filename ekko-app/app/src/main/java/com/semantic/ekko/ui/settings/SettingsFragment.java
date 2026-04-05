@@ -356,18 +356,6 @@ public class SettingsFragment extends Fragment {
     }
 
     private void launchFolderImport() {
-        if (StorageAccessHelper.supportsAllFilesAccess()) {
-            if (StorageAccessHelper.hasAllFilesAccess()) {
-                homeViewModel.importDetectedPublicFolders();
-            } else if (getContext() != null) {
-                allFilesAccessLauncher.launch(
-                    StorageAccessHelper.createManageAllFilesAccessIntent(
-                        requireContext()
-                    )
-                );
-            }
-            return;
-        }
         folderPicker.launch(null);
     }
 
