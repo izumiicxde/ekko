@@ -21,6 +21,8 @@ public class PrefsManager {
     private static final String KEY_EXCLUDED_FOLDERS = "excluded_folders";
     private static final String KEY_PENDING_PUBLIC_IMPORT =
         "pending_public_import";
+    private static final String KEY_PENDING_INITIAL_INDEX =
+        "pending_initial_index";
 
     private final SharedPreferences prefs;
 
@@ -104,6 +106,14 @@ public class PrefsManager {
 
     public void setPublicImportPending(boolean pending) {
         prefs.edit().putBoolean(KEY_PENDING_PUBLIC_IMPORT, pending).apply();
+    }
+
+    public boolean isInitialIndexPending() {
+        return prefs.getBoolean(KEY_PENDING_INITIAL_INDEX, false);
+    }
+
+    public void setInitialIndexPending(boolean pending) {
+        prefs.edit().putBoolean(KEY_PENDING_INITIAL_INDEX, pending).apply();
     }
 
     // =========================

@@ -87,7 +87,7 @@ public class OnboardingActivity extends AppCompatActivity {
                     (id, alreadyExists) ->
                         runOnUiThread(() -> {
                             hasRequiredFolder = true;
-                            BackgroundIndexWorker.enqueueAll(this);
+                            prefsManager.setInitialIndexPending(true);
                             btnNext.setEnabled(true);
                             if (btnSecondaryAction != null) {
                                 btnSecondaryAction.setEnabled(true);

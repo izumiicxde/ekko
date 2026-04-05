@@ -200,18 +200,30 @@ public class BackgroundIndexWorker extends Worker {
                 entityExtractor.close();
                 return Result.success();
             }
-            if (
-                !prepareLatch.await(
+            boolean modelReady =
+                prepareLatch.await(
                     MODEL_PREPARE_TIMEOUT_SECONDS,
                     TimeUnit.SECONDS
-                )
-            ) {
-                entityExtractor.close();
-                return Result.retry();
-            }
-            if (!prepareSuccess[0]) {
-                entityExtractor.close();
-                return Result.retry();
+                ) && prepareSuccess[0];
+
+            if (!modelReady) {
+                setForegroundAsync(
+                    createForegroundInfo(
+                        "Indexing files",
+                        "Continuing without smart entity extraction",
+                        0,
+                        scanBundle.scanResult.documents.size(),
+                        false
+                    )
+                );
+                setProgressAsync(
+                    buildProgressData(
+                        "Indexing files",
+                        "Continuing without smart entity extraction",
+                        0,
+                        scanBundle.scanResult.documents.size()
+                    )
+                );
             }
 
             DocumentIndexer indexer = new DocumentIndexer(

@@ -150,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         maybeStartPendingPublicImport();
+        maybeStartPendingInitialIndex();
         refreshFolderAvailability();
         syncNavToCurrentTag();
     }
@@ -187,6 +188,14 @@ public class MainActivity extends AppCompatActivity {
             BackgroundIndexWorker.enqueueAll(this);
             prefsManager.setPublicImportPending(false);
         }
+    }
+
+    private void maybeStartPendingInitialIndex() {
+        if (prefsManager == null || !prefsManager.isInitialIndexPending()) {
+            return;
+        }
+        BackgroundIndexWorker.enqueueAll(this);
+        prefsManager.setInitialIndexPending(false);
     }
 
     private void applyWindowInsets() {
