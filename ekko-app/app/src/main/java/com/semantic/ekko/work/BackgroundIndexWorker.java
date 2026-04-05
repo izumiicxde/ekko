@@ -54,7 +54,7 @@ public class BackgroundIndexWorker extends Worker {
     private static final String CHANNEL_ID = "ekko_indexing";
     private static final int NOTIFICATION_ID = 4102;
     private static final int COMPLETE_NOTIFICATION_ID = 4103;
-    private static final long MODEL_PREPARE_TIMEOUT_SECONDS = 20L;
+    private static final long MODEL_PREPARE_TIMEOUT_SECONDS = 10L;
 
     public BackgroundIndexWorker(
         @NonNull Context context,
@@ -116,14 +116,14 @@ public class BackgroundIndexWorker extends Worker {
 
         setForegroundAsync(
             createForegroundInfo(
-                "Preparing indexing",
-                "Getting files ready",
+                "Starting indexing",
+                "Checking your folders",
                 0,
                 0,
                 false
             )
         );
-        setProgressAsync(buildProgressData("Preparing indexing", "", 0, 0));
+        setProgressAsync(buildProgressData("Starting indexing", "", 0, 0));
 
         AppDatabase database = AppDatabase.getInstance(getApplicationContext());
         FolderDao folderDao = database.folderDao();
@@ -150,9 +150,46 @@ public class BackgroundIndexWorker extends Worker {
             return Result.success();
         }
 
+        setForegroundAsync(
+            createForegroundInfo(
+                "Preparing smart indexing",
+                scanBundle.scanResult.documents.size() +
+                (scanBundle.scanResult.documents.size() == 1 ? " file ready" : " files ready"),
+                0,
+                scanBundle.scanResult.documents.size(),
+                false
+            )
+        );
+        setProgressAsync(
+            buildProgressData(
+                "Preparing smart indexing",
+                scanBundle.scanResult.documents.size() +
+                (scanBundle.scanResult.documents.size() == 1 ? " file found" : " files found"),
+                0,
+                scanBundle.scanResult.documents.size()
+            )
+        );
+
         EntityExtractorHelper entityExtractor = new EntityExtractorHelper();
         CountDownLatch prepareLatch = new CountDownLatch(1);
         final boolean[] prepareSuccess = { false };
+        setForegroundAsync(
+            createForegroundInfo(
+                "Loading smart indexing tools",
+                "This only takes longer when models are cold.",
+                0,
+                scanBundle.scanResult.documents.size(),
+                false
+            )
+        );
+        setProgressAsync(
+            buildProgressData(
+                "Loading smart indexing tools",
+                "",
+                0,
+                scanBundle.scanResult.documents.size()
+            )
+        );
         entityExtractor.prepareModel(success -> {
             prepareSuccess[0] = success;
             prepareLatch.countDown();

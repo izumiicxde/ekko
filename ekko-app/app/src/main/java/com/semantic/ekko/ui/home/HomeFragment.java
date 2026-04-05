@@ -35,8 +35,10 @@ import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.StorageAccessHelper;
 import com.semantic.ekko.work.BackgroundIndexWorker;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
@@ -52,6 +54,7 @@ public class HomeFragment extends Fragment {
     private TextView txtIndexingStage;
     private TextView txtIndexingDoc;
     private TextView txtIndexingMeta;
+    private TextView txtIndexingRecent;
     private TextView txtDocCount;
     private TextView txtDocMeta;
     private TextView txtFolderPath;
@@ -70,6 +73,8 @@ public class HomeFragment extends Fragment {
     private int latestIndexCurrent = 0;
     private int latestIndexTotal = 0;
     private boolean hasDeterminateIndexingProgress = false;
+    private List<DocumentEntity> latestVisibleDocs = new ArrayList<>();
+    private Map<Long, String> latestFolderNames = Collections.emptyMap();
 
     private final ActivityResultLauncher<Uri> folderPicker =
         registerForActivityResult(
@@ -200,6 +205,7 @@ public class HomeFragment extends Fragment {
         txtIndexingStage = view.findViewById(R.id.txtIndexingStage);
         txtIndexingDoc = view.findViewById(R.id.txtIndexingDoc);
         txtIndexingMeta = view.findViewById(R.id.txtIndexingMeta);
+        txtIndexingRecent = view.findViewById(R.id.txtIndexingRecent);
         txtDocCount = view.findViewById(R.id.txtDocCount);
         txtDocMeta = view.findViewById(R.id.txtDocMeta);
         txtFolderPath = view.findViewById(R.id.txtFolderPath);
@@ -240,15 +246,27 @@ public class HomeFragment extends Fragment {
             .observe(getViewLifecycleOwner(), docs -> {
                 List<DocumentEntity> safeDocs =
                     docs == null ? new ArrayList<>() : docs;
+                latestVisibleDocs = new ArrayList<>(safeDocs);
                 adapter.submitDocuments(safeDocs);
                 updateEmptyState(safeDocs);
                 updateDocCount(safeDocs.size());
                 buildFilterChips(safeDocs);
+                if (isAppIndexing) {
+                    renderIndexingState();
+                }
             });
 
         viewModel
             .getFolderNames()
-            .observe(getViewLifecycleOwner(), adapter::submitFolderNames);
+            .observe(getViewLifecycleOwner(), folderNames -> {
+                latestFolderNames = folderNames == null
+                    ? Collections.emptyMap()
+                    : folderNames;
+                adapter.submitFolderNames(latestFolderNames);
+                if (isAppIndexing) {
+                    renderIndexingState();
+                }
+            });
 
         viewModel
             .getErrorMessage()
@@ -561,6 +579,7 @@ public class HomeFragment extends Fragment {
             txtIndexingStage.setText("");
             txtIndexingDoc.setText("");
             txtIndexingMeta.setText("");
+            txtIndexingRecent.setText("");
             return;
         }
         renderIndexingState();
@@ -595,11 +614,12 @@ public class HomeFragment extends Fragment {
             txtIndexingDoc.setText(
                 percent + "%  •  " + latestIndexCurrent + " / " + latestIndexTotal
             );
+            txtIndexingRecent.setText(buildRecentIndexedLabel());
             return;
         }
         progressIndexing.setIndeterminate(true);
         txtIndexingStage.setText(
-            latestIndexingStage.isEmpty() ? "Preparing index..." : latestIndexingStage
+            latestIndexingStage.isEmpty() ? "Indexing library" : latestIndexingStage
         );
         txtIndexingMeta.setText(
             latestIndexingDoc.isEmpty()
@@ -607,6 +627,36 @@ public class HomeFragment extends Fragment {
                 : latestIndexingDoc
         );
         txtIndexingDoc.setText("Live");
+        txtIndexingRecent.setText(buildRecentIndexedLabel());
+    }
+
+    private String buildRecentIndexedLabel() {
+        if (latestVisibleDocs == null || latestVisibleDocs.isEmpty()) {
+            return "Indexed so far\nStill building your library…";
+        }
+
+        StringBuilder builder = new StringBuilder("Indexed so far");
+        int limit = Math.min(3, latestVisibleDocs.size());
+        for (int i = 0; i < limit; i++) {
+            DocumentEntity doc = latestVisibleDocs.get(i);
+            if (doc == null) {
+                continue;
+            }
+            builder.append("\n").append(formatIndexedDocLabel(doc));
+        }
+        return builder.toString();
+    }
+
+    private String formatIndexedDocLabel(DocumentEntity doc) {
+        String folderName = latestFolderNames.get(doc.folderId);
+        String relativePath = doc.relativePath == null ? "" : doc.relativePath.trim();
+        if (relativePath.isEmpty()) {
+            relativePath = doc.name == null ? "Untitled" : doc.name;
+        }
+        if (folderName == null || folderName.trim().isEmpty()) {
+            return relativePath;
+        }
+        return folderName + " / " + relativePath;
     }
 
     private void requestIndexingNotificationsIfNeeded() {

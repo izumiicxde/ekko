@@ -247,7 +247,6 @@
         android:layout_marginEnd="18dp"
         android:layout_marginBottom="22dp"
         android:background="@drawable/bg_indexing_float"
-        android:elevation="8dp"
         android:orientation="vertical"
         android:paddingStart="18dp"
         android:paddingTop="15dp"
@@ -338,6 +337,19 @@
                 app:indicatorColor="?attr/colorPrimary"
                 app:trackColor="?attr/colorOutline"
                 app:trackCornerRadius="3dp"
+            />
+
+            <TextView
+                android:id="@+id/txtIndexingRecent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:lineSpacingExtra="2dp"
+                android:maxLines="3"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp"
+                tools:text="Indexed so far\nDownloads / ml_notes.pdf\nAI / week4-summary.txt"
             />
         </LinearLayout>
     </LinearLayout>
