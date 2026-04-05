@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import androidx.core.widget.NestedScrollView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -46,6 +47,7 @@ public class HomeFragment extends Fragment {
 
     private HomeViewModel viewModel;
     private DocumentAdapter adapter;
+    private NestedScrollView scrollHomeContent;
 
     private RecyclerView recyclerDocuments;
     private View layoutIndexingProgress;
@@ -74,6 +76,7 @@ public class HomeFragment extends Fragment {
     private int latestIndexTotal = 0;
     private boolean hasDeterminateIndexingProgress = false;
     private int lastLoadedIndexProgress = -1;
+    private int scrollBaseBottomPadding = 0;
     private List<DocumentEntity> latestVisibleDocs = new ArrayList<>();
     private Map<Long, String> latestFolderNames = Collections.emptyMap();
 
@@ -199,6 +202,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void bindViews(View view) {
+        scrollHomeContent = view.findViewById(R.id.scrollHomeContent);
         recyclerDocuments = view.findViewById(R.id.recyclerDocuments);
         layoutIndexingProgress = view.findViewById(R.id.layoutIndexingProgress);
         layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
@@ -215,6 +219,9 @@ public class HomeFragment extends Fragment {
         btnEmptyAddFolder = view.findViewById(R.id.btnEmptyAddFolder);
         btnEmptyOpenSettings = view.findViewById(R.id.btnEmptyOpenSettings);
         txtEmptySubtitle = view.findViewById(R.id.txtEmptySubtitle);
+        if (scrollHomeContent != null) {
+            scrollBaseBottomPadding = scrollHomeContent.getPaddingBottom();
+        }
     }
 
     private void setupRecycler() {
@@ -569,6 +576,7 @@ public class HomeFragment extends Fragment {
     private void updateIndexingUi() {
         boolean showBanner = isAppIndexing;
         layoutIndexingProgress.setVisibility(showBanner ? View.VISIBLE : View.GONE);
+        updateContentBottomInset(showBanner);
         if (!showBanner) {
             latestIndexingStage = "";
             latestIndexingDoc = "";
@@ -585,6 +593,34 @@ public class HomeFragment extends Fragment {
             return;
         }
         renderIndexingState();
+    }
+
+    private void updateContentBottomInset(boolean showBanner) {
+        if (scrollHomeContent == null) {
+            return;
+        }
+        if (!showBanner) {
+            scrollHomeContent.setPadding(
+                scrollHomeContent.getPaddingLeft(),
+                scrollHomeContent.getPaddingTop(),
+                scrollHomeContent.getPaddingRight(),
+                scrollBaseBottomPadding
+            );
+            return;
+        }
+
+        layoutIndexingProgress.post(() -> {
+            if (!isAdded() || scrollHomeContent == null) {
+                return;
+            }
+            int extraBottom = layoutIndexingProgress.getHeight() + dpToPx(20);
+            scrollHomeContent.setPadding(
+                scrollHomeContent.getPaddingLeft(),
+                scrollHomeContent.getPaddingTop(),
+                scrollHomeContent.getPaddingRight(),
+                scrollBaseBottomPadding + extraBottom
+            );
+        });
     }
 
     private void renderIndexingState() {
@@ -659,6 +695,10 @@ public class HomeFragment extends Fragment {
             return relativePath;
         }
         return folderName + " / " + relativePath;
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private void requestIndexingNotificationsIfNeeded() {
