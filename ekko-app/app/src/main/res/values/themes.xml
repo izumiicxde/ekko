@@ -47,7 +47,7 @@
     <style name="Theme.Ekko.Splash" parent="Theme.SplashScreen">
         <item
             name="windowSplashScreenAnimatedIcon"
-        >@drawable/ic_splash_mark</item>
+        >@drawable/ic_launcher_foreground_circle</item>
         <item
             name="windowSplashScreenBackground"
         >@color/ekko_splash_background</item>

@@ -50,6 +50,7 @@ public class DetailViewModel extends AndroidViewModel {
     }
 
     public void generateAiSummary() {
+        ensureRagRepository();
         if (ragRepository == null) {
             errorMessage.postValue(UserFacingMessages.SUMMARY_UNAVAILABLE);
             return;
@@ -89,6 +90,19 @@ public class DetailViewModel extends AndroidViewModel {
                 }
             }
         );
+    }
+
+    private void ensureRagRepository() {
+        if (ragRepository != null) {
+            return;
+        }
+        EkkoApp app = EkkoApp.getInstance();
+        if (app.isMlReady() && app.getEmbeddingEngine() != null) {
+            ragRepository = new RagRepository(
+                getApplication(),
+                app.getEmbeddingEngine()
+            );
+        }
     }
 
     public LiveData<DocumentEntity> getDocument() {

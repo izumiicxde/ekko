@@ -185,6 +185,7 @@ public class QAViewModel extends AndroidViewModel {
     public void ask(String question) {
         if (question == null || question.trim().isEmpty()) return;
         EkkoApp.getInstance().refreshBackendHealthAsync(true);
+        ensureRagRepository();
 
         if (ragRepository == null) {
             QAMessage err = new QAMessage(
@@ -342,6 +343,19 @@ public class QAViewModel extends AndroidViewModel {
             );
         } else {
             ragRepository.queryStream(cleanedQuestion, callback);
+        }
+    }
+
+    private void ensureRagRepository() {
+        if (ragRepository != null) {
+            return;
+        }
+        EkkoApp app = EkkoApp.getInstance();
+        if (app.isMlReady() && app.getEmbeddingEngine() != null) {
+            ragRepository = new RagRepository(
+                getApplication(),
+                app.getEmbeddingEngine()
+            );
         }
     }
 

@@ -367,6 +367,41 @@ public class RagRepository {
         return new SelectionResult(selected, docName, docScore);
     }
 
+    private SelectionResult buildFullDocumentSelection(long documentId) {
+        DocumentEntity doc = documentDao.getById(documentId);
+        if (doc == null) {
+            return null;
+        }
+
+        List<ChunkEntity> docChunks = chunkDao.getByDocumentId(documentId);
+        List<String> orderedChunks = new ArrayList<>();
+        if (docChunks != null) {
+            for (ChunkEntity chunk : docChunks) {
+                if (chunk == null || chunk.chunkText == null) {
+                    continue;
+                }
+                String chunkText = chunk.chunkText.trim();
+                if (!chunkText.isEmpty()) {
+                    orderedChunks.add(chunkText);
+                }
+            }
+        }
+
+        if (orderedChunks.isEmpty() && doc.rawText != null) {
+            String rawText = doc.rawText.trim();
+            if (!rawText.isEmpty()) {
+                orderedChunks.add(rawText);
+            }
+        }
+
+        if (orderedChunks.isEmpty()) {
+            return null;
+        }
+
+        String docName = doc.name != null ? doc.name : "Document";
+        return new SelectionResult(orderedChunks, docName, 1f);
+    }
+
     private float computeChunkOpportunityPenalty(int chunkCount) {
         int extraChunks = Math.max(0, chunkCount - 6);
         return 1f / (1f + (extraChunks * 0.035f));
@@ -401,11 +436,17 @@ public class RagRepository {
             callback.onError("Question cannot be empty.");
             return;
         }
+        if (streamingClient == null) {
+            callback.onError(
+                "Q&A is not ready yet. Please try again in a moment."
+            );
+            return;
+        }
         if (
-            embeddingEngine == null ||
-            streamingClient == null ||
-            RagClient.getBaseUrl() == null ||
-            RagClient.getBaseUrl().isEmpty()
+            documentId <= 0 &&
+            (embeddingEngine == null ||
+                RagClient.getBaseUrl() == null ||
+                RagClient.getBaseUrl().isEmpty())
         ) {
             callback.onError(
                 "Q&A is not ready yet. Please try again in a moment."
@@ -415,16 +456,21 @@ public class RagRepository {
 
         new Thread(() -> {
             try {
-                float[] queryEmbedding = embeddingEngine.embed(question.trim());
-                if (queryEmbedding == null) {
-                    callback.onError("Could not process your question.");
-                    return;
-                }
-
                 SelectionResult selection =
                     documentId > 0
-                        ? selectChunksForDocument(queryEmbedding, documentId)
-                        : selectChunks(queryEmbedding);
+                        ? buildFullDocumentSelection(documentId)
+                        : null;
+
+                if (documentId <= 0) {
+                    float[] queryEmbedding = embeddingEngine.embed(
+                        question.trim()
+                    );
+                    if (queryEmbedding == null) {
+                        callback.onError("Could not process your question.");
+                        return;
+                    }
+                    selection = selectChunks(queryEmbedding);
+                }
 
                 if (selection == null) {
                     callback.onError(
@@ -457,47 +503,68 @@ public class RagRepository {
                     MediaType.parse("application/json; charset=utf-8"),
                     body.toString()
                 );
-
-                Request request = new Request.Builder()
-                    .url(baseUrl + "rag/stream")
-                    .post(requestBody)
-                    .build();
-
-                Call call = streamingClient.newCall(request);
-                activeCall = call;
-
-                try (Response response = call.execute()) {
-                    if (!response.isSuccessful() || response.body() == null) {
-                        callback.onError(GENERIC_QA_UNAVAILABLE);
-                        return;
-                    }
-                    BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(response.body().byteStream())
-                    );
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (Thread.currentThread().isInterrupted()) break;
-                        if (line.trim().isEmpty()) continue;
-                        try {
-                            JSONObject json = new JSONObject(line);
-                            if (json.has("token")) {
-                                callback.onToken(json.getString("token"));
-                            } else if (
-                                json.has("done") && json.getBoolean("done")
-                            ) {
-                                callback.onComplete(selection.sourceDocName);
-                                break;
-                            } else if (json.has("error")) {
-                                callback.onError(GENERIC_QA_UNAVAILABLE);
-                                break;
-                            }
-                        } catch (Exception ignored) {}
-                    }
-                } catch (Exception e) {
-                    if (!call.isCanceled()) throw e;
-                } finally {
-                    activeCall = null;
+                List<String> candidateBaseUrls = new ArrayList<>(
+                    RagClient.getCandidateBaseUrls()
+                );
+                if (
+                    baseUrl != null &&
+                    !baseUrl.isEmpty() &&
+                    !candidateBaseUrls.contains(baseUrl)
+                ) {
+                    candidateBaseUrls.add(0, baseUrl);
                 }
+
+                for (String candidateBaseUrl : candidateBaseUrls) {
+                    Request request = new Request.Builder()
+                        .url(candidateBaseUrl + "rag/stream")
+                        .post(requestBody)
+                        .build();
+
+                    Call call = streamingClient.newCall(request);
+                    activeCall = call;
+
+                    try (Response response = call.execute()) {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            continue;
+                        }
+                        RagClient.setActiveBaseUrl(candidateBaseUrl);
+                        BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(response.body().byteStream())
+                        );
+                        String line;
+                        boolean receivedToken = false;
+                        while ((line = reader.readLine()) != null) {
+                            if (Thread.currentThread().isInterrupted()) break;
+                            if (line.trim().isEmpty()) continue;
+                            try {
+                                JSONObject json = new JSONObject(line);
+                                if (json.has("token")) {
+                                    receivedToken = true;
+                                    callback.onToken(json.getString("token"));
+                                } else if (
+                                    json.has("done") && json.getBoolean("done")
+                                ) {
+                                    callback.onComplete(selection.sourceDocName);
+                                    return;
+                                } else if (json.has("error")) {
+                                    callback.onError(GENERIC_QA_UNAVAILABLE);
+                                    return;
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        if (receivedToken) {
+                            callback.onComplete(selection.sourceDocName);
+                            return;
+                        }
+                    } catch (Exception e) {
+                        if (call.isCanceled()) {
+                            return;
+                        }
+                    } finally {
+                        activeCall = null;
+                    }
+                }
+                callback.onError(GENERIC_QA_UNAVAILABLE);
             } catch (Exception e) {
                 callback.onError(GENERIC_QA_UNAVAILABLE);
             }
@@ -518,7 +585,7 @@ public class RagRepository {
             callback.onError("Question cannot be empty.");
             return;
         }
-        if (embeddingEngine == null) {
+        if (RagClient.getBaseUrl() == null || RagClient.getBaseUrl().isEmpty()) {
             callback.onError(
                 "Q&A is not ready yet. Please try again in a moment."
             );
@@ -526,14 +593,7 @@ public class RagRepository {
         }
         new Thread(() -> {
             try {
-                float[] emb = embeddingEngine.embed(question.trim());
-                if (emb == null) {
-                    callback.onError("Could not process your question.");
-                    return;
-                }
-
-                SelectionResult selection = selectChunksForDocument(
-                    emb,
+                SelectionResult selection = buildFullDocumentSelection(
                     documentId
                 );
                 if (selection == null) {

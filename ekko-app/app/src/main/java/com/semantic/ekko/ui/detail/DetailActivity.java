@@ -6,7 +6,10 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.text.Layout;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
@@ -677,6 +680,11 @@ public class DetailActivity extends AppCompatActivity {
         }
         txtSummary.setMaxLines(summaryExpanded ? Integer.MAX_VALUE : 7);
         txtSummary.setEllipsize(summaryExpanded ? null : android.text.TextUtils.TruncateAt.END);
+        txtSummary.setGravity(Gravity.START);
+        txtSummary.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            txtSummary.setJustificationMode(Layout.JUSTIFICATION_MODE_INTER_WORD);
+        }
         try {
             markwon.setMarkdown(txtSummary, text);
         } catch (Exception ignored) {

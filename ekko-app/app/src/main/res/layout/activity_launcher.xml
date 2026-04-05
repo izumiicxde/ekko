@@ -43,7 +43,7 @@
                 android:layout_height="68dp"
                 android:layout_gravity="center"
                 android:contentDescription="@string/app_name"
-                android:src="@drawable/ic_splash_mark" />
+                android:src="@drawable/ic_launcher_foreground_circle" />
         </FrameLayout>
 
         <TextView
