@@ -39,6 +39,8 @@ public class RagRepository {
     private static final int TOP_DOCS = 2;
     private static final int CHUNKS_PER_DOC = 5;
     private static final int SCORE_TOP_N = 3;
+    private static final int MAX_DOC_SHORTLIST = 6;
+    private static final float MIN_DOC_SHORTLIST_SCORE = 0.18f;
     private static final String GENERIC_QA_UNAVAILABLE =
         "The assistant is temporarily unavailable. Please try again in a moment.";
     private static final String GENERIC_SUMMARY_UNAVAILABLE =
@@ -135,6 +137,17 @@ public class RagRepository {
         }
     }
 
+    private static class CandidateDoc {
+
+        final DocumentEntity document;
+        final float score;
+
+        CandidateDoc(DocumentEntity document, float score) {
+            this.document = document;
+            this.score = score;
+        }
+    }
+
     private static class SelectionResult {
 
         final List<String> chunks;
@@ -206,9 +219,6 @@ public class RagRepository {
     // =========================
 
     private SelectionResult selectChunks(float[] queryEmbedding) {
-        List<ChunkEntity> allChunks = chunkDao.getAll();
-        if (allChunks == null || allChunks.isEmpty()) return null;
-
         Set<String> excludedUris = prefsManager.getExcludedFolderUris();
         Set<Long> excludedFolderIds = new HashSet<>();
         List<FolderEntity> folders = folderDao.getAll();
@@ -220,40 +230,78 @@ public class RagRepository {
             }
         }
 
-        Map<Long, List<ChunkEntity>> chunksByDoc = new HashMap<>();
-        for (ChunkEntity chunk : allChunks) {
-            if (chunk == null) {
-                continue;
-            }
-            if (!chunksByDoc.containsKey(chunk.documentId)) chunksByDoc.put(
-                chunk.documentId,
-                new ArrayList<>()
-            );
-            chunksByDoc.get(chunk.documentId).add(chunk);
-        }
-
         List<DocumentEntity> allDocs = documentDao.getAll();
-        Map<Long, String> docNames = new HashMap<>();
+        Map<Long, DocumentEntity> docsById = new HashMap<>();
         if (allDocs != null) {
             for (DocumentEntity doc : allDocs) {
-                if (doc != null) {
-                    docNames.put(doc.id, doc.name);
+                if (
+                    doc != null && !excludedFolderIds.contains(doc.folderId)
+                ) {
+                    docsById.put(doc.id, doc);
                 }
             }
         }
+        if (docsById.isEmpty()) return null;
 
-        List<ScoredDoc> scoredDocs = new ArrayList<>();
-        for (Map.Entry<
-            Long,
-            List<ChunkEntity>
-        > entry : chunksByDoc.entrySet()) {
-            long docId = entry.getKey();
-            List<ChunkEntity> docChunks = entry.getValue();
-            DocumentEntity doc = documentDao.getById(docId);
-            if (doc == null || excludedFolderIds.contains(doc.folderId)) {
+        List<DocumentDao.DocumentEmbeddingRow> embeddedDocs =
+            documentDao.getAllEmbeddings();
+        if (embeddedDocs == null || embeddedDocs.isEmpty()) return null;
+
+        List<CandidateDoc> candidates = new ArrayList<>();
+        for (DocumentDao.DocumentEmbeddingRow row : embeddedDocs) {
+            DocumentEntity doc = docsById.get(row.id);
+            if (doc == null || row.embedding == null) {
                 continue;
             }
-            String docName = docNames.getOrDefault(docId, "Unknown");
+            float[] docEmbedding = EmbeddingEngine.fromBytes(row.embedding);
+            if (docEmbedding == null) {
+                continue;
+            }
+            float score = EmbeddingEngine.cosineSimilarity(
+                queryEmbedding,
+                docEmbedding
+            );
+            candidates.add(new CandidateDoc(doc, score));
+        }
+        if (candidates.isEmpty()) return null;
+
+        Collections.sort(candidates, (a, b) -> Float.compare(b.score, a.score));
+        float bestDocScore = candidates.get(0).score;
+        List<CandidateDoc> shortlistedDocs = new ArrayList<>();
+        for (int i = 0; i < candidates.size(); i++) {
+            CandidateDoc candidate = candidates.get(i);
+            if (candidate == null) {
+                continue;
+            }
+            if (
+                i >= MAX_DOC_SHORTLIST &&
+                candidate.score < Math.max(
+                    MIN_DOC_SHORTLIST_SCORE,
+                    bestDocScore * 0.7f
+                )
+            ) {
+                break;
+            }
+            shortlistedDocs.add(candidate);
+            if (shortlistedDocs.size() >= MAX_DOC_SHORTLIST) {
+                break;
+            }
+        }
+        if (shortlistedDocs.isEmpty()) return null;
+
+        List<ScoredDoc> scoredDocs = new ArrayList<>();
+        for (CandidateDoc candidate : shortlistedDocs) {
+            if (candidate == null || candidate.document == null) {
+                continue;
+            }
+            long docId = candidate.document.id;
+            List<ChunkEntity> docChunks = chunkDao.getByDocumentId(docId);
+            if (docChunks == null || docChunks.isEmpty()) {
+                continue;
+            }
+            String docName = candidate.document.name != null
+                ? candidate.document.name
+                : "Unknown";
 
             List<ScoredChunk> scored = new ArrayList<>();
             for (ChunkEntity chunk : docChunks) {
@@ -496,6 +544,10 @@ public class RagRepository {
                 body.put("question", question.trim());
                 body.put("document_name", selection.sourceDocName);
                 body.put("allow_general_knowledge", documentId > 0);
+                body.put(
+                    "answer_style",
+                    inferAnswerStyle(question)
+                );
                 JSONArray arr = new JSONArray();
                 for (String chunk : selection.chunks) arr.put(chunk);
                 body.put("chunks", arr);
@@ -608,7 +660,8 @@ public class RagRepository {
                     question.trim(),
                     selection.chunks,
                     selection.sourceDocName,
-                    true
+                    true,
+                    inferAnswerStyle(question)
                 );
                 final String src = selection.sourceDocName;
                 RagApiService apiService = RagClient.getInstance();
@@ -801,7 +854,8 @@ public class RagRepository {
                     question.trim(),
                     selection.chunks,
                     selection.sourceDocName,
-                    false
+                    false,
+                    inferAnswerStyle(question)
                 );
                 final String src = selection.sourceDocName;
                 RagApiService apiService = RagClient.getInstance();
@@ -841,5 +895,34 @@ public class RagRepository {
             }
         })
             .start();
+    }
+
+    private String inferAnswerStyle(String question) {
+        if (question == null) {
+            return "default";
+        }
+        String normalized = question.trim().toLowerCase();
+        String[] briefMarkers = {
+            "short answer",
+            "brief answer",
+            "concise answer",
+            "briefly",
+            "in short",
+            "keep it short",
+            "keep it brief",
+            "one line",
+            "one-line",
+            "one sentence",
+            "two sentences",
+            "few words",
+            "tldr",
+            "tl;dr",
+        };
+        for (String marker : briefMarkers) {
+            if (normalized.contains(marker)) {
+                return "brief";
+            }
+        }
+        return "default";
     }
 }

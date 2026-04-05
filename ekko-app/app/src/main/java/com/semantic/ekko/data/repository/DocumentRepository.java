@@ -192,9 +192,7 @@ public class DocumentRepository {
         executor.execute(() -> {
             List<DocumentDao.DocumentEmbeddingRow> rows =
                 documentDao.getAllEmbeddings();
-            Map<Long, List<ChunkEntity>> chunksByDocumentId = groupChunksByDocumentId(
-                chunkDao.getAll()
-            );
+            Map<Long, List<ChunkEntity>> chunkCache = new HashMap<>();
             List<RankedSearchResult> rankedResults = new ArrayList<>();
             List<PreRankedDocument> coarseCandidates = new ArrayList<>();
 
@@ -322,8 +320,12 @@ public class DocumentRepository {
                     row.raw_text,
                     queryTerms
                 );
+                List<ChunkEntity> candidateChunks = getChunksForDocument(
+                    row.id,
+                    chunkCache
+                );
                 ChunkSearchSignals chunkSignals = computeChunkSignals(
-                    chunksByDocumentId.get(row.id),
+                    candidateChunks,
                     queryEmbedding,
                     normalizedQuery,
                     queryTerms
@@ -728,25 +730,21 @@ public class DocumentRepository {
         );
     }
 
-    private Map<Long, List<ChunkEntity>> groupChunksByDocumentId(
-        List<ChunkEntity> chunks
+    private List<ChunkEntity> getChunksForDocument(
+        long documentId,
+        Map<Long, List<ChunkEntity>> chunkCache
     ) {
-        Map<Long, List<ChunkEntity>> grouped = new HashMap<>();
-        if (chunks == null || chunks.isEmpty()) {
-            return grouped;
+        List<ChunkEntity> cached = chunkCache.get(documentId);
+        if (cached != null) {
+            return cached;
         }
-        for (ChunkEntity chunk : chunks) {
-            if (chunk == null) {
-                continue;
-            }
-            List<ChunkEntity> bucket = grouped.get(chunk.documentId);
-            if (bucket == null) {
-                bucket = new ArrayList<>();
-                grouped.put(chunk.documentId, bucket);
-            }
-            bucket.add(chunk);
+
+        List<ChunkEntity> loaded = chunkDao.getByDocumentId(documentId);
+        if (loaded == null) {
+            loaded = Collections.emptyList();
         }
-        return grouped;
+        chunkCache.put(documentId, loaded);
+        return loaded;
     }
 
     private float computeChunkOpportunityPenalty(int chunkCount) {

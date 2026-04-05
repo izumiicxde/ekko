@@ -110,6 +110,7 @@ class RAGRequest(BaseModel):
     chunks: list[str]
     document_name: str = ""
     allow_general_knowledge: bool = False
+    answer_style: str = ""
 
 
 class RAGResponse(BaseModel):
@@ -184,11 +185,55 @@ def normalize_chunks(chunks: list[str]) -> list[str]:
     return [chunk.strip() for chunk in chunks if chunk and chunk.strip()]
 
 
+def infer_answer_style(question: str, explicit_style: str) -> str:
+    style = (explicit_style or "").strip().lower()
+    if style in {"brief", "short", "concise"}:
+        return "brief"
+
+    normalized = (question or "").strip().lower()
+    brief_markers = (
+        "short answer",
+        "brief answer",
+        "concise answer",
+        "in short",
+        "briefly",
+        "be brief",
+        "keep it short",
+        "keep it brief",
+        "one line",
+        "one-line",
+        "one sentence",
+        "two sentences",
+        "few words",
+        "tldr",
+        "tl;dr",
+    )
+    return "brief" if any(marker in normalized for marker in brief_markers) else "default"
+
+
+def build_length_guidance(answer_style: str) -> str:
+    if answer_style == "brief":
+        return (
+            "Length guidance:\n"
+            "- The user asked for a short answer\n"
+            "- Respond in 1-3 short sentences unless the user explicitly asks for a list\n"
+            "- Do not add headings or extra sections\n"
+            "- Skip filler, preambles, and repetition\n\n"
+        )
+    return (
+        "Length guidance:\n"
+        "- Match the user's requested length and style exactly\n"
+        "- If the user asks for a short or brief answer, keep it tight instead of expanding\n"
+        "- Use headings or bullets only when they genuinely improve clarity\n\n"
+    )
+
+
 def build_prompt(
     question: str,
     chunks: list[str],
     document_name: str,
     allow_general_knowledge: bool,
+    answer_style: str,
 ) -> str:
     context = "\n\n".join(chunks)
     doc_ref = f' from "{document_name}"' if document_name else ""
@@ -196,11 +241,13 @@ def build_prompt(
     return (
         f"Below is context{doc_ref}.\n\n"
         f"{context_label}:\n{context}\n\n"
+        f"{build_length_guidance(answer_style)}"
         f"QUESTION: {question}\n\n"
-        f"Format your answer using markdown:\n"
-        f"- Use **bold** for key terms\n"
-        f"- Use bullet points or numbered lists for multiple items\n"
-        f"- Use ## or ### headings to separate major sections\n"
+        f"Formatting guidance:\n"
+        f"- Use markdown only when it improves readability\n"
+        f"- Use **bold** only for genuinely important terms\n"
+        f"- Use bullet points or numbered lists only for multiple distinct items\n"
+        f"- Use headings only for longer answers with clear sections\n"
         f"- Use `code blocks` only for actual code or commands\n"
         f"- Do NOT wrap your entire answer in a code block\n\n"
         f"ANSWER:"
@@ -227,7 +274,7 @@ def build_summary_prompt(context: str, document_name: str) -> str:
 async def prepare_rag_request(
     request: RAGRequest,
     client: httpx.AsyncClient,
-) -> tuple[bool, list[str], str]:
+) -> tuple[bool, list[str], str, str]:
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
@@ -239,21 +286,29 @@ async def prepare_rag_request(
     if not request.allow_general_knowledge:
         if not has_keyword_match(question, chunks):
             logger.info("Keyword rejected: '%s'", question)
-            return False, chunks, ""
+            return False, chunks, "", "default"
 
         context = "\n\n".join(chunks)
         relevant = await is_relevant(question, context, client)
         if not relevant:
             logger.info("Model rejected as irrelevant: '%s'", question)
-            return False, chunks, ""
+            return False, chunks, "", "default"
 
+    answer_style = infer_answer_style(question, request.answer_style)
     prompt = build_prompt(
         question,
         chunks,
         request.document_name,
         request.allow_general_knowledge,
+        answer_style,
     )
-    return True, chunks, prompt
+    return True, chunks, prompt, answer_style
+
+
+def build_generation_options(answer_style: str) -> dict:
+    options = dict(OLLAMA_OPTIONS)
+    options["num_predict"] = 120 if answer_style == "brief" else 384
+    return options
 
 
 def not_found_response() -> RAGResponse:
@@ -277,7 +332,7 @@ async def health():
 @app.post("/rag")
 async def rag(request: RAGRequest):
     async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
-        allowed, chunks, prompt = await prepare_rag_request(request, client)
+        allowed, chunks, prompt, answer_style = await prepare_rag_request(request, client)
         if not allowed:
             return not_found_response()
 
@@ -298,7 +353,7 @@ async def rag(request: RAGRequest):
                         else STRICT_SYSTEM_PROMPT
                     ),
                     "stream": False,
-                    "options": OLLAMA_OPTIONS,
+                    "options": build_generation_options(answer_style),
                 },
             )
             response.raise_for_status()
@@ -360,7 +415,7 @@ async def summary(request: SummaryRequest):
 @app.post("/rag/stream")
 async def rag_stream(request: RAGRequest):
     async with httpx.AsyncClient(timeout=OLLAMA_REQUEST_TIMEOUT) as client:
-        allowed, chunks, prompt = await prepare_rag_request(request, client)
+        allowed, chunks, prompt, answer_style = await prepare_rag_request(request, client)
         if not allowed:
             return StreamingResponse(not_found_stream(), media_type="application/x-ndjson")
 
@@ -385,7 +440,7 @@ async def rag_stream(request: RAGRequest):
                             else STRICT_SYSTEM_PROMPT
                         ),
                         "stream": True,
-                        "options": OLLAMA_OPTIONS,
+                        "options": build_generation_options(answer_style),
                     },
                 ) as response:
                     response.raise_for_status()
