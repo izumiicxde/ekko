@@ -23,7 +23,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardBackgroundColor="?attr/colorSurface"
-            app:cardCornerRadius="30dp"
+            app:cardCornerRadius="26dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp"
         >
@@ -115,7 +115,7 @@
                     android:id="@+id/txtFolderStats"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="12dp"
                     android:background="@drawable/bg_surface_pill"
                     android:fontFamily="@font/bricolage_grotesque"
                     android:paddingStart="12dp"
@@ -135,28 +135,38 @@
                     android:orientation="vertical"
                 >
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnAddFolder"
-                        style="@style/Widget.Ekko.Button.Secondary"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="46dp"
-                        android:textColor="?attr/colorOnPrimaryContainer"
-                        android:text="Add folder"
-                        app:backgroundTint="?attr/colorPrimaryContainer"
-                        app:icon="@drawable/ic_upload"
-                        app:iconTint="?attr/colorOnPrimaryContainer"
-                    />
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal"
+                    >
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnIncludeAllFolders"
-                        style="@style/Widget.Ekko.Button.Outlined"
-                        android:layout_width="match_parent"
-                        android:layout_height="46dp"
-                        android:layout_marginTop="8dp"
-                        android:text="Include all folders"
-                        app:icon="@drawable/ic_folder_open"
-                        app:iconTint="?attr/colorPrimary"
-                    />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnAddFolder"
+                            style="@style/Widget.Ekko.Button.Secondary"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="Add folder"
+                            android:textColor="?attr/colorOnPrimaryContainer"
+                            app:backgroundTint="?attr/colorPrimaryContainer"
+                            app:icon="@drawable/ic_upload"
+                            app:iconTint="?attr/colorOnPrimaryContainer"
+                        />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnIncludeAllFolders"
+                            style="@style/Widget.Ekko.Button.Outlined"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:text="Include all"
+                            app:icon="@drawable/ic_folder_open"
+                            app:iconTint="?attr/colorPrimary"
+                        />
+                    </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -170,7 +180,7 @@
                             android:id="@+id/btnReindexIncluded"
                             style="@style/Widget.Ekko.Button.Utility"
                             android:layout_width="0dp"
-                            android:layout_height="54dp"
+                            android:layout_height="52dp"
                             android:layout_weight="1"
                             android:text="Refresh"
                             app:icon="@drawable/ic_refresh"
@@ -181,7 +191,7 @@
                             android:id="@+id/btnResetExcluded"
                             style="@style/Widget.Ekko.Button.Utility"
                             android:layout_width="0dp"
-                            android:layout_height="54dp"
+                            android:layout_height="52dp"
                             android:layout_marginStart="8dp"
                             android:layout_weight="1"
                             android:text="Restore hidden"

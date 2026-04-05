@@ -4,9 +4,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="28dp"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+    app:cardCornerRadius="22dp"
     app:cardElevation="0dp"
     app:strokeWidth="0dp"
 >
@@ -14,67 +14,113 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:padding="18dp"
+        android:orientation="vertical"
+        android:padding="16dp"
     >
 
-        <FrameLayout
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="12dp"
-            android:background="@drawable/bg_icon_pill"
-        >
-
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_gravity="center"
-                android:contentDescription="Folder"
-                android:src="@drawable/ic_folder_open"
-                app:tint="?attr/colorPrimary"
-            />
-        </FrameLayout>
-
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginEnd="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
         >
 
-            <TextView
-                android:id="@+id/txtFolderName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorOnSurface"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:maxLines="1"
-                android:ellipsize="end"
-            />
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_icon_pill"
+            >
 
-            <TextView
-                android:id="@+id/txtFolderUri"
-                android:layout_width="match_parent"
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Folder"
+                    android:src="@drawable/ic_folder_open"
+                    app:tint="?attr/colorPrimary"
+                />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textSize="12sp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:fontFamily="@font/bricolage_grotesque"
-                android:maxLines="1"
-                android:ellipsize="middle"
+                android:layout_weight="1"
+                android:orientation="vertical"
+            >
+
+                <TextView
+                    android:id="@+id/txtFolderName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                />
+
+                <TextView
+                    android:id="@+id/txtFolderStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_surface_pill"
+                    android:fontFamily="@font/bricolage_grotesque"
+                    android:paddingStart="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="4dp"
+                    android:text="Included"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnRemoveFolder"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_surface_pill"
+                android:contentDescription="Remove folder"
+                android:padding="9dp"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/colorOnSurfaceVariant"
             />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/txtFolderUri"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:ellipsize="middle"
+            android:fontFamily="@font/bricolage_grotesque"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp"
+        />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
         >
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="@font/bricolage_grotesque"
+                android:text="Show in library"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+            />
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switchInclude"
@@ -83,20 +129,7 @@
                 android:checked="true"
                 android:text=""
             />
-
-            <ImageButton
-                android:id="@+id/btnRemoveFolder"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/bg_surface_pill"
-                android:padding="10dp"
-                android:src="@drawable/ic_close"
-                android:contentDescription="Remove folder"
-                app:tint="?attr/colorOnSurfaceVariant"
-            />
         </LinearLayout>
-
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

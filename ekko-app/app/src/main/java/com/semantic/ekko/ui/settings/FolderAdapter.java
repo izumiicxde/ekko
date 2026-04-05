@@ -72,6 +72,7 @@ public class FolderAdapter
     class FolderViewHolder extends RecyclerView.ViewHolder {
 
         private final TextView txtFolderName;
+        private final TextView txtFolderStatus;
         private final TextView txtFolderUri;
         private final MaterialSwitch switchInclude;
         private final ImageButton btnRemoveFolder;
@@ -79,6 +80,7 @@ public class FolderAdapter
         FolderViewHolder(@NonNull View itemView) {
             super(itemView);
             txtFolderName = itemView.findViewById(R.id.txtFolderName);
+            txtFolderStatus = itemView.findViewById(R.id.txtFolderStatus);
             txtFolderUri = itemView.findViewById(R.id.txtFolderUri);
             switchInclude = itemView.findViewById(R.id.switchInclude);
             btnRemoveFolder = itemView.findViewById(R.id.btnRemoveFolder);
@@ -99,9 +101,11 @@ public class FolderAdapter
             txtFolderUri.setText(displayPath);
 
             boolean included = !excludedUris.contains(folder.uri);
+            txtFolderStatus.setText(included ? "Included" : "Hidden");
             switchInclude.setOnCheckedChangeListener(null);
             switchInclude.setChecked(included);
             switchInclude.setOnCheckedChangeListener((button, isChecked) -> {
+                txtFolderStatus.setText(isChecked ? "Included" : "Hidden");
                 if (listener != null) listener.onFolderIncludeChanged(
                     folder,
                     isChecked
