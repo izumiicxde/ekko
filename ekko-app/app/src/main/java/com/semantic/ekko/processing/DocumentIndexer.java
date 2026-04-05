@@ -29,6 +29,10 @@ public class DocumentIndexer {
     private static final String TAG = "DocumentIndexer";
     private static final int MAX_CHUNKS_TO_EMBED = 8;
     private static final long ENTITY_EXTRACTION_TIMEOUT_SECONDS = 5L;
+    private static final int MAX_STORED_TEXT_CHARS = 120_000;
+    private static final int MAX_ML_TEXT_CHARS = 24_000;
+    private static final int MAX_ENTITY_TEXT_CHARS = 12_000;
+    private static final int MAX_KEYWORD_TEXT_CHARS = 16_000;
 
     public interface ProgressListener {
         void onStageChanged(String stage);
@@ -111,8 +115,14 @@ public class DocumentIndexer {
                         failedNames.add(doc.name + " (no readable text)");
                     }
 
-                    String cleanedText = TextPreprocessor.clean(rawText);
-                    String mlText = TextPreprocessor.cleanForMl(rawText);
+                    String cleanedText = compactText(
+                        TextPreprocessor.clean(rawText),
+                        MAX_STORED_TEXT_CHARS
+                    );
+                    String mlText = compactText(
+                        TextPreprocessor.cleanForMl(rawText),
+                        MAX_ML_TEXT_CHARS
+                    );
                     doc.rawText = cleanedText;
                     doc.wordCount = TextPreprocessor.wordCount(cleanedText);
 
@@ -139,7 +149,10 @@ public class DocumentIndexer {
                     );
                     try {
                         List<String> keywords =
-                            TextPreprocessor.extractKeywords(mlText, 5);
+                            TextPreprocessor.extractKeywords(
+                                compactText(mlText, MAX_KEYWORD_TEXT_CHARS),
+                                5
+                            );
                         doc.keywords = String.join(",", keywords);
                     } catch (Exception e) {
                         doc.keywords = "";
@@ -149,9 +162,13 @@ public class DocumentIndexer {
                         "Extracting entities..."
                     );
                     try {
+                        String entityText = compactText(
+                            cleanedText,
+                            MAX_ENTITY_TEXT_CHARS
+                        );
                         CountDownLatch latch = new CountDownLatch(1);
                         entityExtractor.extractEntities(
-                            cleanedText,
+                            entityText,
                             entities -> {
                                 doc.entities =
                                     EntityExtractorHelper.entitiesToString(
@@ -226,7 +243,7 @@ public class DocumentIndexer {
                         total,
                         doc.name
                     );
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     failed.incrementAndGet();
                     failedNames.add(doc.name + " (error)");
                 }
@@ -316,7 +333,7 @@ public class DocumentIndexer {
                 default:
                     return "";
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return "";
         }
     }
@@ -334,6 +351,35 @@ public class DocumentIndexer {
             limited.add(chunks.get(index));
         }
         return limited;
+    }
+
+    private String compactText(String text, int maxChars) {
+        if (text == null) {
+            return "";
+        }
+        String normalized = text.trim();
+        if (normalized.length() <= maxChars) {
+            return normalized;
+        }
+
+        int head = Math.max(1, (int) (maxChars * 0.45f));
+        int middle = Math.max(1, (int) (maxChars * 0.20f));
+        int tail = Math.max(1, maxChars - head - middle - 32);
+
+        int middleStart = Math.max(
+            head,
+            (normalized.length() / 2) - (middle / 2)
+        );
+        int middleEnd = Math.min(normalized.length(), middleStart + middle);
+        int tailStart = Math.max(middleEnd, normalized.length() - tail);
+
+        return (
+            normalized.substring(0, head) +
+            "\n\n[ ... shortened for indexing ... ]\n\n" +
+            normalized.substring(middleStart, middleEnd) +
+            "\n\n[ ... shortened for indexing ... ]\n\n" +
+            normalized.substring(tailStart)
+        ).trim();
     }
 
     public void shutdown() {

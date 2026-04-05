@@ -31,6 +31,7 @@ import com.semantic.ekko.ml.EntityExtractorHelper;
 import com.semantic.ekko.processing.DocumentIndexer;
 import com.semantic.ekko.processing.DocumentScanner;
 import com.semantic.ekko.ui.launcher.LauncherActivity;
+import com.semantic.ekko.util.CrashLogger;
 import com.semantic.ekko.util.PrefsManager;
 import com.semantic.ekko.util.NotificationPermissionHelper;
 import com.semantic.ekko.util.StorageAccessHelper;
@@ -103,240 +104,264 @@ public class BackgroundIndexWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        EkkoApp app = EkkoApp.getInstance();
-        if (
-            app == null ||
-            !app.isMlReady() ||
-            app.getEmbeddingEngine() == null ||
-            app.getDocumentClassifier() == null ||
-            app.getTextSummarizer() == null
-        ) {
-            return Result.retry();
-        }
-
-        setForegroundAsync(
-            createForegroundInfo(
-                "Starting indexing",
-                "Checking your folders",
-                0,
-                0,
-                false
-            )
-        );
-        setProgressAsync(buildProgressData("Starting indexing", "", 0, 0));
-
-        AppDatabase database = AppDatabase.getInstance(getApplicationContext());
-        FolderDao folderDao = database.folderDao();
-        DocumentDao documentDao = database.documentDao();
-        PrefsManager prefsManager = new PrefsManager(getApplicationContext());
-
-        List<FolderEntity> targetFolders = resolveTargetFolders(
-            folderDao,
-            prefsManager
-        );
-        if (targetFolders.isEmpty()) {
-            return Result.success();
-        }
-
-        ScanBundle scanBundle = scanFolders(targetFolders);
-        syncScannedDocuments(
-            documentDao,
-            scanBundle.folderIds,
-            scanBundle.scanResult.documents
-        );
-
-        if (scanBundle.scanResult.documents.isEmpty()) {
-            setProgressAsync(buildProgressData("Nothing new to index", "", 0, 0));
-            return Result.success();
-        }
-
-        setForegroundAsync(
-            createForegroundInfo(
-                "Preparing smart indexing",
-                scanBundle.scanResult.documents.size() +
-                (scanBundle.scanResult.documents.size() == 1 ? " file ready" : " files ready"),
-                0,
-                scanBundle.scanResult.documents.size(),
-                false
-            )
-        );
-        setProgressAsync(
-            buildProgressData(
-                "Preparing smart indexing",
-                scanBundle.scanResult.documents.size() +
-                (scanBundle.scanResult.documents.size() == 1 ? " file found" : " files found"),
-                0,
-                scanBundle.scanResult.documents.size()
-            )
-        );
-
-        EntityExtractorHelper entityExtractor = new EntityExtractorHelper();
-        CountDownLatch prepareLatch = new CountDownLatch(1);
-        final boolean[] prepareSuccess = { false };
-        setForegroundAsync(
-            createForegroundInfo(
-                "Loading smart indexing tools",
-                "This only takes longer when models are cold.",
-                0,
-                scanBundle.scanResult.documents.size(),
-                false
-            )
-        );
-        setProgressAsync(
-            buildProgressData(
-                "Loading smart indexing tools",
-                "",
-                0,
-                scanBundle.scanResult.documents.size()
-            )
-        );
-        entityExtractor.prepareModel(success -> {
-            prepareSuccess[0] = success;
-            prepareLatch.countDown();
-        });
-
         try {
-            if (isStopped()) {
-                entityExtractor.close();
+            EkkoApp app = EkkoApp.getInstance();
+            if (
+                app == null ||
+                !app.isMlReady() ||
+                app.getEmbeddingEngine() == null ||
+                app.getDocumentClassifier() == null ||
+                app.getTextSummarizer() == null
+            ) {
+                return Result.retry();
+            }
+
+            setForegroundAsync(
+                createForegroundInfo(
+                    "Starting indexing",
+                    "Checking your folders",
+                    0,
+                    0,
+                    false
+                )
+            );
+            setProgressAsync(buildProgressData("Starting indexing", "", 0, 0));
+
+            AppDatabase database = AppDatabase.getInstance(getApplicationContext());
+            FolderDao folderDao = database.folderDao();
+            DocumentDao documentDao = database.documentDao();
+            PrefsManager prefsManager = new PrefsManager(getApplicationContext());
+
+            List<FolderEntity> targetFolders = resolveTargetFolders(
+                folderDao,
+                prefsManager
+            );
+            if (targetFolders.isEmpty()) {
                 return Result.success();
             }
-            boolean modelReady =
-                prepareLatch.await(
-                    MODEL_PREPARE_TIMEOUT_SECONDS,
-                    TimeUnit.SECONDS
-                ) && prepareSuccess[0];
 
-            if (!modelReady) {
-                setForegroundAsync(
-                    createForegroundInfo(
-                        "Indexing files",
-                        "Continuing without smart entity extraction",
-                        0,
-                        scanBundle.scanResult.documents.size(),
-                        false
-                    )
-                );
-                setProgressAsync(
-                    buildProgressData(
-                        "Indexing files",
-                        "Continuing without smart entity extraction",
-                        0,
-                        scanBundle.scanResult.documents.size()
-                    )
-                );
+            ScanBundle scanBundle = scanFolders(targetFolders);
+            syncScannedDocuments(
+                documentDao,
+                scanBundle.folderIds,
+                scanBundle.scanResult.documents
+            );
+
+            if (scanBundle.scanResult.documents.isEmpty()) {
+                setProgressAsync(buildProgressData("Nothing new to index", "", 0, 0));
+                return Result.success();
             }
 
-            DocumentIndexer indexer = new DocumentIndexer(
-                getApplicationContext(),
-                app.getEmbeddingEngine(),
-                app.getDocumentClassifier(),
-                app.getTextSummarizer(),
-                entityExtractor
+            setForegroundAsync(
+                createForegroundInfo(
+                    "Preparing smart indexing",
+                    scanBundle.scanResult.documents.size() +
+                    (scanBundle.scanResult.documents.size() == 1 ? " file ready" : " files ready"),
+                    0,
+                    scanBundle.scanResult.documents.size(),
+                    false
+                )
             );
-            CountDownLatch indexLatch = new CountDownLatch(1);
-            final boolean[] hadFailures = { false };
-            final int[] lastCurrent = { 0 };
-            final int[] lastTotal = { scanBundle.scanResult.documents.size() };
-            final String[] lastDocName = { "" };
-            if (isStopped()) {
+            setProgressAsync(
+                buildProgressData(
+                    "Preparing smart indexing",
+                    scanBundle.scanResult.documents.size() +
+                    (scanBundle.scanResult.documents.size() == 1 ? " file found" : " files found"),
+                    0,
+                    scanBundle.scanResult.documents.size()
+                )
+            );
+
+            EntityExtractorHelper entityExtractor = new EntityExtractorHelper();
+            CountDownLatch prepareLatch = new CountDownLatch(1);
+            final boolean[] prepareSuccess = { false };
+            setForegroundAsync(
+                createForegroundInfo(
+                    "Loading smart indexing tools",
+                    "This only takes longer when models are cold.",
+                    0,
+                    scanBundle.scanResult.documents.size(),
+                    false
+                )
+            );
+            setProgressAsync(
+                buildProgressData(
+                    "Loading smart indexing tools",
+                    "",
+                    0,
+                    scanBundle.scanResult.documents.size()
+                )
+            );
+            entityExtractor.prepareModel(success -> {
+                prepareSuccess[0] = success;
+                prepareLatch.countDown();
+            });
+
+            try {
+                if (isStopped()) {
+                    entityExtractor.close();
+                    return Result.success();
+                }
+                boolean modelReady =
+                    prepareLatch.await(
+                        MODEL_PREPARE_TIMEOUT_SECONDS,
+                        TimeUnit.SECONDS
+                    ) && prepareSuccess[0];
+
+                if (!modelReady) {
+                    setForegroundAsync(
+                        createForegroundInfo(
+                            "Indexing files",
+                            "Continuing without smart entity extraction",
+                            0,
+                            scanBundle.scanResult.documents.size(),
+                            false
+                        )
+                    );
+                    setProgressAsync(
+                        buildProgressData(
+                            "Indexing files",
+                            "Continuing without smart entity extraction",
+                            0,
+                            scanBundle.scanResult.documents.size()
+                        )
+                    );
+                }
+
+                DocumentIndexer indexer = new DocumentIndexer(
+                    getApplicationContext(),
+                    app.getEmbeddingEngine(),
+                    app.getDocumentClassifier(),
+                    app.getTextSummarizer(),
+                    entityExtractor
+                );
+                CountDownLatch indexLatch = new CountDownLatch(1);
+                final boolean[] hadFailures = { false };
+                final int[] lastCurrent = { 0 };
+                final int[] lastTotal = { scanBundle.scanResult.documents.size() };
+                final String[] lastDocName = { "" };
+                if (isStopped()) {
+                    indexer.shutdown();
+                    entityExtractor.close();
+                    return Result.success();
+                }
+                indexer.indexDocuments(
+                    scanBundle.scanResult.documents,
+                    new DocumentIndexer.ProgressListener() {
+                        @Override
+                        public void onStageChanged(String stage) {
+                            String safeStage =
+                                stage == null || stage.isEmpty()
+                                    ? "Indexing"
+                                    : stage;
+                            String safeDocName = lastDocName[0] == null
+                                ? ""
+                                : lastDocName[0];
+                            setForegroundAsync(
+                                createForegroundInfo(
+                                    safeStage,
+                                    safeDocName.isEmpty()
+                                        ? "Working in background"
+                                        : safeDocName,
+                                    lastCurrent[0],
+                                    lastTotal[0],
+                                    lastCurrent[0] > 0 && lastTotal[0] > 0
+                                )
+                            );
+                            setProgressAsync(
+                                buildProgressData(
+                                    safeStage,
+                                    safeDocName,
+                                    lastCurrent[0],
+                                    lastTotal[0]
+                                )
+                            );
+                        }
+
+                        @Override
+                        public void onDocumentProcessed(
+                            int current,
+                            int total,
+                            String docName
+                        ) {
+                            String safeName = docName == null ? "" : docName;
+                            lastCurrent[0] = current;
+                            lastTotal[0] = total;
+                            lastDocName[0] = safeName;
+                            setForegroundAsync(
+                                createForegroundInfo(
+                                    "Indexing files",
+                                    safeName.isEmpty()
+                                        ? current + " of " + total
+                                        : safeName,
+                                    current,
+                                    total,
+                                    true
+                                )
+                            );
+                            setProgressAsync(
+                                buildProgressData(
+                                    "Indexing files",
+                                    safeName,
+                                    current,
+                                    total
+                                )
+                            );
+                        }
+
+                        @Override
+                        public void onComplete(
+                            int indexed,
+                            int failed,
+                            List<String> failedNames
+                        ) {
+                            hadFailures[0] = failed > 0;
+                            setProgressAsync(
+                                buildProgressData(
+                                    failed > 0
+                                        ? "Indexing finished with issues"
+                                        : "Indexing finished",
+                                    "",
+                                    indexed,
+                                    Math.max(indexed + failed, indexed)
+                                )
+                            );
+                            showCompletionNotification(indexed, failed);
+                            indexLatch.countDown();
+                        }
+                    }
+                );
+                indexLatch.await();
                 indexer.shutdown();
                 entityExtractor.close();
                 return Result.success();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                entityExtractor.close();
+                return Result.retry();
             }
-            indexer.indexDocuments(
-                scanBundle.scanResult.documents,
-                new DocumentIndexer.ProgressListener() {
-                    @Override
-                    public void onStageChanged(String stage) {
-                        String safeStage =
-                            stage == null || stage.isEmpty()
-                                ? "Indexing"
-                                : stage;
-                        String safeDocName = lastDocName[0] == null
-                            ? ""
-                            : lastDocName[0];
-                        setForegroundAsync(
-                            createForegroundInfo(
-                                safeStage,
-                                safeDocName.isEmpty()
-                                    ? "Working in background"
-                                    : safeDocName,
-                                lastCurrent[0],
-                                lastTotal[0],
-                                lastCurrent[0] > 0 && lastTotal[0] > 0
-                            )
-                        );
-                        setProgressAsync(
-                            buildProgressData(
-                                safeStage,
-                                safeDocName,
-                                lastCurrent[0],
-                                lastTotal[0]
-                            )
-                        );
-                    }
-
-                    @Override
-                    public void onDocumentProcessed(
-                        int current,
-                        int total,
-                        String docName
-                    ) {
-                        String safeName = docName == null ? "" : docName;
-                        lastCurrent[0] = current;
-                        lastTotal[0] = total;
-                        lastDocName[0] = safeName;
-                        setForegroundAsync(
-                            createForegroundInfo(
-                                "Indexing files",
-                                safeName.isEmpty()
-                                    ? current + " of " + total
-                                    : safeName,
-                                current,
-                                total,
-                                true
-                            )
-                        );
-                        setProgressAsync(
-                            buildProgressData(
-                                "Indexing files",
-                                safeName,
-                                current,
-                                total
-                            )
-                        );
-                    }
-
-                    @Override
-                    public void onComplete(
-                        int indexed,
-                        int failed,
-                        List<String> failedNames
-                    ) {
-                        hadFailures[0] = failed > 0;
-                        setProgressAsync(
-                            buildProgressData(
-                                failed > 0
-                                    ? "Indexing finished with issues"
-                                    : "Indexing finished",
-                                "",
-                                indexed,
-                                Math.max(indexed + failed, indexed)
-                            )
-                        );
-                        showCompletionNotification(indexed, failed);
-                        indexLatch.countDown();
-                    }
-                }
+        } catch (OutOfMemoryError oom) {
+            CrashLogger.logHandled(
+                getApplicationContext(),
+                "Background indexing OOM",
+                new RuntimeException("Background indexing ran out of memory", oom)
             );
-            indexLatch.await();
-            indexer.shutdown();
-            entityExtractor.close();
-            return hadFailures[0] ? Result.success() : Result.success();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            entityExtractor.close();
-            return Result.retry();
+            setProgressAsync(
+                buildProgressData(
+                    "Indexing paused",
+                    "Large document batch was trimmed for safety",
+                    0,
+                    0
+                )
+            );
+            return Result.success();
+        } catch (Throwable t) {
+            CrashLogger.logHandled(
+                getApplicationContext(),
+                "Background indexing failure",
+                t
+            );
+            return Result.success();
         }
     }
 

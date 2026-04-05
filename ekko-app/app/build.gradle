@@ -94,6 +94,7 @@ dependencies {
 
     // ML Kit Entity Extraction
     implementation 'com.google.mlkit:entity-extraction:16.0.0-beta5'
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
 
     // PDF text extraction
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
