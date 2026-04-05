@@ -223,6 +223,7 @@ public class QAActivity extends AppCompatActivity {
                     btnStop.setVisibility(View.GONE);
                     btnSend.setVisibility(View.VISIBLE);
                 }
+                updateReadinessUi();
             });
 
         viewModel.getIncludedFileNames(names -> {
@@ -260,10 +261,11 @@ public class QAActivity extends AppCompatActivity {
         boolean loading =
             viewModel != null &&
             Boolean.TRUE.equals(viewModel.getIsLoading().getValue());
-        editQuestion.setEnabled(ready && !loading);
-        btnSend.setEnabled(ready && !loading);
+        boolean canInteract = mlReady && !loading;
+        editQuestion.setEnabled(canInteract);
+        btnSend.setEnabled(canInteract);
         chipGroupSuggestions.setAlpha(ready ? 1f : 0.42f);
-        chipGroupSuggestions.setEnabled(ready);
+        chipGroupSuggestions.setEnabled(canInteract);
         chipGroupSuggestions.setVisibility(ready ? View.VISIBLE : View.GONE);
         chipGroupInputCompletions.setVisibility(View.GONE);
         layoutInputContainer.setAlpha(ready ? 1f : 0.62f);
@@ -429,7 +431,7 @@ public class QAActivity extends AppCompatActivity {
     }
 
     private void submitQuestion() {
-        if (!mlReady || !backendReady) return;
+        if (!mlReady) return;
         String question = editQuestion.getText().toString().trim();
         if (question.isEmpty()) return;
         editQuestion.setText("");

@@ -24,7 +24,7 @@ OLLAMA_OPTIONS = {
     "num_predict": -1,
 }
 
-SYSTEM_PROMPT = (
+STRICT_SYSTEM_PROMPT = (
     "You are a strict document assistant. "
     "You ONLY answer based on the text provided to you. "
     "You have NO access to external knowledge or training data. "
@@ -33,6 +33,16 @@ SYSTEM_PROMPT = (
     "Never guess, infer beyond the text, or use information you were trained on. "
     "Never mention author names, professor names, college names, department names, "
     "batch years, or course codes in your answer."
+)
+
+GENERAL_FILE_CHAT_SYSTEM_PROMPT = (
+    "You are a helpful assistant. "
+    "The provided text is background context from a user-selected file. "
+    "Use that file when it helps, but answer the user's question directly even if the file does not explicitly contain the answer. "
+    "Do not refuse solely because the answer is not in the provided file content. "
+    "Prefer concise, clear answers and mention the file context only when it is actually relevant. "
+    "Never mention author names, professor names, college names, department names, "
+    "batch years, or course codes unless the user explicitly asks for them."
 )
 
 STOPWORDS = {
@@ -99,6 +109,7 @@ class RAGRequest(BaseModel):
     question: str
     chunks: list[str]
     document_name: str = ""
+    allow_general_knowledge: bool = False
 
 
 class RAGResponse(BaseModel):
@@ -173,12 +184,18 @@ def normalize_chunks(chunks: list[str]) -> list[str]:
     return [chunk.strip() for chunk in chunks if chunk and chunk.strip()]
 
 
-def build_prompt(question: str, chunks: list[str], document_name: str) -> str:
+def build_prompt(
+    question: str,
+    chunks: list[str],
+    document_name: str,
+    allow_general_knowledge: bool,
+) -> str:
     context = "\n\n".join(chunks)
     doc_ref = f' from "{document_name}"' if document_name else ""
+    context_label = "BACKGROUND FILE CONTENT" if allow_general_knowledge else "EXTRACTED TEXT"
     return (
-        f"Below is extracted text{doc_ref}.\n\n"
-        f"EXTRACTED TEXT:\n{context}\n\n"
+        f"Below is context{doc_ref}.\n\n"
+        f"{context_label}:\n{context}\n\n"
         f"QUESTION: {question}\n\n"
         f"Format your answer using markdown:\n"
         f"- Use **bold** for key terms\n"
@@ -198,7 +215,9 @@ def build_summary_prompt(context: str, document_name: str) -> str:
         "Write a concise, accurate summary using only the provided text.\n"
         "Requirements:\n"
         "- Keep it brief but informative\n"
-        "- Prefer 1 short paragraph followed by 3-5 bullet points when useful\n"
+        "- Write in plain text, not markdown\n"
+        "- Prefer 1-2 short paragraphs\n"
+        "- Do not use headings, bullet points, numbering, or code formatting\n"
         "- Do not mention missing information unless the text is genuinely too short\n"
         "- Do not add outside facts or assumptions\n\n"
         "SUMMARY:"
@@ -217,17 +236,23 @@ async def prepare_rag_request(
     if not chunks:
         raise HTTPException(status_code=400, detail="No chunks provided.")
 
-    if not has_keyword_match(question, chunks):
-        logger.info("Keyword rejected: '%s'", question)
-        return False, chunks, ""
+    if not request.allow_general_knowledge:
+        if not has_keyword_match(question, chunks):
+            logger.info("Keyword rejected: '%s'", question)
+            return False, chunks, ""
 
-    context = "\n\n".join(chunks)
-    relevant = await is_relevant(question, context, client)
-    if not relevant:
-        logger.info("Model rejected as irrelevant: '%s'", question)
-        return False, chunks, ""
+        context = "\n\n".join(chunks)
+        relevant = await is_relevant(question, context, client)
+        if not relevant:
+            logger.info("Model rejected as irrelevant: '%s'", question)
+            return False, chunks, ""
 
-    prompt = build_prompt(question, chunks, request.document_name)
+    prompt = build_prompt(
+        question,
+        chunks,
+        request.document_name,
+        request.allow_general_knowledge,
+    )
     return True, chunks, prompt
 
 
@@ -267,7 +292,11 @@ async def rag(request: RAGRequest):
                 json={
                     "model": OLLAMA_MODEL,
                     "prompt": prompt,
-                    "system": SYSTEM_PROMPT,
+                    "system": (
+                        GENERAL_FILE_CHAT_SYSTEM_PROMPT
+                        if request.allow_general_knowledge
+                        else STRICT_SYSTEM_PROMPT
+                    ),
                     "stream": False,
                     "options": OLLAMA_OPTIONS,
                 },
@@ -350,7 +379,11 @@ async def rag_stream(request: RAGRequest):
                     json={
                         "model": OLLAMA_MODEL,
                         "prompt": prompt,
-                        "system": SYSTEM_PROMPT,
+                        "system": (
+                            GENERAL_FILE_CHAT_SYSTEM_PROMPT
+                            if request.allow_general_knowledge
+                            else STRICT_SYSTEM_PROMPT
+                        ),
                         "stream": True,
                         "options": OLLAMA_OPTIONS,
                     },

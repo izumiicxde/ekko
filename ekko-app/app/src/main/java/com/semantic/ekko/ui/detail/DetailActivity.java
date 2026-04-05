@@ -678,18 +678,14 @@ public class DetailActivity extends AppCompatActivity {
             txtSummary.setText("");
             return;
         }
-        txtSummary.setMaxLines(summaryExpanded ? Integer.MAX_VALUE : 7);
-        txtSummary.setEllipsize(summaryExpanded ? null : android.text.TextUtils.TruncateAt.END);
+        txtSummary.setMaxLines(Integer.MAX_VALUE);
+        txtSummary.setEllipsize(null);
         txtSummary.setGravity(Gravity.START);
         txtSummary.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             txtSummary.setJustificationMode(Layout.JUSTIFICATION_MODE_INTER_WORD);
         }
-        try {
-            markwon.setMarkdown(txtSummary, text);
-        } catch (Exception ignored) {
-            txtSummary.setText(text);
-        }
+        txtSummary.setText(normalizeSummaryText(text));
     }
 
     private void toggleSummary() {
@@ -702,12 +698,19 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void updateSummaryToggle(String summary) {
-        boolean hasSummary = summary != null && !summary.trim().isEmpty();
-        boolean shouldShowToggle = hasSummary && summary.trim().length() > 220;
-        btnToggleSummary.setVisibility(shouldShowToggle ? View.VISIBLE : View.GONE);
-        if (shouldShowToggle) {
-            btnToggleSummary.setText(summaryExpanded ? "Show less" : "Show more");
-        }
+        btnToggleSummary.setVisibility(View.GONE);
+    }
+
+    private String normalizeSummaryText(String text) {
+        String normalized = text == null ? "" : text.trim();
+        normalized = normalized.replace("\r\n", "\n");
+        normalized = normalized.replaceAll("(?m)^#{1,6}\\s*", "");
+        normalized = normalized.replace("**", "");
+        normalized = normalized.replace("__", "");
+        normalized = normalized.replace("`", "");
+        normalized = normalized.replaceAll("(?m)^\\s*[-*+]\\s+", "\u2022 ");
+        normalized = normalized.replaceAll("(?m)^\\s*\\d+\\.\\s+", "");
+        return normalized.trim();
     }
 
     private void styleDisplayChip(Chip chip) {

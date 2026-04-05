@@ -14,13 +14,18 @@ public class RagRequest {
     @SerializedName("document_name")
     public final String documentName;
 
+    @SerializedName("allow_general_knowledge")
+    public final boolean allowGeneralKnowledge;
+
     public RagRequest(
         String question,
         List<String> chunks,
-        String documentName
+        String documentName,
+        boolean allowGeneralKnowledge
     ) {
         this.question = question;
         this.chunks = chunks;
         this.documentName = documentName != null ? documentName : "";
+        this.allowGeneralKnowledge = allowGeneralKnowledge;
     }
 }

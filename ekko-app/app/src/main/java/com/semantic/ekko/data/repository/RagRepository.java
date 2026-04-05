@@ -495,6 +495,7 @@ public class RagRepository {
                 JSONObject body = new JSONObject();
                 body.put("question", question.trim());
                 body.put("document_name", selection.sourceDocName);
+                body.put("allow_general_knowledge", documentId > 0);
                 JSONArray arr = new JSONArray();
                 for (String chunk : selection.chunks) arr.put(chunk);
                 body.put("chunks", arr);
@@ -606,7 +607,8 @@ public class RagRepository {
                 RagRequest req = new RagRequest(
                     question.trim(),
                     selection.chunks,
-                    selection.sourceDocName
+                    selection.sourceDocName,
+                    true
                 );
                 final String src = selection.sourceDocName;
                 RagApiService apiService = RagClient.getInstance();
@@ -798,7 +800,8 @@ public class RagRepository {
                 RagRequest req = new RagRequest(
                     question.trim(),
                     selection.chunks,
-                    selection.sourceDocName
+                    selection.sourceDocName,
+                    false
                 );
                 final String src = selection.sourceDocName;
                 RagApiService apiService = RagClient.getInstance();
